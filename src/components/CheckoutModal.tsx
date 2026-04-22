@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, CreditCard, Lock, CheckCircle, Loader2, Shield, ScanFace } from 'lucide-react';
+import { X, Lock, CheckCircle, Loader2, Shield } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../lib/firebase';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -12,72 +14,39 @@ interface CheckoutModalProps {
   onPaymentSuccess: (tier: 'pro' | 'enterprise') => Promise<void>;
 }
 
-export default function CheckoutModal({ isOpen, onClose, planName, price, tier, onPaymentSuccess }: CheckoutModalProps) {
-  const { dir, t } = useLanguage();
-  
-  const [cardNumber, setCardNumber] = useState('');
-  const [expiry, setExpiry] = useState('');
-  const [cvc, setCvc] = useState('');
-  const [name, setName] = useState('');
+export default function CheckoutModal({ isOpen, onClose, planName, price, tier }: CheckoutModalProps) {
+  const { dir } = useLanguage();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return value;
-    }
-  };
-
-  const formatExpiry = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    if (v.length >= 2) {
-      return `${v.substring(0, 2)}/${v.substring(2, 4)}`;
-    }
-    return v;
-  };
-
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (cardNumber.length < 19 || expiry.length < 5 || cvc.length < 3 || name.length < 3) {
-      setError("Please fill in all card details correctly.");
-      return;
-    }
-    
     setError(null);
     setIsProcessing(true);
     
-    // Simulate network delay and processing
-    await new Promise(resolve => setTimeout(resolve, 2500));
-    
     try {
-      await onPaymentSuccess(tier);
-      setIsProcessing(false);
-      setIsSuccess(true);
+      // Create payment token via Firebase Cloud Functions
+      const createPaymentToken = httpsCallable(functions, 'createPaymentToken');
+      const result = await createPaymentToken({ tier });
+      // @ts-ignore
+      const { paymentToken } = result.data;
+
+      // REMINDER: Add integration ID securely from Paymob if not handled dynamically by webhook
+      const IFRAME_ID = "YOUR_IFRAME_ID"; // User must put iframe ID here later
       
-      // Close modal after showing success message
-      setTimeout(() => {
-        setIsSuccess(false);
-        setCardNumber('');
-        setExpiry('');
-        setCvc('');
-        setName('');
-        onClose();
-      }, 2000);
+      if (!paymentToken) {
+        throw new Error("Invalid payment token received. Please check backend API logs.");
+      }
+
+      // Redirect to Paymob Secure Iframe
+      window.location.href = `https://accept.paymob.com/api/acceptance/iframes/${IFRAME_ID}?payment_token=${paymentToken}`;
       
     } catch (err: any) {
+      console.error(err);
       setIsProcessing(false);
-      setError("Error upgrading account. Please try again.");
+      setError("Paymob Backend API Keys are not configured. Cannot generate order secure token.");
     }
   };
 
@@ -85,7 +54,7 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" dir={dir}>
+      <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" dir={dir}>
         <motion.div 
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -146,96 +115,21 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
                 </motion.div>
               ) : (
                 <form onSubmit={handlePay} className="space-y-6">
-                  {/* Virtual Card Visualization */}
-                  <div className="w-full h-48 rounded-2xl p-6 bg-gradient-to-tr from-accent/80 to-accent relative overflow-hidden shadow-[0_10px_40px_-10px_rgba(34,197,94,0.4)] transition-all hover:scale-[1.02] duration-300">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-2xl -mr-20 -mt-20" />
-                    <div className="relative z-10 h-full flex flex-col justify-between">
-                      <div className="flex justify-between items-center text-white/80">
-                        <ScanFace className="w-8 h-8 opacity-75" />
-                        <span className="font-mono tracking-widest opacity-75 text-sm">CREDIT</span>
-                      </div>
-                      <div>
-                        <div className="font-mono text-xl tracking-[0.2em] text-white/90 mb-2 truncate">
-                          {cardNumber || '•••• •••• •••• ••••'}
-                        </div>
-                        <div className="flex justify-between items-end">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] uppercase tracking-widest text-white/60 mb-1">Card Holder</span>
-                            <span className="font-medium text-white tracking-wider truncate max-w-[150px]">
-                              {name || 'YOUR NAME'}
-                            </span>
-                          </div>
-                          <div className="flex flex-col text-right">
-                            <span className="text-[10px] uppercase tracking-widest text-white/60 mb-1">Expires</span>
-                            <span className="font-mono text-white tracking-widest">{expiry || 'MM/YY'}</span>
-                          </div>
-                        </div>
-                      </div>
+                  <div className="bg-bg-surface border border-border-subtle p-6 rounded-xl flex items-center gap-4 mb-8">
+                    <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
+                      <Shield className="w-6 h-6 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white uppercase tracking-widest text-sm">Secure Paymob Gateway</h3>
+                      <p className="text-text-dim text-xs mt-1">You will be redirected safely to Paymob to complete your payment.</p>
                     </div>
                   </div>
 
                   {error && (
-                    <div className="text-error text-sm bg-error/10 border border-error/20 p-3 rounded-xl flex items-center gap-2">
-                      <Shield className="w-4 h-4" /> {error}
+                    <div className="text-error text-sm bg-error/10 border border-error/20 p-3 rounded-xl flex items-center gap-2 mb-6">
+                      <Shield className="w-4 h-4 shrink-0" /> {error}
                     </div>
                   )}
-
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-xs font-mono text-text-dim uppercase tracking-widest mb-2">Cardholder Name</label>
-                      <input 
-                        type="text" 
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value.toUpperCase())}
-                        className="w-full bg-black/50 border border-border-subtle rounded-xl px-4 py-3 text-white focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all"
-                        placeholder="John Doe"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-xs font-mono text-text-dim uppercase tracking-widest mb-2">Card Number</label>
-                      <div className="relative">
-                        <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-dim" />
-                        <input 
-                          type="text" 
-                          required
-                          maxLength={19}
-                          value={cardNumber}
-                          onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                          className="w-full bg-black/50 border border-border-subtle rounded-xl pl-12 pr-4 py-3 text-white font-mono tracking-widest focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all"
-                          placeholder="0000 0000 0000 0000"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-mono text-text-dim uppercase tracking-widest mb-2">Expiry Date</label>
-                        <input 
-                          type="text" 
-                          required
-                          maxLength={5}
-                          value={expiry}
-                          onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                          className="w-full bg-black/50 border border-border-subtle rounded-xl px-4 py-3 text-white font-mono focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all"
-                          placeholder="MM/YY"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-mono text-text-dim uppercase tracking-widest mb-2">CVC</label>
-                        <input 
-                          type="password" 
-                          required
-                          maxLength={4}
-                          value={cvc}
-                          onChange={(e) => setCvc(e.target.value.replace(/[^0-9]/g, ''))}
-                          className="w-full bg-black/50 border border-border-subtle rounded-xl px-4 py-3 text-white font-mono focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all"
-                          placeholder="•••"
-                        />
-                      </div>
-                    </div>
-                  </div>
 
                   <button 
                     type="submit" 
@@ -246,14 +140,14 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
                     <span className="relative z-10 flex items-center gap-2">
                       {isProcessing ? (
                         <>
-                          <Loader2 className="w-5 h-5 animate-spin" /> Processing Payment...
+                          <Loader2 className="w-5 h-5 animate-spin" /> Redirecting to Paymob...
                         </>
                       ) : (
-                        `Pay ${price}`
+                        `Pay ${price} Safely`
                       )}
                     </span>
                   </button>
-                  <p className="text-center text-[10px] text-text-dim mt-4 uppercase tracking-widest">Payments are processed securely</p>
+                  <p className="text-center text-[10px] text-text-dim mt-4 uppercase tracking-widest">Powered by Stripe / Paymob</p>
                 </form>
               )}
             </div>
