@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Globe, Activity, MapPin, Radio, RotateCcw, Maximize2, ZoomIn, ZoomOut } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface ThreatEvent {
   id: string;
@@ -53,6 +54,7 @@ function generateThreat(): ThreatEvent {
 }
 
 export default function ThreatMap3D() {
+  const { t } = useLanguage();
   const [threats, setThreats] = useState<ThreatEvent[]>([]);
   const [stats, setStats] = useState({ total: 0, critical: 0, high: 0, medium: 0, low: 0 });
   const [selectedThreat, setSelectedThreat] = useState<ThreatEvent | null>(null);
@@ -286,9 +288,9 @@ export default function ThreatMap3D() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
-            <Globe className="w-8 h-8 text-cyan-400" /> 3D Threat Visualizer
+            <Globe className="w-8 h-8 text-cyan-400" /> {t('threat_title')}
           </h1>
-          <p className="text-text-dim text-sm mt-1 font-mono">Real-time 3D globe with live cyber threat intelligence.</p>
+          <p className="text-text-dim text-sm mt-1 font-mono">{t('threat_desc')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setZoom(z => Math.min(2, z + 0.2))} className="p-2 rounded-xl border border-border-subtle text-text-dim hover:text-accent hover:border-accent/30 transition-all"><ZoomIn className="w-4 h-4" /></button>
@@ -296,7 +298,7 @@ export default function ThreatMap3D() {
           <button onClick={() => { setZoom(1); rotRef.current = 0; }} className="p-2 rounded-xl border border-border-subtle text-text-dim hover:text-accent hover:border-accent/30 transition-all"><RotateCcw className="w-4 h-4" /></button>
           <button onClick={() => setIsPaused(!isPaused)}
             className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest border transition-all ${isPaused ? 'border-accent/30 text-accent bg-accent/10' : 'border-error/30 text-error bg-error/10'}`}>
-            {isPaused ? '▶ Resume' : '⏸ Pause'}
+            {isPaused ? `▶ ${t('threat_resume')}` : `⏸ ${t('threat_pause')}`}
           </button>
         </div>
       </div>
@@ -304,11 +306,11 @@ export default function ThreatMap3D() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {[
-          { label: 'Total Events', value: stats.total, color: 'text-cyan-400' },
-          { label: 'Critical', value: stats.critical, color: 'text-error' },
-          { label: 'High', value: stats.high, color: 'text-orange-400' },
-          { label: 'Medium', value: stats.medium, color: 'text-yellow-400' },
-          { label: 'Low', value: stats.low, color: 'text-green-400' },
+          { label: t('threat_total_events'), value: stats.total, color: 'text-cyan-400' },
+          { label: t('threat_critical'), value: stats.critical, color: 'text-error' },
+          { label: t('threat_high'), value: stats.high, color: 'text-orange-400' },
+          { label: t('threat_medium'), value: stats.medium, color: 'text-yellow-400' },
+          { label: t('threat_low'), value: stats.low, color: 'text-green-400' },
         ].map((s, i) => (
           <div key={i} className="glass-card p-3 rounded-xl text-center">
             <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
@@ -323,7 +325,7 @@ export default function ThreatMap3D() {
         style-cursor={isDragging ? 'grabbing' : 'grab'}>
         <canvas ref={canvasRef} className="w-full h-full" style={{ cursor: isDragging ? 'grabbing' : 'grab' }} />
         <div className="absolute top-4 left-4 text-[9px] font-mono text-accent/40 uppercase tracking-widest flex items-center gap-2">
-          <Radio className="w-3 h-3 animate-pulse" /> 3D Threat Intelligence • Drag to Rotate
+          <Radio className="w-3 h-3 animate-pulse" /> {t('threat_drag_rotate')}
         </div>
         <div className="absolute bottom-4 right-4 flex gap-1">
           {Object.entries(severityColors).map(([key, color]) => (
@@ -335,7 +337,7 @@ export default function ThreatMap3D() {
       {/* Live Feed */}
       <div className="glass-card p-5 rounded-xl">
         <h3 className="text-sm font-bold uppercase tracking-widest text-text-dim mb-4 flex items-center gap-2">
-          <Activity className="w-4 h-4 text-cyan-400" /> Live Intercepts
+          <Activity className="w-4 h-4 text-cyan-400" /> {t('threat_live_intercepts')}
         </h3>
         <div className="space-y-2 max-h-[250px] overflow-y-auto scrollbar-hide">
           {threats.slice(0, 15).map((t) => (
@@ -366,7 +368,7 @@ export default function ThreatMap3D() {
               <div className="flex items-center gap-3">
                 <span className="text-3xl">{typeIcons[selectedThreat.type]}</span>
                 <div>
-                  <h3 className="text-lg font-black uppercase">{selectedThreat.type} Attack</h3>
+                  <h3 className="text-lg font-black uppercase">{selectedThreat.type} {t('threat_attack')}</h3>
                   <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded" style={{ color: severityColors[selectedThreat.severity], backgroundColor: severityColors[selectedThreat.severity] + '20' }}>
                     {selectedThreat.severity}
                   </span>
@@ -376,12 +378,12 @@ export default function ThreatMap3D() {
             </div>
             <div className="grid grid-cols-2 gap-4 text-xs">
               <div className="bg-bg-surface p-3 rounded-lg border border-border-subtle">
-                <div className="text-[10px] font-mono uppercase text-text-dim mb-1 flex items-center gap-1"><MapPin className="w-3 h-3 text-error" /> Source</div>
+                <div className="text-[10px] font-mono uppercase text-text-dim mb-1 flex items-center gap-1"><MapPin className="w-3 h-3 text-error" /> {t('threat_source')}</div>
                 <div className="font-bold text-text-main">{selectedThreat.source.city}</div>
                 <div className="text-text-dim">{selectedThreat.source.country}</div>
               </div>
               <div className="bg-bg-surface p-3 rounded-lg border border-border-subtle">
-                <div className="text-[10px] font-mono uppercase text-text-dim mb-1 flex items-center gap-1"><MapPin className="w-3 h-3 text-accent" /> Target</div>
+                <div className="text-[10px] font-mono uppercase text-text-dim mb-1 flex items-center gap-1"><MapPin className="w-3 h-3 text-accent" /> {t('threat_target')}</div>
                 <div className="font-bold text-text-main">{selectedThreat.target.city}</div>
                 <div className="text-text-dim">{selectedThreat.target.country}</div>
               </div>

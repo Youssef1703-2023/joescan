@@ -9,12 +9,14 @@ import {
 } from 'lucide-react';
 import { db, logActivity, banUser, unbanUser, ADMIN_EMAIL } from '../lib/firebase';
 import {
-  collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, limit, getDoc
+  collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, limit, getDoc, addDoc, serverTimestamp, onSnapshot
 } from 'firebase/firestore';
+import { useLanguage } from '../contexts/LanguageContext';
 
 type AdminTab = 'analytics' | 'users' | 'promos' | 'activity' | 'tickets' | 'revenue' | 'health' | 'growth' | 'broadcast' | 'sessions' | 'flags' | 'exports' | 'settings';
 
 export default function AdminDashboard() {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<AdminTab>('analytics');
   const [users, setUsers] = useState<any[]>([]);
   const [promoCodes, setPromoCodes] = useState<any[]>([]);
@@ -41,16 +43,85 @@ export default function AdminDashboard() {
   const [platformSettings, setPlatformSettings] = useState({
     rateLimitPerMin: 30, maxScansDaily: 100, maintenanceMode: false, signupsEnabled: true
   });
+  const [broadcasts, setBroadcasts] = useState<any[]>([]);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const settingsTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Save platform settings to Firestore (debounced for sliders)
+  const savePlatformSettings = async (newSettings: typeof platformSettings) => {
+    try {
+      await setDoc(doc(db, 'adminConfig', 'platformSettings'), {
+        ...newSettings,
+        updatedAt: new Date().toISOString()
+      });
+      await logActivity('config_update', `Platform settings updated`);
+    } catch (err) {
+      console.error('Failed to save platform settings:', err);
+    }
+  };
+
+  // Save feature flags to Firestore
+  const saveFeatureFlags = async (newFlags: Record<string, boolean>) => {
+    try {
+      await setDoc(doc(db, 'adminConfig', 'featureFlags'), {
+        ...newFlags,
+        updatedAt: new Date().toISOString()
+      });
+      await logActivity('flag_update', `Feature flags updated`);
+    } catch (err) {
+      console.error('Failed to save feature flags:', err);
+    }
+  };
+
+  // Wrapper to update platform settings with auto-save (debounced)
+  const updatePlatformSetting = (key: string, value: any) => {
+    setPlatformSettings(prev => {
+      const updated = { ...prev, [key]: value };
+      // Debounce save for sliders
+      if (settingsTimerRef.current) clearTimeout(settingsTimerRef.current);
+      settingsTimerRef.current = setTimeout(() => {
+        setSettingsSaving(true);
+        savePlatformSettings(updated).finally(() => {
+          setTimeout(() => setSettingsSaving(false), 1000);
+        });
+      }, 500);
+      return updated;
+    });
+  };
+
+  // Toggle platform setting with instant save
+  const togglePlatformSetting = (key: string) => {
+    setPlatformSettings(prev => {
+      const updated = { ...prev, [key]: !(prev as any)[key] };
+      setSettingsSaving(true);
+      savePlatformSettings(updated).finally(() => {
+        setTimeout(() => setSettingsSaving(false), 1000);
+      });
+      return updated;
+    });
+  };
+
+  // Toggle feature flag with instant save
+  const toggleFeatureFlag = (key: string) => {
+    setFeatureFlags(prev => {
+      const updated = { ...prev, [key]: !prev[key] };
+      saveFeatureFlags(updated);
+      return updated;
+    });
+  };
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [usersSnap, promosSnap, activitySnap, ticketsSnap, bannedSnap] = await Promise.all([
+      const [usersSnap, promosSnap, activitySnap, ticketsSnap, bannedSnap, platformSnap, flagsSnap, broadcastsSnap] = await Promise.all([
         getDocs(collection(db, 'users')),
         getDocs(collection(db, 'promoCodes')),
         getDocs(query(collection(db, 'activityLog'), orderBy('timestamp', 'desc'), limit(50))),
         getDocs(collection(db, 'supportTickets')),
         getDocs(collection(db, 'bannedUsers')),
+        getDoc(doc(db, 'adminConfig', 'platformSettings')),
+        getDoc(doc(db, 'adminConfig', 'featureFlags')),
+        getDocs(query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'), limit(10))),
       ]);
       setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setPromoCodes(promosSnap.docs.map(d => ({ id: d.id, ...d.data() })));
@@ -59,6 +130,27 @@ export default function AdminDashboard() {
       const bMap: Record<string, any> = {};
       bannedSnap.docs.forEach(d => { if (d.data().active) bMap[d.id] = d.data(); });
       setBannedMap(bMap);
+
+      // Load persisted platform settings
+      if (platformSnap.exists()) {
+        const data = platformSnap.data();
+        setPlatformSettings({
+          rateLimitPerMin: data.rateLimitPerMin ?? 30,
+          maxScansDaily: data.maxScansDaily ?? 100,
+          maintenanceMode: data.maintenanceMode ?? false,
+          signupsEnabled: data.signupsEnabled ?? true
+        });
+      }
+
+      // Load persisted feature flags
+      if (flagsSnap.exists()) {
+        const data = flagsSnap.data();
+        const { updatedAt, ...flags } = data;
+        setFeatureFlags(prev => ({ ...prev, ...flags }));
+      }
+
+      // Load broadcasts
+      setBroadcasts(broadcastsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (err) {
       console.error("Admin fetch failed", err);
     } finally {
@@ -120,18 +212,18 @@ export default function AdminDashboard() {
   };
 
   const tabs: { id: AdminTab; label: string; icon: any; color: string }[] = [
-    { id: 'analytics', label: 'Analytics', icon: BarChart3, color: 'text-purple-400' },
-    { id: 'revenue', label: 'Revenue', icon: DollarSign, color: 'text-green-400' },
-    { id: 'growth', label: 'Growth', icon: TrendingUp, color: 'text-cyan-400' },
-    { id: 'users', label: 'Users & Bans', icon: Users, color: 'text-accent' },
-    { id: 'promos', label: 'Promos', icon: Tag, color: 'text-blue-400' },
-    { id: 'activity', label: 'Activity', icon: Activity, color: 'text-yellow-400' },
-    { id: 'health', label: 'System', icon: Server, color: 'text-emerald-400' },
-    { id: 'sessions', label: 'Live', icon: Radio, color: 'text-red-400' },
-    { id: 'broadcast', label: 'Broadcast', icon: Megaphone, color: 'text-pink-400' },
-    { id: 'flags', label: 'Flags', icon: Flag, color: 'text-indigo-400' },
-    { id: 'exports', label: 'Export', icon: Download, color: 'text-teal-400' },
-    { id: 'settings', label: 'Config', icon: Settings, color: 'text-slate-400' },
+    { id: 'analytics', label: t('admin_analytics'), icon: BarChart3, color: 'text-purple-400' },
+    { id: 'revenue', label: t('admin_revenue'), icon: DollarSign, color: 'text-green-400' },
+    { id: 'growth', label: t('admin_growth'), icon: TrendingUp, color: 'text-cyan-400' },
+    { id: 'users', label: t('admin_users'), icon: Users, color: 'text-accent' },
+    { id: 'promos', label: t('admin_promos'), icon: Tag, color: 'text-blue-400' },
+    { id: 'activity', label: t('admin_activity'), icon: Activity, color: 'text-yellow-400' },
+    { id: 'health', label: t('admin_system'), icon: Server, color: 'text-emerald-400' },
+    { id: 'sessions', label: t('admin_live'), icon: Radio, color: 'text-red-400' },
+    { id: 'broadcast', label: t('admin_broadcast'), icon: Megaphone, color: 'text-pink-400' },
+    { id: 'flags', label: t('admin_flags'), icon: Flag, color: 'text-indigo-400' },
+    { id: 'exports', label: t('admin_export'), icon: Download, color: 'text-teal-400' },
+    { id: 'settings', label: t('admin_config'), icon: Settings, color: 'text-slate-400' },
   ];
 
   // Analytics calculations
@@ -164,9 +256,9 @@ export default function AdminDashboard() {
       <div className="border-b border-border-subtle pb-4">
         <h1 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3 text-text-main">
           <ShieldAlert className="w-8 h-8 text-error" />
-          System Command Center
+          {t('admin_title')}
         </h1>
-        <p className="text-text-dim text-sm mt-2 font-mono">Root Administrator Privileges Active. All systems nominal.</p>
+        <p className="text-text-dim text-sm mt-2 font-mono">{t('admin_subtitle')}</p>
       </div>
 
       {/* Sub-Tabs */}
@@ -671,8 +763,32 @@ export default function AdminDashboard() {
                   <button onClick={async () => {
                     if (!broadcastMsg.trim()) return;
                     setBroadcastSending(true);
-                    await logActivity('promo_create', `Broadcast: ${broadcastMsg.slice(0, 50)}...`);
-                    setTimeout(() => { setBroadcastSending(false); setBroadcastSent(true); setBroadcastMsg(''); setTimeout(() => setBroadcastSent(false), 3000); }, 1500);
+                    try {
+                      await addDoc(collection(db, 'broadcasts'), {
+                        message: broadcastMsg,
+                        createdAt: serverTimestamp(),
+                        sentBy: ADMIN_EMAIL,
+                        recipientCount: totalUsers
+                      });
+                      // Also create a notification for all users
+                      const usersSnap = await getDocs(collection(db, 'users'));
+                      const batch: Promise<any>[] = [];
+                      usersSnap.docs.forEach(userDoc => {
+                        batch.push(addDoc(collection(db, 'notifications'), {
+                          userId: userDoc.id,
+                          title: '📢 Admin Announcement',
+                          message: broadcastMsg,
+                          type: 'broadcast',
+                          read: false,
+                          createdAt: serverTimestamp()
+                        }));
+                      });
+                      await Promise.all(batch);
+                      await logActivity('broadcast', `Broadcast to ${totalUsers} users: ${broadcastMsg.slice(0, 50)}...`);
+                    } catch (err) {
+                      console.error('Broadcast failed:', err);
+                    }
+                    setBroadcastSending(false); setBroadcastSent(true); setBroadcastMsg(''); fetchData(); setTimeout(() => setBroadcastSent(false), 3000);
                   }} disabled={!broadcastMsg.trim() || broadcastSending}
                     className="px-6 py-2.5 bg-pink-500/10 border border-pink-500/20 text-pink-400 rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-pink-500/20 disabled:opacity-40 flex items-center gap-2">
                     {broadcastSending ? <Zap className="w-4 h-4 animate-pulse" /> : broadcastSent ? <><CheckCircle className="w-4 h-4" /> Sent!</> : <><Send className="w-4 h-4" /> Broadcast</>}
@@ -681,7 +797,22 @@ export default function AdminDashboard() {
               </div>
               <div className="glass-card p-5 rounded-xl">
                 <h4 className="text-xs font-bold uppercase tracking-widest text-text-dim mb-3">Recent Broadcasts</h4>
-                <div className="text-center py-8 text-text-dim font-mono text-sm border border-dashed border-border-subtle rounded-xl">No previous broadcasts. Your first announcement will appear here.</div>
+                {broadcasts.length > 0 ? (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {broadcasts.map((b, i) => (
+                      <div key={b.id || i} className="p-3 bg-bg-surface border border-border-subtle/50 rounded-xl text-xs">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-bold text-text-main">{b.sentBy || 'Admin'}</span>
+                          <span className="text-[10px] font-mono text-text-dim">{b.createdAt?.toDate ? new Date(b.createdAt.toDate()).toLocaleString() : b.createdAt || ''}</span>
+                        </div>
+                        <p className="text-text-dim">{b.message}</p>
+                        <span className="text-[9px] font-mono text-text-dim/50 mt-1 block">Sent to {b.recipientCount || '?'} users</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-text-dim font-mono text-sm border border-dashed border-border-subtle rounded-xl">No previous broadcasts. Your first announcement will appear here.</div>
+                )}
               </div>
             </div>
           )}
@@ -698,7 +829,7 @@ export default function AdminDashboard() {
                         <div className="font-bold text-text-main uppercase">{key.replace(/_/g, ' ')}</div>
                         <div className="text-[10px] text-text-dim">{enabled ? 'Enabled for all users' : 'Disabled globally'}</div>
                       </div>
-                      <button onClick={() => setFeatureFlags(prev => ({ ...prev, [key]: !prev[key] }))}
+                      <button onClick={() => toggleFeatureFlag(key)}
                         className={`p-1 rounded-lg transition-all ${enabled ? 'text-accent' : 'text-text-dim'}`}>
                         {enabled ? <ToggleRight className="w-7 h-7" /> : <ToggleLeft className="w-7 h-7" />}
                       </button>
@@ -750,28 +881,31 @@ export default function AdminDashboard() {
           {activeTab === 'settings' && (
             <div className="space-y-5">
               <div className="glass-card p-5 rounded-xl space-y-4">
-                <h4 className="text-sm font-bold uppercase tracking-widest text-text-dim flex items-center gap-2"><Settings className="w-4 h-4 text-slate-400" /> Platform Configuration</h4>
+                <h4 className="text-sm font-bold uppercase tracking-widest text-text-dim flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-slate-400" /> Platform Configuration
+                  {settingsSaving && <span className="text-[9px] bg-accent/20 text-accent px-2 py-0.5 rounded-full font-mono animate-pulse">Saving...</span>}
+                </h4>
                 <div className="space-y-3">
                   <div className="p-4 bg-bg-surface border border-border-subtle/50 rounded-xl">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-xs font-bold uppercase">Rate Limit (req/min)</label>
                       <span className="text-xs font-mono text-accent">{platformSettings.rateLimitPerMin}</span>
                     </div>
-                    <input type="range" min="10" max="100" value={platformSettings.rateLimitPerMin} onChange={e => setPlatformSettings(p => ({ ...p, rateLimitPerMin: +e.target.value }))} className="w-full accent-accent" />
+                    <input type="range" min="10" max="100" value={platformSettings.rateLimitPerMin} onChange={e => updatePlatformSetting('rateLimitPerMin', +e.target.value)} className="w-full accent-accent" />
                   </div>
                   <div className="p-4 bg-bg-surface border border-border-subtle/50 rounded-xl">
                     <div className="flex items-center justify-between mb-2">
                       <label className="text-xs font-bold uppercase">Max Daily Scans (Free)</label>
                       <span className="text-xs font-mono text-accent">{platformSettings.maxScansDaily}</span>
                     </div>
-                    <input type="range" min="10" max="500" step="10" value={platformSettings.maxScansDaily} onChange={e => setPlatformSettings(p => ({ ...p, maxScansDaily: +e.target.value }))} className="w-full accent-accent" />
+                    <input type="range" min="10" max="500" step="10" value={platformSettings.maxScansDaily} onChange={e => updatePlatformSetting('maxScansDaily', +e.target.value)} className="w-full accent-accent" />
                   </div>
                   <div className="flex items-center justify-between p-4 bg-bg-surface border border-border-subtle/50 rounded-xl text-xs">
                     <div>
                       <div className="font-bold text-text-main uppercase">Maintenance Mode</div>
                       <div className="text-[10px] text-text-dim">Block all non-admin access</div>
                     </div>
-                    <button onClick={() => setPlatformSettings(p => ({ ...p, maintenanceMode: !p.maintenanceMode }))}
+                    <button onClick={() => togglePlatformSetting('maintenanceMode')}
                       className={`${platformSettings.maintenanceMode ? 'text-error' : 'text-text-dim'}`}>
                       {platformSettings.maintenanceMode ? <ToggleRight className="w-7 h-7" /> : <ToggleLeft className="w-7 h-7" />}
                     </button>
@@ -781,7 +915,7 @@ export default function AdminDashboard() {
                       <div className="font-bold text-text-main uppercase">New Signups</div>
                       <div className="text-[10px] text-text-dim">Allow new user registrations</div>
                     </div>
-                    <button onClick={() => setPlatformSettings(p => ({ ...p, signupsEnabled: !p.signupsEnabled }))}
+                    <button onClick={() => togglePlatformSetting('signupsEnabled')}
                       className={`${platformSettings.signupsEnabled ? 'text-accent' : 'text-text-dim'}`}>
                       {platformSettings.signupsEnabled ? <ToggleRight className="w-7 h-7" /> : <ToggleLeft className="w-7 h-7" />}
                     </button>

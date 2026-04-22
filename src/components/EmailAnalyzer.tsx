@@ -287,15 +287,10 @@ export default function EmailAnalyzer() {
     } catch (err: any) {
       console.error(err);
       const msg = err.message || '';
-      if (msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('exhausted')) {
+      if (msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('exhausted') || msg.includes('rate_limit')) {
         setError(lang === 'ar' 
-          ? '⚠️ تم تجاوز الحد المجاني لـ Gemini API. استنى دقيقة وجرب تاني، أو غيّر الـ API Key من الإعدادات.'
-          : '⚠️ Gemini API free quota exceeded. Wait a minute and try again, or change your API key in Settings (⚙️).'
-        );
-      } else if (msg.includes('Missing Gemini API key') || msg.includes('API key')) {
-        setError(lang === 'ar'
-          ? '🔑 محتاج تحط Gemini API Key في الإعدادات (⚙️). اعمل واحد مجاني من aistudio.google.com/apikey'
-          : '🔑 Please set your Gemini API Key in Settings (⚙️). Get a free key at aistudio.google.com/apikey'
+          ? '⚠️ خادم الذكاء الاصطناعي مشغول حالياً. استنى دقيقة وجرب تاني.'
+          : '⚠️ AI server is currently busy. Wait a minute and try again.'
         );
       } else {
         setError(lang === 'ar' ? 'حصل خطأ أثناء التحليل. جرب تاني.' : 'An error occurred during analysis. Please try again.');

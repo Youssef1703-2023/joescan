@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { updateProfile, deleteUser, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, getUserProfile, updateUserProfile } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Shield, X, User as UserIcon, Loader2, AlertTriangle, LogOut, Upload, Link as LinkIcon, Image as ImageIcon, Fingerprint, Lock, Trophy, Bell } from 'lucide-react';
+import { Shield, X, User as UserIcon, Loader2, AlertTriangle, LogOut, Upload, Link as LinkIcon, Image as ImageIcon, Fingerprint, Lock, Trophy, Bell, RefreshCw, CheckCircle, Download, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import BadgeSystem from './BadgeSystem';
 import PushNotifSettings from './PushNotifSettings';
+import { useServiceWorker } from '../hooks/useServiceWorker';
 
 interface ProfileSettingsProps {
   onClose: () => void;
@@ -16,7 +17,8 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
   const { dir, t } = useLanguage();
   const user = auth.currentUser;
   
-  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'achievements' | 'notifications'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'achievements' | 'notifications' | 'updates'>('profile');
+  const sw = useServiceWorker();
   
   // Profile State
   const [displayName, setDisplayName] = useState(user?.displayName || '');
@@ -202,7 +204,7 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
     }
   };
 
-  const switchTab = (tab: 'profile' | 'security' | 'achievements' | 'notifications') => {
+  const switchTab = (tab: 'profile' | 'security' | 'achievements' | 'notifications' | 'updates') => {
     setActiveTab(tab);
     setError(null);
     setSuccess(null);
@@ -252,6 +254,13 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
               className={`pb-2.5 font-bold uppercase tracking-wider text-[11px] border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'notifications' ? 'border-accent text-accent' : 'border-transparent text-text-dim hover:text-text-main'}`}
             >
               <Bell className="w-3 h-3" /> Alerts
+            </button>
+            <button 
+              onClick={() => switchTab('updates')}
+              className={`pb-2.5 font-bold uppercase tracking-wider text-[11px] border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'updates' ? 'border-accent text-accent' : 'border-transparent text-text-dim hover:text-text-main'}`}
+            >
+              <RefreshCw className="w-3 h-3" /> {t('tab_updates')}
+              {sw.updateAvailable && <span className="w-2 h-2 bg-accent rounded-full animate-pulse" />}
             </button>
           </div>
         </div>
@@ -447,6 +456,79 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
           ) : activeTab === 'notifications' ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
               <PushNotifSettings />
+            </motion.div>
+          ) : activeTab === 'updates' ? (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-5">
+              {/* Update Status */}
+              <div className={`p-5 rounded-xl border ${sw.updateAvailable ? 'border-accent/40 bg-accent/5' : 'border-border-subtle bg-bg-surface/50'} flex flex-col items-center text-center gap-3`}>
+                {sw.updateAvailable ? (
+                  <>
+                    <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center">
+                      <Download className="w-7 h-7 text-accent animate-bounce" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-accent">{t('updates_available')}</h3>
+                      <p className="text-xs text-text-dim mt-1">{t('updates_available_desc')}</p>
+                    </div>
+                    <button
+                      onClick={() => sw.applyUpdate()}
+                      className="w-full bg-accent text-accent-fg font-bold tracking-wider uppercase py-3 rounded-lg flex justify-center items-center gap-2 hover:brightness-110 transition-all mt-1"
+                    >
+                      <Download className="w-4 h-4" /> {t('updates_install')}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-14 h-14 rounded-full bg-accent/10 flex items-center justify-center">
+                      <CheckCircle className="w-7 h-7 text-accent" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-text-main">{t('updates_up_to_date')}</h3>
+                      <p className="text-xs text-text-dim mt-1">{t('updates_up_to_date_desc')}</p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Check for Updates Button */}
+              <button
+                onClick={() => sw.checkForUpdate()}
+                disabled={sw.checking}
+                className="w-full bg-bg-surface border border-border-subtle hover:border-accent/30 text-text-main font-bold tracking-wider uppercase py-2.5 rounded-lg flex justify-center items-center gap-2 transition-all disabled:opacity-50"
+              >
+                {sw.checking ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> {t('updates_checking')}</>
+                ) : (
+                  <><RefreshCw className="w-4 h-4" /> {t('updates_check')}</>
+                )}
+              </button>
+
+              {sw.lastChecked && (
+                <p className="text-center text-[10px] font-mono text-text-dim tracking-wider">
+                  {t('updates_last_checked')}: {new Date(sw.lastChecked).toLocaleTimeString()}
+                </p>
+              )}
+
+              {/* Force Clear Cache */}
+              <div className="border-t border-border-subtle pt-4 mt-2">
+                <p className="text-[10px] font-mono uppercase tracking-widest text-text-dim mb-2">{t('danger_zone')}</p>
+                <p className="text-xs text-text-dim mb-3">{t('updates_clear_cache_desc')}</p>
+                <button
+                  onClick={async () => {
+                    if ('caches' in window) {
+                      const keys = await caches.keys();
+                      await Promise.all(keys.map(k => caches.delete(k)));
+                    }
+                    if (sw.registration) {
+                      await sw.registration.unregister();
+                    }
+                    window.location.reload();
+                  }}
+                  className="w-full text-error hover:text-white hover:bg-error transition-colors font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 border border-error/50 hover:border-transparent"
+                >
+                  <Trash2 className="w-4 h-4" /> {t('updates_clear_cache')}
+                </button>
+              </div>
             </motion.div>
           ) : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>

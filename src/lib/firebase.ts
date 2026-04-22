@@ -94,16 +94,20 @@ export async function ensureUserProfile(uid: string, email: string | null, displ
   const existing = await getUserProfile(uid);
   if (existing) return existing;
   
-  // Create initial profile
+  // Create initial profile — convert nulls to empty strings for Firestore rules compatibility
   const newProfile: UserProfileDocument = {
     uid,
-    email,
-    name: displayName,
+    email: email || '',
+    name: displayName || '',
     tier: 'free',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
-  await setDoc(doc(db, 'users', uid), newProfile, { merge: true });
+  try {
+    await setDoc(doc(db, 'users', uid), newProfile, { merge: true });
+  } catch (err) {
+    console.error("Failed to create user profile:", err);
+  }
   return newProfile;
 }
 
@@ -135,7 +139,7 @@ export async function upgradeUserTier(uid: string, newTier: SubscriptionTier, du
 }
 
 // ─── Activity Logger ───
-export type ActivityType = 'login' | 'scan' | 'upgrade' | 'ban' | 'unban' | 'promo_create' | 'promo_delete' | 'ticket_create' | 'ticket_reply' | 'apikey_create' | 'apikey_delete' | 'profile_update';
+export type ActivityType = 'login' | 'scan' | 'upgrade' | 'ban' | 'unban' | 'promo_create' | 'promo_delete' | 'ticket_create' | 'ticket_reply' | 'apikey_create' | 'apikey_delete' | 'profile_update' | 'config_update' | 'flag_update' | 'broadcast';
 
 export async function logActivity(action: ActivityType, details: string = '', targetUser?: string) {
   try {

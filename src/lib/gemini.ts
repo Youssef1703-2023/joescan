@@ -16,80 +16,31 @@ function getGeminiClient(): GoogleGenAI {
   return new GoogleGenAI({ apiKey: getGeminiKey() });
 }
 
-const GEMINI_MODEL = "gemini-2.0-flash";
+// Built-in AI provider — Groq Llama 3
+const BUILTIN_GROQ_KEY = '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';
 
 async function executeUniversalAI(prompt: string, schemaObj: any, useSearch: boolean, arabicInstruction?: string) {
-  let settings = { provider: 'gemini', geminiKey: '', groqKey: '', grokKey: '' };
-  try {
-    const s = localStorage.getItem('joe_api_settings');
-    if (s) settings = { geminiKey: '', ...JSON.parse(s) };
-  } catch (e) {}
+  // Always use built-in Groq Llama 3
+  const openai = new OpenAI({
+     apiKey: BUILTIN_GROQ_KEY,
+     baseURL: 'https://api.groq.com/openai/v1',
+     dangerouslyAllowBrowser: true
+  });
+  
+  const schemaDetails = Object.keys(schemaObj.properties).map(k => " - " + k).join("\\n");
+  const sysInstruction = arabicInstruction || "You are a friendly cybersecurity expert.";
+  const systemPrompt = `${sysInstruction}\n\nCRITICAL: You MUST output ONLY valid JSON. The JSON MUST contain exactly the following keys:\n${schemaDetails}`;
 
-  if ((settings.provider === 'groq' && settings.groqKey) || (settings.provider === 'grok' && settings.grokKey)) {
-    const isGroq = settings.provider === 'groq';
-    const openai = new OpenAI({
-       apiKey: isGroq ? settings.groqKey : settings.grokKey,
-       baseURL: isGroq ? 'https://api.groq.com/openai/v1' : 'https://api.x.ai/v1',
-       dangerouslyAllowBrowser: true
-    });
-    
-    const schemaDetails = Object.keys(schemaObj.properties).map(k => " - " + k).join("\\n");
-    const sysInstruction = arabicInstruction || "You are a friendly cybersecurity expert.";
-    const systemPrompt = `${sysInstruction}\n\nCRITICAL: You MUST output ONLY valid JSON. The JSON MUST contain exactly the following keys:\n${schemaDetails}`;
-
-    const res = await openai.chat.completions.create({
-      model: isGroq ? 'llama-3.3-70b-versatile' : 'grok-beta',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      response_format: { type: 'json_object' }
-    });
-    
-    return JSON.parse(res.choices[0].message?.content || '{}');
-  }
-
-  // Gemini
-  const apiKey = getGeminiKey();
-  if (!apiKey) {
-    throw new Error("Missing Gemini API key. Go to Settings (⚙️) and paste your API key.");
-  }
-
-  const ai = getGeminiClient();
-  const models = [GEMINI_MODEL, "gemini-2.0-flash-lite"];
-
-  for (const model of models) {
-    try {
-      const response = await ai.models.generateContent({
-        model,
-        contents: prompt,
-        config: {
-          tools: useSearch ? [{ googleSearch: {} }] : [],
-          systemInstruction: arabicInstruction || "You are a friendly cybersecurity expert.",
-          responseMimeType: "application/json",
-          responseSchema: schemaObj,
-        },
-      });
-
-      if (!response.text) throw new Error("Failed to get response from Gemini");
-      return JSON.parse(response.text.trim());
-    } catch (err: any) {
-      const msg = typeof err?.message === 'string' ? err.message : String(err);
-      const isRateLimit = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota') || msg.includes('exhausted');
-      // If rate limited and we have another model to try, continue
-      if (isRateLimit && model !== models[models.length - 1]) {
-        console.warn(`[Gemini] ${model} rate limited, falling back to next model...`);
-        continue;
-      }
-      // Sanitize: throw a short message instead of the raw giant JSON blob
-      if (isRateLimit) {
-        throw new Error('429 RESOURCE_EXHAUSTED: Gemini API quota exceeded. Please wait and try again.');
-      }
-      throw new Error(msg.length > 200 ? msg.substring(0, 200) : msg);
-    }
-  }
-
-  throw new Error("All Gemini models exhausted.");
+  const res = await openai.chat.completions.create({
+    model: 'llama-3.3-70b-versatile',
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: prompt }
+    ],
+    response_format: { type: 'json_object' }
+  });
+  
+  return JSON.parse(res.choices[0].message?.content || '{}');
 }
 
 export async function translateReport(reportText: string, actionPlan: string, scoreFactors: string[] = [], scoreImprovement: string[] = [], language: string) {

@@ -50,45 +50,112 @@ export default function IpAnalyzer() {
     setResult(null);
 
     try {
-      const res = await fetch(`http://ip-api.com/json/${ipToScan.trim()}`);
-      if (!res.ok) throw new Error("API Limit Reached or Network Error");
-      const data = await res.json();
-      
-      let scanResult: ScanResult;
+      // Try multiple free HTTPS geolocation APIs as fallbacks
+      let geoData: { ip: string; isp: string; asn: string; country: string; city: string; region: string; lat: number; lon: number; isPrivate?: boolean } | null = null;
 
-      if (data.status === 'fail') {
-        if (data.message === 'private range') {
-          const isArabic = lang === 'ar';
-          scanResult = {
-            riskLevel: 'Low',
-            reportText: isArabic
-              ? `هذا عنوان شبكة محلي (Local/Private IP). هذه العناوين تُستخدم فقط داخل شبكة الراوتر الخاص بك (لربط أجهزتك ببعضها) ولا يمكن تتبعها موقعياً أو اختراقها من الخارج بشكل مباشر.`
-              : `This is a Private Local Network IP. These addresses are isolated within your router's LAN and are not routed publicly on the internet. As such, they cannot be geo-located or directly targeted from the outside.`,
-            actionPlan: isArabic
-              ? "1. تأكد من قوة كلمة مرور شبكة الـ Wi-Fi الخاصة بك.\\n2. راجع الأجهزة المتصلة بالراوتر باستمرار."
-              : "1. Secure your local Wi-Fi with a strong WPA3 password.\\n2. Monitor devices connected to your LAN.",
-            isp: "Local Area Network (LAN)",
-            country: "Internal Network"
-          };
-        } else {
-          throw new Error(data.message || "Invalid IP address");
+      // API 1: ipapi.co (1000/day free, HTTPS)
+      try {
+        const res = await fetch(`https://ipapi.co/${ipToScan.trim()}/json/`, {
+          headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+          const d = await res.json();
+          if (!d.error) {
+            geoData = {
+              ip: d.ip || ipToScan,
+              isp: d.org || 'Unknown ISP',
+              asn: d.asn || '',
+              country: d.country_name || '',
+              city: d.city || '',
+              region: d.region || '',
+              lat: d.latitude,
+              lon: d.longitude,
+              isPrivate: d.reserved || false
+            };
+          }
         }
+      } catch (e) { console.warn('[IP] ipapi.co failed, trying fallback...'); }
+
+      // API 2: ipwho.is (10000/month free, HTTPS)
+      if (!geoData) {
+        try {
+          const res = await fetch(`https://ipwho.is/${ipToScan.trim()}`);
+          if (res.ok) {
+            const d = await res.json();
+            if (d.success) {
+              geoData = {
+                ip: d.ip || ipToScan,
+                isp: d.connection?.isp || d.connection?.org || 'Unknown ISP',
+                asn: d.connection?.asn ? `AS${d.connection.asn}` : '',
+                country: d.country || '',
+                city: d.city || '',
+                region: d.region || '',
+                lat: d.latitude,
+                lon: d.longitude
+              };
+            } else if (d.message?.toLowerCase().includes('private') || d.message?.toLowerCase().includes('reserved')) {
+              geoData = { ip: ipToScan, isp: '', asn: '', country: '', city: '', region: '', lat: 0, lon: 0, isPrivate: true };
+            }
+          }
+        } catch (e) { console.warn('[IP] ipwho.is failed, trying fallback...'); }
+      }
+
+      // API 3: freeipapi.com (HTTPS, no key needed)
+      if (!geoData) {
+        try {
+          const res = await fetch(`https://freeipapi.com/api/json/${ipToScan.trim()}`);
+          if (res.ok) {
+            const d = await res.json();
+            if (d.ipAddress) {
+              geoData = {
+                ip: d.ipAddress || ipToScan,
+                isp: d.isp || 'Unknown ISP',
+                asn: '',
+                country: d.countryName || '',
+                city: d.cityName || '',
+                region: d.regionName || '',
+                lat: d.latitude,
+                lon: d.longitude
+              };
+            }
+          }
+        } catch (e) { console.warn('[IP] freeipapi.com also failed.'); }
+      }
+
+      if (!geoData) {
+        throw new Error(lang === 'ar' ? 'فشل التحليل. تأكد من صحة عنوان الـ IP وجرب تاني.' : 'Analysis failed. Check the IP address and try again.');
+      }
+
+      let scanResult: ScanResult;
+      const isArabic = lang === 'ar';
+
+      if (geoData.isPrivate) {
+        scanResult = {
+          riskLevel: 'Low',
+          reportText: isArabic
+            ? `هذا عنوان شبكة محلي (Local/Private IP). هذه العناوين تُستخدم فقط داخل شبكة الراوتر الخاص بك (لربط أجهزتك ببعضها) ولا يمكن تتبعها موقعياً أو اختراقها من الخارج بشكل مباشر.`
+            : `This is a Private Local Network IP. These addresses are isolated within your router's LAN and are not routed publicly on the internet. As such, they cannot be geo-located or directly targeted from the outside.`,
+          actionPlan: isArabic
+            ? "1. تأكد من قوة كلمة مرور شبكة الـ Wi-Fi الخاصة بك.\\n2. راجع الأجهزة المتصلة بالراوتر باستمرار."
+            : "1. Secure your local Wi-Fi with a strong WPA3 password.\\n2. Monitor devices connected to your LAN.",
+          isp: "Local Area Network (LAN)",
+          country: "Internal Network"
+        };
       } else {
-        const isArabic = lang === 'ar';
         scanResult = {
           riskLevel: 'Low',
           reportText: isArabic 
-            ? `تم تحليل عنوان الـ IP (${data.query}) بنجاح. تم تحديد موقعه في ${data.city}، ${data.country} وتابع لشركة الإنترنت ${data.isp}. استخدم أدوات التحقيق العميق بالأسفل للكشف عن تقارير الاختراق.`
-            : `IP address (${data.query}) successfully resolved. Located in ${data.city}, ${data.country} under the ISP ${data.isp}. Use the deep investigation tools below to scan for active threats.`,
+            ? `تم تحليل عنوان الـ IP (${geoData.ip}) بنجاح. تم تحديد موقعه في ${geoData.city}، ${geoData.country} وتابع لشركة الإنترنت ${geoData.isp}. استخدم أدوات التحقيق العميق بالأسفل للكشف عن تقارير الاختراق.`
+            : `IP address (${geoData.ip}) successfully resolved. Located in ${geoData.city}, ${geoData.country} under the ISP ${geoData.isp}. Use the deep investigation tools below to scan for active threats.`,
           actionPlan: isArabic
             ? "1. تحقق من تقرير AbuseIPDB لمعرفة إذا كان الـ IP مبلغ عنه كـ Spam.\\n2. استخدم Shodan للبحث عن بوابات (Ports) مفتوحة أو ثغرات.\\n3. ابحث في VirusTotal عن أي ملفات ضارة مرتبطة بالـ IP."
             : "1. Check the AbuseIPDB report to see if the IP is flagged for spam/attacks.\\n2. Use Shodan to discover open ports and vulnerabilities.\\n3. Search VirusTotal for malicious files communicating with this IP.",
-          isp: data.isp,
-          asn: data.as,
-          country: data.country,
-          city: data.regionName ? `${data.city}, ${data.regionName}` : data.city,
-          lat: data.lat,
-          lon: data.lon
+          isp: geoData.isp,
+          asn: geoData.asn,
+          country: geoData.country,
+          city: geoData.region ? `${geoData.city}, ${geoData.region}` : geoData.city,
+          lat: geoData.lat,
+          lon: geoData.lon
         };
       }
 
@@ -107,7 +174,7 @@ export default function IpAnalyzer() {
         });
       }
     } catch (err: any) {
-      setError(err.message || "Failed to analyze IP.");
+      setError(err.message || (lang === 'ar' ? 'فشل تحليل الـ IP.' : 'Failed to analyze IP.'));
     } finally {
       setLoading(false);
     }

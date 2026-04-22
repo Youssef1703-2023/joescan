@@ -39,21 +39,21 @@ export default function Sidebar({ activeTab, setActiveTab, isCollapsed, setIsCol
 
   const navGroups = [
     ...(isAdmin ? [{
-      title: 'Admin Console',
+      title: t('sidebar_admin_console'),
       items: [
-        { id: 'admin', icon: ShieldAlert, label: 'System Control' },
+        { id: 'admin', icon: ShieldAlert, label: t('sidebar_system_control') },
       ]
     }] : []),
     {
-      title: lang === 'ar' ? 'الأساسية' : 'Core',
+      title: t('sidebar_core'),
       items: [
         { id: 'dashboard', icon: Database, label: t('nav_dashboard') },
         { id: 'history', icon: History, label: t('nav_history') },
-        { id: 'watchlist', icon: Target, label: lang === 'ar' ? 'المراقبة المستمرة' : 'Live Watchlist' },
+        { id: 'watchlist', icon: Target, label: t('sidebar_watchlist') },
       ]
     },
     {
-      title: lang === 'ar' ? 'أبحاث الأفراد' : 'People OSINT',
+      title: t('sidebar_people'),
       items: [
         { id: 'email', icon: Mail, label: t('nav_email') },
         { id: 'password', icon: KeyRound, label: t('nav_password') },
@@ -62,22 +62,22 @@ export default function Sidebar({ activeTab, setActiveTab, isCollapsed, setIsCol
       ]
     },
     {
-      title: lang === 'ar' ? 'الشبكة والتقنية' : 'Network & System',
+      title: t('sidebar_network'),
       items: [
         { id: 'url', icon: LinkIcon, label: t('nav_url') },
         { id: 'message', icon: MessageSquareWarning, label: t('nav_message') },
         { id: 'ip', icon: Wifi, label: t('nav_ip') },
-        { id: 'domain', icon: Globe, label: lang === 'ar' ? 'فحص الدومين' : 'Domain WHOIS' },
-        { id: 'fingerprint', icon: Fingerprint, label: lang === 'ar' ? 'بصمة المتصفح' : 'Fingerprint' },
-        { id: 'device_security', icon: Monitor, label: lang === 'ar' ? 'أمان الجهاز' : 'Device Security' },
+        { id: 'domain', icon: Globe, label: t('nav_domain') },
+        { id: 'fingerprint', icon: Fingerprint, label: t('nav_fingerprint') },
+        { id: 'device_security', icon: Monitor, label: t('nav_device_security') },
       ]
     },
     ...((userTier === 'enterprise' || isAdmin) ? [{
-      title: lang === 'ar' ? 'المؤسسات' : 'SOC Enterprise',
+      title: t('sidebar_enterprise'),
       items: [
-        { id: 'siem', icon: Webhook, label: lang === 'ar' ? 'SIEM / Webhooks' : 'SIEM / Webhooks' },
-        { id: 'team', icon: Users, label: lang === 'ar' ? 'إدارة الفريق' : 'Team Management' },
-        { id: 'threat_3d', icon: Globe, label: lang === 'ar' ? 'خريطة 3D' : '3D Threat Globe' },
+        { id: 'siem', icon: Webhook, label: 'SIEM / Webhooks' },
+        { id: 'team', icon: Users, label: t('sidebar_team') },
+        { id: 'threat_3d', icon: Globe, label: t('sidebar_threat_3d') },
       ]
     }] : [])
   ];
@@ -89,7 +89,7 @@ export default function Sidebar({ activeTab, setActiveTab, isCollapsed, setIsCol
         "hidden md:flex mb-6 text-text-dim px-4 items-center gap-2",
         isCollapsed ? "justify-center" : "justify-between"
       )}>
-        {!isCollapsed && <span className="text-[10px] font-mono tracking-[0.2em] uppercase">{lang === 'ar' ? 'الأدوات' : 'Navigation'}</span>}
+        {!isCollapsed && <span className="text-[10px] font-mono tracking-[0.2em] uppercase">{t('sidebar_navigation')}</span>}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
           className="hover:text-accent hover:bg-accent/10 p-1.5 rounded-lg transition-colors border border-transparent hover:border-accent/20"
@@ -166,9 +166,9 @@ export default function Sidebar({ activeTab, setActiveTab, isCollapsed, setIsCol
              </div>
              <div className="text-left w-full truncate">
                <div className="text-[11px] font-bold font-mono tracking-widest text-text-main uppercase overflow-hidden text-ellipsis whitespace-nowrap">
-                 {isAdmin ? 'ROOT ADMINISTRATOR' : userTier === 'enterprise' ? 'SOC Enterprise' : userTier === 'pro' ? 'Pro Analyst' : 'Stealth Edition'}
+                 {isAdmin ? 'ROOT ADMINISTRATOR' : userTier === 'enterprise' ? t('pricing_enterprise') : userTier === 'pro' ? t('pricing_pro') : t('sidebar_stealth')}
                </div>
-               {userTier === 'free' && !isAdmin && <div className="text-[10px] text-accent font-bold mt-0.5">Upgrade System &rarr;</div>}
+               {userTier === 'free' && !isAdmin && <div className="text-[10px] text-accent font-bold mt-0.5">{t('sidebar_upgrade')} &rarr;</div>}
              </div>
            </div>
         </button>

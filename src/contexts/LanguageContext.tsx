@@ -100,6 +100,9 @@ export const translations = {
   nav_username: { en: "OSINT Username", ar: "تحري الأسماء المستعارة", fr: "Nom d'utilisateur OSINT", de: "OSINT-Benutzername", es: "Usuario OSINT", tr: "OSINT kullanıcı adı", ru: "OSINT имя пользователя" },
   nav_message: { en: "Message Phishing", ar: "فحص رسائل النصب", fr: "Hameçonnage de messages", de: "Nachrichtenphishing", es: "Phishing de mensajes", tr: "Mesaj oltalama", ru: "Фишинг сообщений" },
   nav_ip: { en: "IP Scan", ar: "فحص عناوين الـ IP", fr: "Scan IP", de: "IP-Scan", es: "Escaneo IP", tr: "IP tarama", ru: "Сканирование IP" },
+  nav_domain: { en: "Domain WHOIS", ar: "فحص الدومين", fr: "WHOIS Domaine", de: "Domain-WHOIS", es: "WHOIS Dominio", tr: "Alan Adı WHOIS", ru: "WHOIS домена" },
+  nav_fingerprint: { en: "Browser Fingerprint", ar: "بصمة المتصفح", fr: "Empreinte navigateur", de: "Browser-Fingerabdruck", es: "Huella del navegador", tr: "Tarayıcı parmak izi", ru: "Отпечаток браузера" },
+  nav_device_security: { en: "Device Security", ar: "أمان الجهاز", fr: "Sécurité appareil", de: "Gerätesicherheit", es: "Seguridad del dispositivo", tr: "Cihaz güvenliği", ru: "Безопасность устройства" },
 
   // General App Actions
   audit: { en: "Audit", ar: "فحص الآن", fr: "Auditer", de: "Prüfen", es: "Auditar", tr: "Denetle", ru: "Аудит" },
@@ -107,6 +110,7 @@ export const translations = {
   exposure: { en: "Exposure", ar: "تسريب", fr: "Exposition", de: "Exposition", es: "Exposición", tr: "Maruziyet", ru: "Утечка" },
   select_country: { en: "Select Country...", ar: "اختر الدولة...", fr: "Sélectionner le pays...", de: "Land auswählen...", es: "Seleccionar país...", tr: "Ülke seçin...", ru: "Выберите страну..." },
   settings: { en: "Settings", ar: "الإعدادات", fr: "Paramètres", de: "Einstellungen", es: "Configuración", tr: "Ayarlar", ru: "Настройки" },
+  language_label: { en: "Language", ar: "اللغة", fr: "Langue", de: "Sprache", es: "Idioma", tr: "Dil", ru: "Язык" },
 
   // Phone Analyzer
   phone_desc: { en: "Check if your cellular number has been exposed in public databases, telemarketing leaks, or known dark web records.", ar: "تأكد ما إذا كان رقمك مسرباً في قواعد بيانات التسويق والمكالمات المزعجة والإنترنت المظلم.", fr: "Vérifiez si votre numéro a été exposé dans des bases de données publiques.", de: "Prüfen Sie, ob Ihre Nummer in öffentlichen Datenbanken aufgetaucht ist.", es: "Verifica si tu número ha sido expuesto en bases de datos públicas.", tr: "Numaranızın herkese açık veritabanlarında ifşa edilip edilmediğini kontrol edin.", ru: "Проверьте, был ли ваш номер скомпрометирован в публичных базах." },
@@ -300,6 +304,207 @@ export const translations = {
   social_phone_placeholder: { en: "e.g. +201234567890", ar: "مثال: ‪+201234567890‬", fr: "ex: +33612345678", de: "z.B. +4915123456789", es: "ej: +34612345678", tr: "ör: +905321234567", ru: "напр. +79123456789" },
   social_phone_desc: { en: "Enter a phone number to discover all linked social media accounts, messaging apps, and online services.", ar: "أدخل رقم الموبايل لاكتشاف جميع حسابات التواصل الاجتماعي وتطبيقات المراسلة والخدمات المرتبطة.", fr: "Entrez un numéro pour découvrir tous les comptes liés.", de: "Geben Sie eine Nummer ein, um alle verknüpften Konten zu entdecken.", es: "Ingrese un número para descubrir todas las cuentas vinculadas.", tr: "Bağlı tüm hesapları keşfetmek için bir numara girin.", ru: "Введите номер для обнаружения всех связанных аккаунтов." },
   social_phone_scanning: { en: "Scanning phone number across platforms...", ar: "جاري البحث عن رقم الموبايل عبر المنصات...", fr: "Analyse du numéro sur les plateformes...", de: "Telefonnummer wird überprüft...", es: "Escaneando número en plataformas...", tr: "Telefon numarası platformlarda taranıyor...", ru: "Сканирование номера телефона..." },
+
+  // Dashboard extra translations
+  dash_system_diagnosis: { en: "SYSTEM DIAGNOSIS", ar: "تشخيص النظام", fr: "DIAGNOSTIC SYSTÈME", de: "SYSTEMDIAGNOSE", es: "DIAGNÓSTICO DEL SISTEMA", tr: "SİSTEM TEŞHİSİ", ru: "ДИАГНОСТИКА СИСТЕМЫ" },
+  dash_total_scans: { en: "Total Scans", ar: "إجمالي الفحوصات", fr: "Total des scans", de: "Gesamte Scans", es: "Total de escaneos", tr: "Toplam tarama", ru: "Всего сканирований" },
+  dash_tier: { en: "Tier", ar: "المستوى", fr: "Niveau", de: "Stufe", es: "Nivel", tr: "Seviye", ru: "Уровень" },
+  dash_high_risk: { en: "High Risk", ar: "خطر عالي", fr: "Risque élevé", de: "Hohes Risiko", es: "Alto riesgo", tr: "Yüksek risk", ru: "Высокий риск" },
+  dash_tools: { en: "Tools & Instruments", ar: "الأدوات والأجهزة", fr: "Outils & Instruments", de: "Werkzeuge & Instrumente", es: "Herramientas e Instrumentos", tr: "Araçlar & Enstrümanlar", ru: "Инструменты" },
+  dash_scans: { en: "Scans", ar: "فحوصات", fr: "Scans", de: "Scans", es: "Escaneos", tr: "Taramalar", ru: "Сканы" },
+  dash_avg_score: { en: "Avg Score", ar: "متوسط", fr: "Score moy.", de: "Ø Score", es: "Prom.", tr: "Ort.", ru: "Ср. балл" },
+  dash_last: { en: "Last", ar: "آخر", fr: "Dernier", de: "Letzte", es: "Último", tr: "Son", ru: "Посл." },
+  dash_no_data: { en: "No data", ar: "لا توجد بيانات", fr: "Aucune donnée", de: "Keine Daten", es: "Sin datos", tr: "Veri yok", ru: "Нет данных" },
+  dash_no_intel: { en: "No Intel Available", ar: "لا توجد بيانات استخباراتية", fr: "Aucun renseignement", de: "Keine Info verfügbar", es: "Sin inteligencia disponible", tr: "İstihbarat yok", ru: "Нет данных разведки" },
+  dash_detections: { en: "DETECTIONS", ar: "اكتشافات", fr: "DÉTECTIONS", de: "ERKENNUNGEN", es: "DETECCIONES", tr: "TESPİTLER", ru: "ОБНАРУЖЕНИЯ" },
+  dash_osint_timeline: { en: "OSINT Timeline", ar: "الاختراقات شهرياً", fr: "Chronologie OSINT", de: "OSINT-Zeitachse", es: "Cronología OSINT", tr: "OSINT Zaman Çizelgesi", ru: "Хронология OSINT" },
+  dash_attack_radar: { en: "Attack Vectors Radar", ar: "رادار ناقلات الهجوم", fr: "Radar des vecteurs d'attaque", de: "Angriffsvektoren-Radar", es: "Radar de vectores de ataque", tr: "Saldırı vektörleri radarı", ru: "Радар векторов атак" },
+  dash_total_scans_legend: { en: "Total Scans", ar: "إجمالي الفحوصات", fr: "Total des scans", de: "Gesamte Scans", es: "Total de escaneos", tr: "Toplam tarama", ru: "Всего сканирований" },
+  dash_critical_detects: { en: "Critical Detects", ar: "اكتشافات حرجة", fr: "Détections critiques", de: "Kritische Erkennungen", es: "Detecciones críticas", tr: "Kritik tespitler", ru: "Критические обнаружения" },
+  dash_time_m_ago: { en: "m ago", ar: "د", fr: "min", de: "Min", es: "min", tr: "dk", ru: "мин" },
+  dash_time_h_ago: { en: "h ago", ar: "س", fr: "h", de: "Std", es: "h", tr: "sa", ru: "ч" },
+  dash_time_d_ago: { en: "d ago", ar: "ي", fr: "j", de: "T", es: "d", tr: "gün", ru: "д" },
+
+  // Password Vault Check 
+  pwd_vault_title: { en: "Password Vault Check", ar: "فحص خزنة كلمات المرور", fr: "Vérification du coffre-fort", de: "Passwort-Tresor-Check", es: "Verificación de bóveda", tr: "Şifre kasası kontrolü", ru: "Проверка хранилища паролей" },
+  pwd_vault_desc: { en: "Evaluate password strength algorithmically in real-time, then run a deep audit against neural-network breach databases to detect compromised footprints.", ar: "قيّم قوة كلمة المرور بشكل خوارزمي في الوقت الحقيقي، ثم قم بفحص عميق ضد قواعد بيانات التسريبات المبنية على الذكاء الاصطناعي لاكتشاف البصمات المخترقة.", fr: "Évaluez la force en temps réel, puis auditez contre les bases de données de fuites.", de: "Bewerten Sie die Stärke in Echtzeit und prüfen Sie gegen Breach-Datenbanken.", es: "Evalúe la fortaleza en tiempo real y audite contra bases de datos de filtraciones.", tr: "Gerçek zamanlı güç değerlendirmesi ve sızıntı veritabanlarına karşı derin denetim.", ru: "Оценка надёжности в реальном времени и глубокий аудит по базам утечек." },
+  pwd_deep_audit: { en: "Deep Audit", ar: "فحص عميق", fr: "Audit profond", de: "Tiefenaudit", es: "Auditoría profunda", tr: "Derin denetim", ru: "Глубокий аудит" },
+  pwd_risk_assessed: { en: "Risk Assessed", ar: "تقييم الخطر", fr: "Risque évalué", de: "Risiko bewertet", es: "Riesgo evaluado", tr: "Risk değerlendirildi", ru: "Риск оценён" },
+  pwd_exposure: { en: "EXPOSURE", ar: "تعرّض", fr: "EXPOSITION", de: "EXPOSITION", es: "EXPOSICIÓN", tr: "MARUZİYET", ru: "УТЕЧКА" },
+  pwd_download_report: { en: "Download Report", ar: "تحميل التقرير", fr: "Télécharger le rapport", de: "Bericht herunterladen", es: "Descargar informe", tr: "Raporu indir", ru: "Скачать отчёт" },
+  pwd_remediation: { en: "Remediation Steps", ar: "خطوات العلاج", fr: "Étapes de remédiation", de: "Behebungsschritte", es: "Pasos de remediación", tr: "İyileştirme adımları", ru: "Шаги исправления" },
+  pwd_resistance_score: { en: "Threat Resistance Score", ar: "مؤشر مقاومة التهديدات", fr: "Score de résistance", de: "Bedrohungswiderstand", es: "Puntuación de resistencia", tr: "Tehdit direnç puanı", ru: "Оценка устойчивости к угрозам" },
+  pwd_why_score: { en: "Why this score?", ar: "لماذا هذا التقييم؟", fr: "Pourquoi ce score ?", de: "Warum dieser Score?", es: "¿Por qué esta puntuación?", tr: "Neden bu puan?", ru: "Почему такая оценка?" },
+
+  // Device Security
+  dev_terminal_title: { en: "Live Threat Operations Terminal", ar: "طرفية عمليات التهديدات المباشرة", fr: "Terminal d'opérations de menaces", de: "Live-Bedrohungs-Terminal", es: "Terminal de operaciones de amenazas", tr: "Canlı tehdit operasyonları terminali", ru: "Терминал операций по угрозам" },
+  dev_start_scan: { en: "Start Security Scan", ar: "بدء الفحص الأمني", fr: "Démarrer le scan de sécurité", de: "Sicherheitsscan starten", es: "Iniciar escaneo de seguridad", tr: "Güvenlik taraması başlat", ru: "Начать проверку безопасности" },
+  dev_posture_eval: { en: "Posture Evaluation", ar: "تقييم الوضع الأمني", fr: "Évaluation de la posture", de: "Haltungsbewertung", es: "Evaluación de postura", tr: "Duruş değerlendirmesi", ru: "Оценка состояния" },
+  dev_target: { en: "TARGET", ar: "الهدف", fr: "CIBLE", de: "ZIEL", es: "OBJETIVO", tr: "HEDEF", ru: "ЦЕЛЬ" },
+  dev_network_exposure: { en: "Network Exposure", ar: "التعرض الشبكي", fr: "Exposition réseau", de: "Netzwerk-Exposition", es: "Exposición de red", tr: "Ağ maruziyeti", ru: "Сетевое воздействие" },
+  dev_browser_posture: { en: "Browser Posture", ar: "وضع المتصفح", fr: "Posture du navigateur", de: "Browser-Status", es: "Postura del navegador", tr: "Tarayıcı durumu", ru: "Состояние браузера" },
+  dev_cookies: { en: "Cookies", ar: "ملفات تعريف الارتباط", fr: "Cookies", de: "Cookies", es: "Cookies", tr: "Çerezler", ru: "Куки" },
+  dev_do_not_track: { en: "Do Not Track", ar: "عدم التتبع", fr: "Ne pas suivre", de: "Nicht verfolgen", es: "No rastrear", tr: "Takip etme", ru: "Не отслеживать" },
+  dev_accepted: { en: "Accepted", ar: "مقبول", fr: "Accepté", de: "Akzeptiert", es: "Aceptado", tr: "Kabul edildi", ru: "Принято" },
+  dev_disabled: { en: "Disabled", ar: "معطل", fr: "Désactivé", de: "Deaktiviert", es: "Deshabilitado", tr: "Devre dışı", ru: "Отключено" },
+  dev_enabled: { en: "Enabled", ar: "مفعل", fr: "Activé", de: "Aktiviert", es: "Habilitado", tr: "Etkin", ru: "Включено" },
+  dev_hw_threads: { en: "Hardware Threads", ar: "وحدات المعالجة", fr: "Threads matériels", de: "Hardware-Threads", es: "Hilos de hardware", tr: "Donanım iş parçacıkları", ru: "Аппаратные потоки" },
+  dev_device_class: { en: "Device Class", ar: "فئة الجهاز", fr: "Classe d'appareil", de: "Geräteklasse", es: "Clase de dispositivo", tr: "Cihaz sınıfı", ru: "Класс устройства" },
+  dev_mobile: { en: "Mobile", ar: "جوال", fr: "Mobile", de: "Mobil", es: "Móvil", tr: "Mobil", ru: "Мобильный" },
+  dev_desktop: { en: "Desktop", ar: "سطح المكتب", fr: "Bureau", de: "Desktop", es: "Escritorio", tr: "Masaüstü", ru: "Настольный" },
+  dev_safe_msg: { en: "Safe. No known exposure in Global Threat Databases.", ar: "آمن. لا يوجد تعرض معروف في قواعد بيانات التهديدات العالمية.", fr: "Sûr. Aucune exposition connue.", de: "Sicher. Keine bekannte Exposition.", es: "Seguro. Sin exposición conocida.", tr: "Güvenli. Küresel tehdit veritabanlarında bilinen maruziyet yok.", ru: "Безопасно. Нет известных угроз." },
+
+  // SIEM & Webhooks
+  siem_title: { en: "SIEM & Webhooks", ar: "الربط مع أنظمة الحماية (SIEM)", fr: "SIEM & Webhooks", de: "SIEM & Webhooks", es: "SIEM y Webhooks", tr: "SIEM ve Webhooks", ru: "SIEM и вебхуки" },
+  siem_desc: { en: "Forward threat intelligence events to your security infrastructure.", ar: "أرسل أحداث الاستخبارات الأمنية إلى بنيتك التحتية.", fr: "Transmettez les événements de renseignement à votre infrastructure.", de: "Leiten Sie Bedrohungsereignisse an Ihre Infrastruktur weiter.", es: "Reenvía eventos de inteligencia a tu infraestructura.", tr: "Tehdit istihbaratı olaylarını güvenlik altyapınıza iletin.", ru: "Пересылайте события угроз в вашу инфраструктуру." },
+  siem_new_endpoint: { en: "+ New Endpoint", ar: "+ نقطة نهاية جديدة", fr: "+ Nouveau point d'accès", de: "+ Neuer Endpunkt", es: "+ Nuevo endpoint", tr: "+ Yeni uç nokta", ru: "+ Новая конечная точка" },
+  siem_endpoints_active: { en: "Endpoints Active", ar: "نقاط نهاية نشطة", fr: "Points actifs", de: "Aktive Endpunkte", es: "Endpoints activos", tr: "Aktif uç noktalar", ru: "Активных точек" },
+  siem_no_endpoints: { en: "No endpoints configured. Forward your alerts to Slack, Discord, or your SIEM.", ar: "لم يتم تكوين نقاط نهاية. أرسل تنبيهاتك إلى Slack أو Discord أو نظام SIEM الخاص بك.", fr: "Aucun point configuré. Envoyez vos alertes à Slack, Discord ou votre SIEM.", de: "Keine Endpunkte konfiguriert. Leiten Sie Ihre Alerts weiter.", es: "Sin endpoints configurados. Envía tus alertas a Slack, Discord o tu SIEM.", tr: "Uç nokta yapılandırılmadı. Uyarılarınızı Slack, Discord veya SIEM'inize iletin.", ru: "Конечные точки не настроены. Отправляйте уведомления в Slack, Discord или SIEM." },
+
+  // ─── Team Management ───
+  team_title: { en: "Team Management", ar: "إدارة الفريق", fr: "Gestion d'équipe", de: "Teamverwaltung", es: "Gestión de equipo", tr: "Takım yönetimi", ru: "Управление командой" },
+  team_desc: { en: "Manage your SOC team and assign roles.", ar: "أدِر فريق مركز العمليات الأمنية وحدد الأدوار.", fr: "Gérez votre équipe SOC et attribuez les rôles.", de: "Verwalten Sie Ihr SOC-Team und weisen Sie Rollen zu.", es: "Gestiona tu equipo SOC y asigna roles.", tr: "SOC ekibinizi yönetin ve roller atayın.", ru: "Управляйте командой SOC и назначайте роли." },
+  team_invite: { en: "Invite Member", ar: "دعوة عضو", fr: "Inviter un membre", de: "Mitglied einladen", es: "Invitar miembro", tr: "Üye davet et", ru: "Пригласить участника" },
+  team_slots: { en: "Team Slots", ar: "مقاعد الفريق", fr: "Places d'équipe", de: "Team-Plätze", es: "Plazas de equipo", tr: "Takım slotları", ru: "Слоты команды" },
+  team_owner: { en: "Team Owner", ar: "مالك الفريق", fr: "Propriétaire", de: "Team-Eigentümer", es: "Propietario", tr: "Takım sahibi", ru: "Владелец команды" },
+  team_full_access: { en: "Full Access", ar: "وصول كامل", fr: "Accès complet", de: "Voller Zugriff", es: "Acceso completo", tr: "Tam erişim", ru: "Полный доступ" },
+  team_no_members: { en: "No team members yet. Invite analysts to your SOC workspace.", ar: "لا يوجد أعضاء في الفريق بعد. ادعُ محللين إلى مساحة عملك.", fr: "Pas encore de membres. Invitez des analystes à votre espace SOC.", de: "Noch keine Teammitglieder. Laden Sie Analysten ein.", es: "Sin miembros aún. Invita analistas a tu espacio SOC.", tr: "Henüz takım üyesi yok. SOC alanınıza analist davet edin.", ru: "Пока нет участников. Пригласите аналитиков в вашу рабочую область." },
+  team_enterprise_feature: { en: "SOC Enterprise Feature", ar: "ميزة حصرية لحزمة المؤسسات", fr: "Fonctionnalité Enterprise SOC", de: "SOC-Enterprise-Funktion", es: "Función SOC Enterprise", tr: "SOC Kurumsal özellik", ru: "Функция SOC Enterprise" },
+  team_enterprise_desc: { en: "Team management requires an Enterprise subscription. Collaborate with up to 5 analysts in your security operations center.", ar: "إدارة الفريق تتطلب اشتراك المؤسسات. تعاون مع حتى 5 محللين في مركز العمليات الأمنية.", fr: "La gestion d'équipe nécessite un abonnement Enterprise. Collaborez avec jusqu'à 5 analystes.", de: "Teamverwaltung erfordert ein Enterprise-Abonnement. Arbeiten Sie mit bis zu 5 Analysten zusammen.", es: "La gestión de equipo requiere suscripción Enterprise. Colabora con hasta 5 analistas.", tr: "Takım yönetimi Enterprise aboneliği gerektirir. 5 analiste kadar iş birliği yapın.", ru: "Управление командой требует подписки Enterprise. Работайте с до 5 аналитиками." },
+  team_role_owner: { en: "Owner", ar: "مالك", fr: "Propriétaire", de: "Eigentümer", es: "Propietario", tr: "Sahip", ru: "Владелец" },
+  team_role_analyst: { en: "Analyst", ar: "محلل", fr: "Analyste", de: "Analyst", es: "Analista", tr: "Analist", ru: "Аналитик" },
+  team_role_viewer: { en: "Viewer", ar: "مشاهد", fr: "Observateur", de: "Betrachter", es: "Observador", tr: "Görüntüleyici", ru: "Наблюдатель" },
+  team_role_owner_desc: { en: "Full access to all tools and settings", ar: "وصول كامل لجميع الأدوات والإعدادات", fr: "Accès complet à tous les outils et paramètres", de: "Voller Zugriff auf alle Tools und Einstellungen", es: "Acceso completo a todas las herramientas y ajustes", tr: "Tüm araçlara ve ayarlara tam erişim", ru: "Полный доступ ко всем инструментам и настройкам" },
+  team_role_analyst_desc: { en: "Can run scans and view results", ar: "يمكنه تشغيل الفحوصات وعرض النتائج", fr: "Peut lancer des analyses et voir les résultats", de: "Kann Scans durchführen und Ergebnisse anzeigen", es: "Puede ejecutar escaneos y ver resultados", tr: "Taramaları çalıştırabilir ve sonuçları görebilir", ru: "Может запускать сканирование и просматривать результаты" },
+  team_role_viewer_desc: { en: "Read-only access to reports", ar: "وصول للقراءة فقط للتقارير", fr: "Accès en lecture seule aux rapports", de: "Schreibgeschützter Zugriff auf Berichte", es: "Acceso de solo lectura a informes", tr: "Raporlara salt okunur erişim", ru: "Доступ только для чтения к отчётам" },
+  team_email_label: { en: "Email Address", ar: "البريد الإلكتروني", fr: "Adresse e-mail", de: "E-Mail-Adresse", es: "Correo electrónico", tr: "E-posta adresi", ru: "Электронная почта" },
+  team_role_label: { en: "Role", ar: "الدور", fr: "Rôle", de: "Rolle", es: "Rol", tr: "Rol", ru: "Роль" },
+  team_send_invite: { en: "Send Invitation", ar: "إرسال الدعوة", fr: "Envoyer l'invitation", de: "Einladung senden", es: "Enviar invitación", tr: "Davet gönder", ru: "Отправить приглашение" },
+  team_cancel: { en: "Cancel", ar: "إلغاء", fr: "Annuler", de: "Abbrechen", es: "Cancelar", tr: "İptal", ru: "Отмена" },
+  team_pending: { en: "Pending", ar: "معلقة", fr: "En attente", de: "Ausstehend", es: "Pendiente", tr: "Bekliyor", ru: "Ожидание" },
+  team_joined: { en: "Joined", ar: "انضم", fr: "Rejoint", de: "Beigetreten", es: "Unido", tr: "Katıldı", ru: "Присоединился" },
+
+  // ─── 3D Threat Visualizer ───
+  threat_title: { en: "3D Threat Visualizer", ar: "عارض التهديدات ثلاثي الأبعاد", fr: "Visualiseur de menaces 3D", de: "3D-Bedrohungsvisualisierer", es: "Visualizador de amenazas 3D", tr: "3D Tehdit Görselleştirici", ru: "3D Визуализатор угроз" },
+  threat_desc: { en: "Real-time 3D globe with live cyber threat intelligence.", ar: "كرة أرضية ثلاثية الأبعاد مع استخبارات تهديدات سيبرانية حية.", fr: "Globe 3D en temps réel avec intelligence sur les cybermenaces.", de: "3D-Globus in Echtzeit mit Cyber-Bedrohungsinformationen.", es: "Globo 3D en tiempo real con inteligencia de ciberamenazas.", tr: "Canlı siber tehdit istihbaratı ile gerçek zamanlı 3D küre.", ru: "3D-глобус с данными о киберугрозах в реальном времени." },
+  threat_resume: { en: "Resume", ar: "استئناف", fr: "Reprendre", de: "Fortsetzen", es: "Reanudar", tr: "Devam et", ru: "Возобновить" },
+  threat_pause: { en: "Pause", ar: "إيقاف مؤقت", fr: "Pause", de: "Pause", es: "Pausar", tr: "Duraklat", ru: "Пауза" },
+  threat_total_events: { en: "Total Events", ar: "إجمالي الأحداث", fr: "Total des événements", de: "Gesamtereignisse", es: "Total de eventos", tr: "Toplam olaylar", ru: "Всего событий" },
+  threat_critical: { en: "Critical", ar: "حرج", fr: "Critique", de: "Kritisch", es: "Crítico", tr: "Kritik", ru: "Критический" },
+  threat_high: { en: "High", ar: "عالي", fr: "Élevé", de: "Hoch", es: "Alto", tr: "Yüksek", ru: "Высокий" },
+  threat_medium: { en: "Medium", ar: "متوسط", fr: "Moyen", de: "Mittel", es: "Medio", tr: "Orta", ru: "Средний" },
+  threat_low: { en: "Low", ar: "منخفض", fr: "Faible", de: "Niedrig", es: "Bajo", tr: "Düşük", ru: "Низкий" },
+  threat_drag_rotate: { en: "3D Threat Intelligence • Drag to Rotate", ar: "استخبارات التهديدات ثلاثية الأبعاد • اسحب للتدوير", fr: "Intelligence 3D • Glissez pour tourner", de: "3D-Bedrohungsintelligenz • Ziehen zum Drehen", es: "Inteligencia 3D • Arrastra para rotar", tr: "3D Tehdit İstihbaratı • Döndürmek için sürükle", ru: "3D-разведка угроз • Перетащите для вращения" },
+  threat_live_intercepts: { en: "Live Intercepts", ar: "اعتراضات حية", fr: "Interceptions en direct", de: "Live-Abfangmeldungen", es: "Interceptaciones en vivo", tr: "Canlı kesişimler", ru: "Перехваты в реальном времени" },
+  threat_attack: { en: "Attack", ar: "هجوم", fr: "Attaque", de: "Angriff", es: "Ataque", tr: "Saldırı", ru: "Атака" },
+  threat_source: { en: "Source", ar: "المصدر", fr: "Source", de: "Quelle", es: "Origen", tr: "Kaynak", ru: "Источник" },
+  threat_target: { en: "Target", ar: "الهدف", fr: "Cible", de: "Ziel", es: "Objetivo", tr: "Hedef", ru: "Цель" },
+
+  // ─── Pricing ───
+  pricing_title: { en: "Expand Your Arsenal", ar: "وسّع ترسانتك", fr: "Élargissez votre arsenal", de: "Erweitern Sie Ihr Arsenal", es: "Expande tu arsenal", tr: "Cephanenizi genişletin", ru: "Расширьте свой арсенал" },
+  pricing_subtitle: { en: "Military-grade OSINT infrastructure built for operators. Secure a tier that matches your threat model.", ar: "بنية تحتية OSINT بمستوى عسكري مصممة للمحترفين. اختر المستوى المناسب لنموذج التهديد الخاص بك.", fr: "Infrastructure OSINT de qualité militaire pour les opérateurs. Choisissez un niveau adapté.", de: "Militärische OSINT-Infrastruktur für Operatoren. Wählen Sie die passende Stufe.", es: "Infraestructura OSINT de grado militar para operadores. Elige el nivel adecuado.", tr: "Operatörler için askeri düzeyde OSINT altyapısı. Tehdit modelinize uygun bir katman seçin.", ru: "OSINT-инфраструктура военного класса для операторов. Выберите уровень, соответствующий вашей модели угроз." },
+  pricing_stealth: { en: "Stealth", ar: "التخفي", fr: "Furtif", de: "Tarnung", es: "Sigilo", tr: "Gizli", ru: "Стелс" },
+  pricing_pro: { en: "Pro Analyst", ar: "المحلل المحترف", fr: "Analyste Pro", de: "Pro-Analyst", es: "Analista Pro", tr: "Pro Analist", ru: "Про-аналитик" },
+  pricing_enterprise: { en: "SOC Enterprise", ar: "مؤسسات SOC", fr: "SOC Enterprise", de: "SOC Enterprise", es: "SOC Enterprise", tr: "SOC Kurumsal", ru: "SOC Enterprise" },
+  pricing_stealth_desc: { en: "Core intelligence tools for basic footprinting.", ar: "أدوات استخبارات أساسية للبصمة الأولية.", fr: "Outils d'intelligence de base pour l'empreinte.", de: "Grundlegende Intelligence-Tools für Footprinting.", es: "Herramientas de inteligencia básicas para reconocimiento.", tr: "Temel iz sürme için çekirdek istihbarat araçları.", ru: "Базовые инструменты разведки для начального анализа." },
+  pricing_pro_desc: { en: "Advanced automation and unrestricted manual investigations.", ar: "أتمتة متقدمة وتحقيقات يدوية بلا قيود.", fr: "Automatisation avancée et investigations manuelles illimitées.", de: "Erweiterte Automatisierung und unbeschränkte manuelle Untersuchungen.", es: "Automatización avanzada e investigaciones manuales sin restricciones.", tr: "Gelişmiş otomasyon ve sınırsız manuel araştırmalar.", ru: "Продвинутая автоматизация и неограниченные расследования." },
+  pricing_enterprise_desc: { en: "God-Tier command center for large scale threat operations.", ar: "مركز قيادة من المستوى الأعلى لعمليات التهديد الكبرى.", fr: "Centre de commande ultime pour les opérations à grande échelle.", de: "Kommandozentrale der Spitzenklasse für großangelegte Operationen.", es: "Centro de mando supremo para operaciones de amenazas a gran escala.", tr: "Büyük ölçekli tehdit operasyonları için üst düzey komuta merkezi.", ru: "Командный центр высшего уровня для крупномасштабных операций." },
+  pricing_most_popular: { en: "Most Popular", ar: "الأكثر شعبية", fr: "Le plus populaire", de: "Am beliebtesten", es: "Más popular", tr: "En popüler", ru: "Самый популярный" },
+  pricing_off: { en: "OFF", ar: "خصم", fr: "RÉDUCTION", de: "RABATT", es: "DTO", tr: "İND", ru: "СКИДКА" },
+  pricing_mo: { en: "/mo", ar: "/شهرياً", fr: "/mois", de: "/Monat", es: "/mes", tr: "/ay", ru: "/мес" },
+  pricing_deploy: { en: "Deploy Arsenal", ar: "نشر الترسانة", fr: "Déployer l'arsenal", de: "Arsenal bereitstellen", es: "Desplegar arsenal", tr: "Cephaneyi konuşlandır", ru: "Развернуть арсенал" },
+  pricing_current: { en: "Current Array", ar: "الحزمة الحالية", fr: "Niveau actuel", de: "Aktuelles Paket", es: "Plan actual", tr: "Mevcut plan", ru: "Текущий план" },
+  pricing_access_granted: { en: "Access Granted", ar: "تم منح الوصول", fr: "Accès accordé", de: "Zugriff gewährt", es: "Acceso concedido", tr: "Erişim verildi", ru: "Доступ предоставлен" },
+  pricing_upgraded: { en: "Your clearance level has been successfully upgraded.", ar: "تم ترقية مستوى تصريحك بنجاح.", fr: "Votre niveau d'accréditation a été mis à jour.", de: "Ihre Freigabestufe wurde erfolgreich aktualisiert.", es: "Tu nivel de autorización ha sido actualizado.", tr: "Yetki seviyeniz başarıyla yükseltildi.", ru: "Ваш уровень допуска успешно повышен." },
+  pricing_secure_gateway: { en: "Secure Gateway", ar: "بوابة آمنة", fr: "Passerelle sécurisée", de: "Sicheres Gateway", es: "Pasarela segura", tr: "Güvenli geçit", ru: "Защищённый шлюз" },
+  pricing_acquiring: { en: "Acquiring", ar: "جاري الحصول على", fr: "Acquisition de", de: "Erwerb von", es: "Adquiriendo", tr: "Alınıyor", ru: "Получение" },
+  pricing_clearance: { en: "clearance", ar: "تصريح", fr: "accréditation", de: "Freigabe", es: "autorización", tr: "yetki", ru: "допуск" },
+  pricing_card_stripe: { en: "Card / Stripe", ar: "بطاقة / Stripe", fr: "Carte / Stripe", de: "Karte / Stripe", es: "Tarjeta / Stripe", tr: "Kart / Stripe", ru: "Карта / Stripe" },
+  pricing_promo_code: { en: "Promo Code", ar: "كود ترويجي", fr: "Code promo", de: "Promo-Code", es: "Código promocional", tr: "Promosyon kodu", ru: "Промокод" },
+  pricing_secure_checkout: { en: "Secure Stripe Checkout", ar: "الدفع الآمن عبر Stripe", fr: "Paiement sécurisé Stripe", de: "Sichere Stripe-Zahlung", es: "Pago seguro con Stripe", tr: "Güvenli Stripe ödemesi", ru: "Безопасная оплата Stripe" },
+  pricing_encrypted: { en: "256-bit encrypted • PCI DSS compliant", ar: "تشفير 256 بت • متوافق مع PCI DSS", fr: "Chiffrement 256 bits • Conforme PCI DSS", de: "256-Bit-verschlüsselt • PCI DSS-konform", es: "Cifrado de 256 bits • Cumple PCI DSS", tr: "256-bit şifreli • PCI DSS uyumlu", ru: "256-битное шифрование • PCI DSS" },
+  pricing_stripe_desc: { en: "You'll be redirected to Stripe's secure payment page. After successful payment, your account will be automatically upgraded.", ar: "سيتم توجيهك إلى صفحة الدفع الآمنة في Stripe. بعد الدفع الناجح، سيتم ترقية حسابك تلقائياً.", fr: "Vous serez redirigé vers la page de paiement sécurisée de Stripe.", de: "Sie werden zur sicheren Stripe-Zahlungsseite weitergeleitet.", es: "Serás redirigido a la página de pago segura de Stripe.", tr: "Stripe'ın güvenli ödeme sayfasına yönlendirileceksiniz.", ru: "Вы будете перенаправлены на безопасную страницу оплаты Stripe." },
+  pricing_pay_stripe: { en: "Pay with Stripe →", ar: "الدفع عبر Stripe →", fr: "Payer avec Stripe →", de: "Mit Stripe bezahlen →", es: "Pagar con Stripe →", tr: "Stripe ile öde →", ru: "Оплатить через Stripe →" },
+  pricing_clearance_code: { en: "Clearance Override Code", ar: "كود تجاوز التصريح", fr: "Code de dérogation", de: "Freigabe-Überschreibungscode", es: "Código de anulación de autorización", tr: "Yetki geçersiz kılma kodu", ru: "Код переопределения допуска" },
+  pricing_enter_code: { en: "ENTER CLEARANCE CODE", ar: "أدخل كود التصريح", fr: "ENTRER LE CODE", de: "CODE EINGEBEN", es: "INGRESAR CÓDIGO", tr: "YETKİ KODUNU GİRİN", ru: "ВВЕДИТЕ КОД ДОПУСКА" },
+  pricing_verify: { en: "Verify", ar: "تحقق", fr: "Vérifier", de: "Prüfen", es: "Verificar", tr: "Doğrula", ru: "Проверить" },
+  pricing_code_accepted: { en: "Code Accepted", ar: "تم قبول الكود", fr: "Code accepté", de: "Code akzeptiert", es: "Código aceptado", tr: "Kod kabul edildi", ru: "Код принят" },
+  pricing_override_active: { en: "Override Active", ar: "التجاوز مفعل", fr: "Dérogation active", de: "Überschreibung aktiv", es: "Anulación activa", tr: "Geçersiz kılma aktif", ru: "Переопределение активно" },
+  pricing_confirm: { en: "Confirm Authorization", ar: "تأكيد التفويض", fr: "Confirmer l'autorisation", de: "Autorisierung bestätigen", es: "Confirmar autorización", tr: "Yetkilendirmeyi onayla", ru: "Подтвердить авторизацию" },
+  pricing_abort: { en: "Abort", ar: "إلغاء", fr: "Abandonner", de: "Abbrechen", es: "Abortar", tr: "İptal", ru: "Отмена" },
+  pricing_e2e_encrypted: { en: "End-to-end encrypted", ar: "تشفير من طرف لطرف", fr: "Chiffrement de bout en bout", de: "Ende-zu-Ende-verschlüsselt", es: "Cifrado de extremo a extremo", tr: "Uçtan uca şifreli", ru: "Сквозное шифрование" },
+  pricing_telemetry_upgraded: { en: "Your telemetry arrays have been successfully upgraded.", ar: "تم ترقية مصفوفات القياس عن بعد بنجاح.", fr: "Vos systèmes de télémétrie ont été mis à jour.", de: "Ihre Telemetriesysteme wurden erfolgreich aktualisiert.", es: "Tus sistemas de telemetría han sido actualizados.", tr: "Telemetri dizileriniz başarıyla yükseltildi.", ru: "Ваши системы телеметрии успешно обновлены." },
+  // Pricing Features
+  pricing_f_watchlist_1: { en: "1 Target on Live Watchlist", ar: "هدف واحد في قائمة المراقبة", fr: "1 cible sur la liste de surveillance", de: "1 Ziel auf der Watchlist", es: "1 objetivo en lista de vigilancia", tr: "Canlı izleme listesinde 1 hedef", ru: "1 цель в списке наблюдения" },
+  pricing_f_weekly: { en: "Weekly Watchlist Scan (1 Day/Week)", ar: "فحص أسبوعي لقائمة المراقبة (يوم واحد/أسبوع)", fr: "Scan hebdomadaire (1 jour/semaine)", de: "Wöchentlicher Scan (1 Tag/Woche)", es: "Escaneo semanal (1 día/semana)", tr: "Haftalık izleme taraması (1 gün/hafta)", ru: "Еженедельное сканирование (1 день/неделя)" },
+  pricing_f_scans_10: { en: "10 Manual Scans/Day", ar: "10 فحوصات يدوية/يوم", fr: "10 scans manuels/jour", de: "10 manuelle Scans/Tag", es: "10 escaneos manuales/día", tr: "Günlük 10 manuel tarama", ru: "10 ручных сканирований/день" },
+  pricing_f_device_unlimited: { en: "Unlimited Device Security Checks", ar: "فحوصات أمان أجهزة غير محدودة", fr: "Vérifications de sécurité illimitées", de: "Unbegrenzte Geräte-Sicherheitschecks", es: "Verificaciones de seguridad ilimitadas", tr: "Sınırsız cihaz güvenlik kontrolleri", ru: "Неограниченные проверки безопасности устройств" },
+  pricing_f_pdf_watermark: { en: "Standard PDF Reports (Watermarked)", ar: "تقارير PDF قياسية (بعلامة مائية)", fr: "Rapports PDF standard (filigranés)", de: "Standard-PDF-Berichte (Wasserzeichen)", es: "Informes PDF estándar (marca de agua)", tr: "Standart PDF raporlar (filigranlı)", ru: "Стандартные PDF-отчёты (с водяным знаком)" },
+  pricing_f_watchlist_50: { en: "50 Targets on Live Watchlist", ar: "50 هدف في قائمة المراقبة", fr: "50 cibles sur la liste de surveillance", de: "50 Ziele auf der Watchlist", es: "50 objetivos en lista de vigilancia", tr: "Canlı izleme listesinde 50 hedef", ru: "50 целей в списке наблюдения" },
+  pricing_f_daily: { en: "Daily Watchlist Monitoring (Today)", ar: "مراقبة يومية لقائمة المراقبة (اليوم)", fr: "Surveillance quotidienne (aujourd'hui)", de: "Tägliche Überwachung (heute)", es: "Monitoreo diario (hoy)", tr: "Günlük izleme (bugün)", ru: "Ежедневный мониторинг (сегодня)" },
+  pricing_f_scans_500: { en: "500 Manual Scans/Day", ar: "500 فحص يدوي/يوم", fr: "500 scans manuels/jour", de: "500 manuelle Scans/Tag", es: "500 escaneos manuales/día", tr: "Günlük 500 manuel tarama", ru: "500 ручных сканирований/день" },
+  pricing_f_whitelabel: { en: "Unbranded White-label Dossiers", ar: "ملفات بدون علامة تجارية", fr: "Dossiers en marque blanche", de: "Markenlose White-Label-Dossiers", es: "Dossiers de marca blanca", tr: "Markasız beyaz etiket dosyalar", ru: "Отчёты без бренда (White-label)" },
+  pricing_f_darkweb: { en: "Dark Web Password Check Unlocked", ar: "فحص كلمات مرور الإنترنت المظلم مفتوح", fr: "Vérification Dark Web déverrouillée", de: "Dark-Web-Passwortcheck freigeschaltet", es: "Verificación Dark Web desbloqueada", tr: "Karanlık web şifre kontrolü açık", ru: "Проверка паролей в Dark Web разблокирована" },
+  pricing_f_unlimited_watchlist: { en: "Unlimited Watchlist Targets", ar: "أهداف مراقبة غير محدودة", fr: "Cibles de surveillance illimitées", de: "Unbegrenzte Watchlist-Ziele", es: "Objetivos de vigilancia ilimitados", tr: "Sınırsız izleme hedefleri", ru: "Неограниченные цели наблюдения" },
+  pricing_f_realtime: { en: "Continuous Real-time Sweeps (24/7)", ar: "مسح مستمر في الوقت الحقيقي (24/7)", fr: "Balayages continus 24/7", de: "Kontinuierliche Echtzeit-Scans (24/7)", es: "Barridos continuos en tiempo real (24/7)", tr: "Sürekli gerçek zamanlı tarama (7/24)", ru: "Непрерывное сканирование в реальном времени (24/7)" },
+  pricing_f_siem: { en: "SIEM / Webhook Integrations", ar: "تكاملات SIEM / Webhook", fr: "Intégrations SIEM / Webhook", de: "SIEM/Webhook-Integrationen", es: "Integraciones SIEM / Webhook", tr: "SIEM / Webhook entegrasyonları", ru: "Интеграции SIEM/Webhook" },
+  pricing_f_team: { en: "Team Management (5 Users)", ar: "إدارة الفريق (5 مستخدمين)", fr: "Gestion d'équipe (5 utilisateurs)", de: "Teamverwaltung (5 Benutzer)", es: "Gestión de equipo (5 usuarios)", tr: "Takım yönetimi (5 kullanıcı)", ru: "Управление командой (5 пользователей)" },
+  pricing_f_threatmap: { en: "3D Threat Map Visualizer", ar: "عارض خريطة التهديدات ثلاثية الأبعاد", fr: "Visualiseur de carte de menaces 3D", de: "3D-Bedrohungskarten-Visualisierer", es: "Visualizador de mapa de amenazas 3D", tr: "3D Tehdit Haritası Görselleştirici", ru: "3D-визуализатор карты угроз" },
+
+  // ─── Admin Dashboard ───
+  admin_title: { en: "System Command Center", ar: "مركز التحكم في النظام", fr: "Centre de commande système", de: "System-Kommandozentrale", es: "Centro de mando del sistema", tr: "Sistem komuta merkezi", ru: "Центр управления системой" },
+  admin_subtitle: { en: "Root Administrator Privileges Active. All systems nominal.", ar: "صلاحيات المسؤول الجذر مفعلة. جميع الأنظمة تعمل بشكل طبيعي.", fr: "Privilèges administrateur root actifs. Tous les systèmes nominaux.", de: "Root-Administratorrechte aktiv. Alle Systeme nominal.", es: "Privilegios de administrador root activos. Todos los sistemas nominales.", tr: "Kök yönetici yetkileri aktif. Tüm sistemler nominal.", ru: "Привилегии root-администратора активны. Все системы в норме." },
+  admin_analytics: { en: "Analytics", ar: "التحليلات", fr: "Analytique", de: "Analytik", es: "Analíticas", tr: "Analitik", ru: "Аналитика" },
+  admin_revenue: { en: "Revenue", ar: "الإيرادات", fr: "Revenus", de: "Einnahmen", es: "Ingresos", tr: "Gelir", ru: "Доход" },
+  admin_growth: { en: "Growth", ar: "النمو", fr: "Croissance", de: "Wachstum", es: "Crecimiento", tr: "Büyüme", ru: "Рост" },
+  admin_users: { en: "Users & Bans", ar: "المستخدمون والحظر", fr: "Utilisateurs et bans", de: "Benutzer & Sperren", es: "Usuarios y bloqueos", tr: "Kullanıcılar ve yasaklar", ru: "Пользователи и баны" },
+  admin_promos: { en: "Promos", ar: "العروض", fr: "Promos", de: "Aktionen", es: "Promociones", tr: "Promosyonlar", ru: "Промоакции" },
+  admin_activity: { en: "Activity", ar: "النشاط", fr: "Activité", de: "Aktivität", es: "Actividad", tr: "Etkinlik", ru: "Активность" },
+  admin_system: { en: "System", ar: "النظام", fr: "Système", de: "System", es: "Sistema", tr: "Sistem", ru: "Система" },
+  admin_live: { en: "Live", ar: "مباشر", fr: "En direct", de: "Live", es: "En vivo", tr: "Canlı", ru: "Онлайн" },
+  admin_broadcast: { en: "Broadcast", ar: "بث", fr: "Diffusion", de: "Broadcast", es: "Difusión", tr: "Yayın", ru: "Рассылка" },
+  admin_flags: { en: "Flags", ar: "الإشارات", fr: "Indicateurs", de: "Flags", es: "Banderas", tr: "Bayraklar", ru: "Флаги" },
+  admin_export: { en: "Export", ar: "تصدير", fr: "Exporter", de: "Export", es: "Exportar", tr: "Dışa aktar", ru: "Экспорт" },
+  admin_config: { en: "Config", ar: "الإعدادات", fr: "Config", de: "Konfiguration", es: "Configuración", tr: "Yapılandırma", ru: "Конфигурация" },
+
+  // ─── Sidebar extras ───
+  sidebar_stealth: { en: "STEALTH EDITION", ar: "الإصدار الخفي", fr: "ÉDITION FURTIVE", de: "STEALTH-EDITION", es: "EDICIÓN SIGILO", tr: "GİZLİ SÜRÜM", ru: "STEALTH ВЕРСИЯ" },
+  sidebar_upgrade: { en: "Upgrade System", ar: "ترقية النظام", fr: "Mettre à niveau", de: "System upgraden", es: "Mejorar sistema", tr: "Sistemi yükselt", ru: "Обновить систему" },
+  sidebar_admin_console: { en: "Admin Console", ar: "لوحة الإدارة", fr: "Console Admin", de: "Admin-Konsole", es: "Consola de Admin", tr: "Yönetici Konsolu", ru: "Консоль администратора" },
+  sidebar_system_control: { en: "System Control", ar: "التحكم بالنظام", fr: "Contrôle système", de: "Systemsteuerung", es: "Control del sistema", tr: "Sistem kontrolü", ru: "Управление системой" },
+  sidebar_navigation: { en: "Navigation", ar: "الأدوات", fr: "Navigation", de: "Navigation", es: "Navegación", tr: "Gezinme", ru: "Навигация" },
+  sidebar_core: { en: "Core", ar: "الأساسية", fr: "Base", de: "Kern", es: "Núcleo", tr: "Çekirdek", ru: "Ядро" },
+  sidebar_people: { en: "People OSINT", ar: "أبحاث الأفراد", fr: "OSINT Personnes", de: "Personen OSINT", es: "OSINT Personas", tr: "Kişi OSINT", ru: "OSINT Люди" },
+  sidebar_network: { en: "Network & System", ar: "الشبكة والتقنية", fr: "Réseau & Système", de: "Netzwerk & System", es: "Red y Sistema", tr: "Ağ ve Sistem", ru: "Сеть и Система" },
+  sidebar_enterprise: { en: "SOC Enterprise", ar: "المؤسسات", fr: "SOC Enterprise", de: "SOC Enterprise", es: "SOC Enterprise", tr: "SOC Kurumsal", ru: "SOC Enterprise" },
+  sidebar_watchlist: { en: "Live Watchlist", ar: "المراقبة المستمرة", fr: "Liste de surveillance", de: "Live-Watchlist", es: "Lista de vigilancia", tr: "Canlı izleme", ru: "Живой наблюдательный список" },
+  sidebar_team: { en: "Team Management", ar: "إدارة الفريق", fr: "Gestion d'équipe", de: "Teamverwaltung", es: "Gestión de equipo", tr: "Takım yönetimi", ru: "Управление командой" },
+  sidebar_threat_3d: { en: "3D Threat Globe", ar: "خريطة 3D", fr: "Globe de menaces 3D", de: "3D-Bedrohungsglobus", es: "Globo de amenazas 3D", tr: "3D Tehdit Küresi", ru: "3D-глобус угроз" },
+
+  // ─── Loading / Init Screen ───
+  init_loading: { en: "Initializing Security Modules", ar: "جاري تهيئة وحدات الأمان", fr: "Initialisation des modules de sécurité", de: "Sicherheitsmodule werden initialisiert", es: "Inicializando módulos de seguridad", tr: "Güvenlik modülleri başlatılıyor", ru: "Инициализация модулей безопасности" },
+  init_connection: { en: "Establishing Secure Connection", ar: "جاري إنشاء اتصال آمن", fr: "Établissement d'une connexion sécurisée", de: "Sichere Verbindung wird hergestellt", es: "Estableciendo conexión segura", tr: "Güvenli bağlantı kuruluyor", ru: "Установка безопасного соединения" },
+
+  // ─── Watchlist / Live Monitoring ───
+  watchlist_command: { en: "COMMAND: ADD TARGET", ar: "أمر: إضافة هدف", fr: "COMMANDE: AJOUTER CIBLE", de: "BEFEHL: ZIEL HINZUFÜGEN", es: "COMANDO: AGREGAR OBJETIVO", tr: "KOMUT: HEDEF EKLE", ru: "КОМАНДА: ДОБАВИТЬ ЦЕЛЬ" },
+  watchlist_ipv4: { en: "IPv4 Address", ar: "عنوان IPv4", fr: "Adresse IPv4", de: "IPv4-Adresse", es: "Dirección IPv4", tr: "IPv4 Adresi", ru: "IPv4 Адрес" },
+  watchlist_placeholder: { en: "e.g. 192.168.1.1", ar: "مثال: 192.168.1.1", fr: "ex. 192.168.1.1", de: "z.B. 192.168.1.1", es: "ej. 192.168.1.1", tr: "ör. 192.168.1.1", ru: "напр. 192.168.1.1" },
+  watchlist_empty: { en: "Deploy your first sensor by adding an asset to the watchlist.", ar: "انشر أول مستشعر لك بإضافة أصل إلى قائمة المراقبة.", fr: "Déployez votre premier capteur en ajoutant un actif.", de: "Setzen Sie Ihren ersten Sensor ein, indem Sie ein Asset hinzufügen.", es: "Despliega tu primer sensor agregando un activo a la lista.", tr: "İzleme listesine bir varlık ekleyerek ilk sensörünüzü konuşlandırın.", ru: "Разверните первый сенсор, добавив актив в список наблюдения." },
+  watchlist_standby: { en: "SYSTEM STANDBY", ar: "النظام في وضع الاستعداد", fr: "SYSTÈME EN VEILLE", de: "SYSTEM STANDBY", es: "SISTEMA EN ESPERA", tr: "SİSTEM BEKLEME", ru: "СИСТЕМА В РЕЖИМЕ ОЖИДАНИЯ" },
+  watchlist_awaiting: { en: "Awaiting Scan Execution", ar: "في انتظار تنفيذ الفحص", fr: "En attente d'exécution du scan", de: "Warte auf Scan-Ausführung", es: "Esperando ejecución de escaneo", tr: "Tarama yürütmesi bekleniyor", ru: "Ожидание выполнения сканирования" },
+
+  // ─── Updates Tab ───
+  tab_updates: { en: "Updates", ar: "التحديثات", fr: "Mises à jour", de: "Updates", es: "Actualizaciones", tr: "Güncellemeler", ru: "Обновления" },
+  updates_up_to_date: { en: "You're up to date!", ar: "أنت محدّث!", fr: "Vous êtes à jour !", de: "Sie sind auf dem neuesten Stand!", es: "¡Estás actualizado!", tr: "Güncelsiniz!", ru: "Вы обновлены!" },
+  updates_up_to_date_desc: { en: "JoeScan is running the latest version. No action needed.", ar: "جو-سكان يعمل بأحدث إصدار. مفيش حاجة محتاج تعملها.", fr: "JoeScan est à jour. Aucune action nécessaire.", de: "JoeScan läuft auf der neuesten Version.", es: "JoeScan ejecuta la última versión.", tr: "JoeScan en son sürümü çalışıyor.", ru: "JoeScan работает на последней версии." },
+  updates_available: { en: "Update Available!", ar: "يوجد تحديث جديد!", fr: "Mise à jour disponible !", de: "Update verfügbar!", es: "¡Actualización disponible!", tr: "Güncelleme mevcut!", ru: "Доступно обновление!" },
+  updates_available_desc: { en: "A new version of JoeScan is ready. Update now to get the latest features and fixes.", ar: "نسخة جديدة من جو-سكان جاهزة. حدّث دلوقتي عشان تاخد أحدث المميزات والإصلاحات.", fr: "Une nouvelle version est prête. Mettez à jour maintenant.", de: "Eine neue Version ist bereit. Jetzt aktualisieren.", es: "Una nueva versión está lista. Actualiza ahora.", tr: "Yeni bir sürüm hazır. Şimdi güncelleyin.", ru: "Новая версия готова. Обновите сейчас." },
+  updates_install: { en: "Install Update & Restart", ar: "تثبيت التحديث وإعادة التشغيل", fr: "Installer et redémarrer", de: "Update installieren", es: "Instalar y reiniciar", tr: "Güncelle ve yeniden başlat", ru: "Установить и перезапустить" },
+  updates_check: { en: "Check for Updates", ar: "التحقق من التحديثات", fr: "Vérifier les mises à jour", de: "Nach Updates suchen", es: "Buscar actualizaciones", tr: "Güncellemeleri kontrol et", ru: "Проверить обновления" },
+  updates_checking: { en: "Checking...", ar: "جاري التحقق...", fr: "Vérification...", de: "Prüfe...", es: "Verificando...", tr: "Kontrol ediliyor...", ru: "Проверка..." },
+  updates_last_checked: { en: "Last checked", ar: "آخر فحص", fr: "Dernière vérification", de: "Zuletzt geprüft", es: "Última verificación", tr: "Son kontrol", ru: "Последняя проверка" },
+  updates_clear_cache: { en: "Clear Cache & Reload", ar: "مسح الذاكرة المؤقتة وإعادة التحميل", fr: "Vider le cache et recharger", de: "Cache leeren & neu laden", es: "Borrar caché y recargar", tr: "Önbelleği temizle ve yeniden yükle", ru: "Очистить кэш и перезагрузить" },
+  updates_clear_cache_desc: { en: "Force refresh all cached files. Use this if the app behaves unexpectedly.", ar: "تحديث إجباري لكل الملفات المخزنة. استخدمها لو التطبيق بيتصرف بشكل غريب.", fr: "Actualiser de force tous les fichiers en cache.", de: "Alle zwischengespeicherten Dateien aktualisieren.", es: "Forzar actualización de archivos en caché.", tr: "Tüm önbellek dosyalarını zorla yenileyin.", ru: "Принудительно обновить все кэшированные файлы." },
 };
 
 // Language display names for the switcher
@@ -327,8 +532,15 @@ interface PreferencesContextType {
 const PreferencesContext = createContext<PreferencesContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [lang, setLang] = useState<Language>('en');
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [lang, setLangState] = useState<Language>(() => {
+    try { const saved = localStorage.getItem('joescan-lang'); if (saved && ['en','ar','fr','de','es','tr','ru'].includes(saved)) return saved as Language; } catch {} return 'en';
+  });
+  const [theme, setThemeState] = useState<Theme>(() => {
+    try { const saved = localStorage.getItem('joescan-theme'); if (saved === 'light' || saved === 'dark') return saved; } catch {} return 'dark';
+  });
+
+  const setLang = (l: Language) => { setLangState(l); try { localStorage.setItem('joescan-lang', l); } catch {} };
+  const setTheme = (t: Theme) => { setThemeState(t); try { localStorage.setItem('joescan-theme', t); } catch {} };
 
   const dir = lang === 'ar' ? 'rtl' : 'ltr';
 

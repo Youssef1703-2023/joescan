@@ -158,8 +158,8 @@ export default function DeviceSecurityCheck() {
             )}
           </div>
           <div>
-            <h1 className="text-2xl md:text-3xl font-black mb-2 glitch-text" data-text={lang === 'ar' ? 'فحص أمان الجهاز والشبكة' : 'Device Security Check'}>
-              {lang === 'ar' ? 'فحص أمان الجهاز والشبكة' : 'Device Security Check'}
+            <h1 className="text-2xl md:text-3xl font-black mb-2 glitch-text" data-text={t('nav_device_security')}>
+              {t('nav_device_security')}
             </h1>
             <p className="text-text-dim text-sm md:text-base max-w-xl">
               {lang === 'ar' 
@@ -177,7 +177,7 @@ export default function DeviceSecurityCheck() {
           <div className="absolute inset-0 border border-accent/20 rounded-2xl opacity-50 group-hover:opacity-100 transition-opacity" />
           
           <h3 className="font-mono text-xs text-accent uppercase tracking-[0.2em] mb-4 flex items-center gap-2 relative z-10">
-            <Activity className="w-4 h-4" /> Live Threat Operations Terminal
+            <Activity className="w-4 h-4" /> {t('dev_terminal_title')}
           </h3>
           
           <div className="flex-1 bg-bg-base/80 rounded-xl p-4 font-mono text-sm overflow-hidden flex flex-col justify-end border border-border-subtle relative shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
@@ -229,7 +229,7 @@ export default function DeviceSecurityCheck() {
             {loading ? (
               <><span className="animate-spin relative top-[-1px]">&#8982;</span> {lang === 'ar' ? 'جاري الفحص...' : 'DIAGNOSING...'}</>
             ) : (
-              <><ShieldAlert className="w-5 h-5" /> {lang === 'ar' ? 'بدء الفحص الأمني' : 'INITIATE DIAGNOSTIC'}</>
+              <><ShieldAlert className="w-5 h-5" /> {t('dev_start_scan')}</>
             )}
           </button>
         </div>
@@ -246,9 +246,9 @@ export default function DeviceSecurityCheck() {
               
               <div className="flex justify-between items-start border-b border-border-subtle/50 pb-4">
                 <div>
-                   <h3 className="text-xl font-black uppercase mb-1">Posture Evaluation</h3>
+                   <h3 className="text-xl font-black uppercase mb-1">{t('dev_posture_eval')}</h3>
                    <div className="flex items-center gap-2 font-mono text-xs tracking-widest text-text-dim">
-                     <span>TARGET:</span>
+                     <span>{t('dev_target')}:</span>
                      <span className="font-bold text-text-main glow-low px-2 py-0.5 rounded bg-bg-surface">{ipData?.ip || 'RESOLVING...'}</span>
                    </div>
                 </div>
@@ -265,7 +265,7 @@ export default function DeviceSecurityCheck() {
                 <div className="p-4 rounded-xl bg-bg-elevated border border-[currentColor]/10 relative">
                   <div className="flex items-center gap-3 mb-2">
                     <Server className="w-5 h-5 text-text-dim" />
-                    <h4 className="font-bold uppercase tracking-widest text-sm">Network Exposure</h4>
+                    <h4 className="font-bold uppercase tracking-widest text-sm">{t('dev_network_exposure')}</h4>
                   </div>
                   
                   {status === 'scanning_shodan' || status === 'scanning_ip' ? (
@@ -303,7 +303,7 @@ export default function DeviceSecurityCheck() {
                   ) : (
                      <div className="flex items-center gap-2 text-accent text-sm font-medium mt-2">
                        <CheckCircle2 className="w-5 h-5 drop-shadow-[0_0_8px_currentColor]" /> 
-                       Safe. No known exposure in Global Threat Databases.
+                       {t('dev_safe_msg')}
                      </div>
                   )}
                 </div>
@@ -312,7 +312,7 @@ export default function DeviceSecurityCheck() {
                 <div className="p-4 rounded-xl bg-bg-elevated border border-[currentColor]/10 relative">
                   <div className="flex items-center gap-3 mb-2">
                     <Lock className="w-5 h-5 text-text-dim" />
-                    <h4 className="font-bold uppercase tracking-widest text-sm">Browser Posture</h4>
+                    <h4 className="font-bold uppercase tracking-widest text-sm">{t('dev_browser_posture')}</h4>
                   </div>
                   
                   {status !== 'complete' && status !== 'scanning_browser' ? (
@@ -320,21 +320,21 @@ export default function DeviceSecurityCheck() {
                   ) : browserData ? (
                     <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-xs font-mono mt-3">
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-text-dim">DO NOT TRACK</span>
+                        <span className="text-[10px] text-text-dim">{t('dev_do_not_track')}</span>
                         <span className={browserData.doNotTrack ? "text-accent" : "text-error"}>
-                          {browserData.doNotTrack ? 'ENABLED' : 'DISABLED'}
+                          {browserData.doNotTrack ? t('dev_enabled') : t('dev_disabled')}
                         </span>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-text-dim">COOKIES</span>
-                        <span className="text-caution">{browserData.cookiesEnabled ? 'ACCEPTED' : 'BLOCKED'}</span>
+                        <span className="text-[10px] text-text-dim">{t('dev_cookies')}</span>
+                        <span className="text-caution">{browserData.cookiesEnabled ? t('dev_accepted') : 'BLOCKED'}</span>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-text-dim">DEVICE CLASS</span>
-                        <span className="text-text-main">{browserData.isMobile ? 'MOBILE' : 'DESKTOP'}</span>
+                        <span className="text-[10px] text-text-dim">{t('dev_device_class')}</span>
+                        <span className="text-text-main">{browserData.isMobile ? t('dev_mobile') : t('dev_desktop')}</span>
                       </div>
                       <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-text-dim">HARDWARE THREADS</span>
+                        <span className="text-[10px] text-text-dim">{t('dev_hw_threads')}</span>
                         <span className="text-text-main">{browserData.cores || 'UNKNOWN'} CORES</span>
                       </div>
                     </div>

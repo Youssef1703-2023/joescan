@@ -223,10 +223,10 @@ export default function PasswordAnalyzer() {
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 relative z-10">
           <div>
             <h2 className="text-2xl font-bold font-mono tracking-tight uppercase mb-2 text-text-main flex items-center gap-3">
-              <KeyRound className="w-6 h-6 text-accent" /> Password Vault Check
+              <KeyRound className="w-6 h-6 text-accent" /> {t('pwd_vault_title')}
             </h2>
             <p className="text-text-dim text-sm max-w-xl leading-relaxed">
-              Evaluate password strength algorithmically in real-time, then run a deep audit against neural-network breach databases to detect compromised footprints.
+              {t('pwd_vault_desc')}
             </p>
           </div>
 
@@ -390,7 +390,7 @@ export default function PasswordAnalyzer() {
                 disabled={loading || !password.trim()}
                 className="w-full lg:w-auto bg-accent text-accent-fg px-8 py-4 rounded-xl font-black tracking-[0.15em] uppercase hover:bg-opacity-90 disabled:opacity-50 transition-all flex items-center justify-center shrink-0 shadow-[0_0_20px_rgba(0,255,0,0.15)] hover:shadow-[0_0_30px_rgba(0,255,0,0.3)]"
               >
-                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Deep Audit'}
+                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : t('pwd_deep_audit')}
               </button>
           </div>
         )}
@@ -415,14 +415,14 @@ export default function PasswordAnalyzer() {
               <div className="flex-1 space-y-5 w-full">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
-                    <h3 className="font-mono text-xs uppercase tracking-[0.2em] opacity-80 mb-2">Risk Assessed</h3>
-                    <div className="text-3xl font-black uppercase tracking-tight">{result.riskLevel} EXPOSURE</div>
+                    <h3 className="font-mono text-xs uppercase tracking-[0.2em] opacity-80 mb-2">{t('pwd_risk_assessed')}</h3>
+                    <div className="text-3xl font-black uppercase tracking-tight">{result.riskLevel} {t('pwd_exposure')}</div>
                   </div>
                   <button
                     onClick={() => generateReportPDF({ ...result, target: '••••••••' }, 'password', lang)}
                     className="flex items-center gap-2 bg-text-main text-bg-base hover:bg-opacity-90 px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-bold transition-all"
                   >
-                    <Download className="w-4 h-4" /> Download Report
+                    <Download className="w-4 h-4" /> {t('pwd_download_report')}
                   </button>
                 </div>
 
@@ -445,7 +445,7 @@ export default function PasswordAnalyzer() {
                             className="h-full bg-[currentColor]"
                           />
                         </div>
-                        <p className="text-xs font-mono uppercase mt-3 opacity-80 tracking-widest font-bold">Threat Resistance Score</p>
+                        <p className="text-xs font-mono uppercase mt-3 opacity-80 tracking-widest font-bold">{t('pwd_resistance_score')}</p>
                       </div>
                     </div>
                   </div>
@@ -453,7 +453,7 @@ export default function PasswordAnalyzer() {
 
                 <div className="bg-bg-base/50 rounded-xl p-5 md:p-6 mt-4 backdrop-blur-sm border border-[currentColor]/10">
                   <h4 className="font-bold text-sm uppercase tracking-widest opacity-90 mb-4 flex items-center justify-center md:justify-start gap-2">
-                    <ArrowRight className="w-5 h-5" /> Remediation Steps
+                    <ArrowRight className="w-5 h-5" /> {t('pwd_remediation')}
                   </h4>
                   <ul className="space-y-3 text-sm opacity-95 text-left">
                     {(typeof result.actionPlan === 'string' ? result.actionPlan : String(result.actionPlan || '')).split('\n').filter(Boolean).map((step, i) => (
@@ -467,7 +467,7 @@ export default function PasswordAnalyzer() {
                 
                 {result.scoreFactors && result.scoreFactors.length > 0 && (
                   <div className="mt-4 opacity-80">
-                    <p className="text-xs uppercase tracking-widest font-mono font-bold mb-2">Why this score?</p>
+                    <p className="text-xs uppercase tracking-widest font-mono font-bold mb-2">{t('pwd_why_score')}</p>
                     <ul className="text-sm space-y-1 text-left list-disc list-inside">
                       {(Array.isArray(result.scoreFactors) ? result.scoreFactors : [String(result.scoreFactors)]).map((f, i) => <li key={i}>{f}</li>)}
                     </ul>

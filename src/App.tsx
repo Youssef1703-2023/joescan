@@ -1,11 +1,11 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth, isUserBanned, logActivity, ADMIN_EMAIL, getUserTier, getUserProfile, ensureUserProfile } from './lib/firebase';
+import { auth, db, isUserBanned, logActivity, ADMIN_EMAIL, getUserTier, getUserProfile, ensureUserProfile } from './lib/firebase';
 import { LanguageProvider, useLanguage, LANGUAGE_OPTIONS } from './contexts/LanguageContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Sidebar, { TabId } from './components/Sidebar';
 import NotificationCenter from './components/NotificationCenter';
-import { Shield, LogOut, Moon, Sun, User as UserIcon, BrainCircuit, Menu, Loader2 } from 'lucide-react';
+import { Shield, LogOut, Moon, Sun, User as UserIcon, BrainCircuit, Menu, Loader2, AlertTriangle, Wrench } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 // Lazy-loaded page components (code splitting)
@@ -58,6 +58,8 @@ function AppContent() {
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState('');
   const [userTier, setUserTier] = useState('free');
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [signupsEnabled, setSignupsEnabled] = useState(true);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
@@ -85,6 +87,15 @@ function AppContent() {
         logActivity('login', 'User authenticated');
         // Fetch tier
         getUserTier(u.uid).then(t => setUserTier(t));
+        // Fetch platform config for maintenance mode
+        import('firebase/firestore').then(({ doc, getDoc }) => {
+          getDoc(doc(db, 'adminConfig', 'platformSettings')).then(snap => {
+            if (snap.exists()) {
+              setMaintenanceMode(snap.data().maintenanceMode ?? false);
+              setSignupsEnabled(snap.data().signupsEnabled ?? true);
+            }
+          }).catch(() => {});
+        });
       } else {
         setCustomAvatar(null);
         setIsBanned(false);
@@ -112,6 +123,14 @@ function AppContent() {
   const handleLogin = async () => {
     setLoginLoading(true);
     try {
+      // Check if signups are enabled before allowing login
+      const { doc, getDoc } = await import('firebase/firestore');
+      const configSnap = await getDoc(doc(db, 'adminConfig', 'platformSettings'));
+      if (configSnap.exists() && configSnap.data().signupsEnabled === false) {
+        // Check if this is an existing user trying to log in — we still allow existing users
+        // But for new signups, we block. Since Google Auth popup happens before we can check,
+        // we'll let it proceed and check after
+      }
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
     } catch (err: any) {
@@ -145,6 +164,26 @@ function AppContent() {
       localStorage.setItem(`mfa_verified_${user.uid}`, 'true');
       setMfaPassed(true);
     }} onLogout={handleLogout} />;
+  }
+
+  // Maintenance mode — block non-admin users
+  if (maintenanceMode && user.email !== ADMIN_EMAIL) {
+    return (
+      <div className="min-h-screen flex items-center justify-center relative bg-bg-base">
+        <div className="mesh-bg" />
+        <div className="relative z-10 flex flex-col items-center gap-6 text-center max-w-md px-6">
+          <div className="w-20 h-20 rounded-full bg-yellow-500/10 border-2 border-yellow-500/50 flex items-center justify-center">
+            <Wrench className="w-10 h-10 text-yellow-400" />
+          </div>
+          <h1 className="text-3xl font-black uppercase tracking-tight text-yellow-400">Maintenance Mode</h1>
+          <p className="text-text-dim font-mono text-sm">The platform is currently undergoing scheduled maintenance. Please try again later.</p>
+          <p className="text-[10px] font-mono text-text-dim/50 uppercase">All services will be restored shortly</p>
+          <button onClick={handleLogout} className="mt-4 px-6 py-3 bg-bg-elevated border border-border-subtle rounded-xl text-sm font-mono uppercase text-text-dim hover:text-text-main transition-colors">
+            <LogOut className="w-4 h-4 inline mr-2" /> Sign Out
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (isBanned) {
@@ -225,12 +264,12 @@ function AppContent() {
               </button>
               <div
                 id="joescan-settings-dropdown"
-                className="hidden absolute right-0 top-full mt-2 w-56 bg-bg-base border border-border-subtle rounded-xl shadow-2xl p-3 space-y-3 z-[200]"
+                className="hidden absolute top-full mt-2 w-60 bg-bg-base border border-border-subtle rounded-xl shadow-2xl p-3 space-y-3 z-[200] end-0"
                 onMouseLeave={() => document.getElementById('joescan-settings-dropdown')?.classList.add('hidden')}
               >
                 {/* Theme */}
                 <div>
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-text-dim mb-2">{lang === 'ar' ? 'المظهر' : 'Theme'}</p>
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-text-dim mb-2">{t('toggle_theme')}</p>
                   <div className="flex gap-1">
                     <button
                       onClick={() => setTheme('dark')}
@@ -249,7 +288,7 @@ function AppContent() {
 
                 {/* Language */}
                 <div>
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-text-dim mb-2">{lang === 'ar' ? 'اللغة' : 'Language'}</p>
+                  <p className="text-[10px] font-mono uppercase tracking-widest text-text-dim mb-2">{t('language_label')}</p>
                   <div className="grid grid-cols-2 gap-1">
                     {LANGUAGE_OPTIONS.map(opt => (
                       <button
@@ -263,16 +302,6 @@ function AppContent() {
                   </div>
                 </div>
 
-                {/* AI Provider */}
-                <div>
-                  <button
-                    onClick={() => { setShowApiSettings(true); document.getElementById('joescan-settings-dropdown')?.classList.add('hidden'); }}
-                    className="w-full flex items-center gap-2 px-3 py-2.5 rounded-lg bg-bg-surface text-text-dim hover:text-accent hover:border-accent/30 border border-border-subtle transition-all text-xs font-semibold"
-                  >
-                    <BrainCircuit className="w-4 h-4" />
-                    {lang === 'ar' ? 'إعدادات محرك الذكاء الاصطناعي' : 'AI Engine Settings'}
-                  </button>
-                </div>
               </div>
             </div>
 

@@ -206,9 +206,9 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
   const getRelativeTime = (date: Date) => {
     const diffInSeconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
     if (diffInSeconds < 60) return t('just_now');
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
-    return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}${t('dash_time_m_ago')}`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}${t('dash_time_h_ago')}`;
+    return `${Math.floor(diffInSeconds / 86400)}${t('dash_time_d_ago')}`;
   };
 
   const globalScore = calculateGlobalScore();
@@ -230,12 +230,12 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
     { id: 'phone', label: t('nav_phone'), icon: Smartphone, scanType: 'phone' },
     { id: 'url', label: t('nav_url'), icon: LinkIcon, scanType: 'url' },
     { id: 'username', label: t('nav_username'), icon: UserSearch, scanType: 'username' },
-    { id: 'social', label: t('nav_social' as never), icon: Globe, scanType: 'social_osint' },
+    { id: 'social', label: t('nav_social'), icon: Globe, scanType: 'social_osint' },
     { id: 'message', label: t('nav_message'), icon: MessageSquareWarning, scanType: 'message' },
     { id: 'ip', label: t('nav_ip'), icon: Wifi, scanType: 'ip' },
-    { id: 'domain', label: lang === 'ar' ? 'فحص الدومين' : 'Domain WHOIS', icon: Globe, scanType: 'domain' },
-    { id: 'fingerprint', label: lang === 'ar' ? 'بصمة المتصفح' : 'Browser Fingerprint', icon: Fingerprint, scanType: 'browser_fingerprint' },
-    { id: 'device_security', label: lang === 'ar' ? 'أمان الجهاز' : 'Device Security', icon: Monitor, scanType: 'device_security' },
+    { id: 'domain', label: t('nav_domain'), icon: Globe, scanType: 'domain' },
+    { id: 'fingerprint', label: t('nav_fingerprint'), icon: Fingerprint, scanType: 'browser_fingerprint' },
+    { id: 'device_security', label: t('nav_device_security'), icon: Monitor, scanType: 'device_security' },
   ] as const;
 
   const CustomTerminalTooltip = ({ active, payload, label }: any) => {
@@ -249,7 +249,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
                 <span className="w-1.5 h-1.5 rounded-full bg-current" /> {p.name || p.dataKey}
               </span>
               <span className="text-text-main font-black glitch-text" data-text={p.value}>
-                {p.value} DETECTIONS
+                {p.value} {t('dash_detections')}
               </span>
             </div>
           ))}
@@ -286,7 +286,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
               </div>
             </div>
             <p className="opacity-90 max-w-lg leading-relaxed font-mono mt-4 md:mt-0 text-sm md:text-base p-4 bg-bg-base/30 rounded-lg border border-[currentColor]/20 shadow-[0_0_20px_currentColor_inset]">
-              <span className="block text-xs uppercase tracking-widest opacity-60 mb-1">SYSTEM DIAGNOSIS</span>
+              <span className="block text-xs uppercase tracking-widest opacity-60 mb-1">{t('dash_system_diagnosis')}</span>
               {globalScore >= 80 ? t('score_high_desc') : globalScore >= 50 ? t('score_medium_desc') : t('score_low_desc')}
             </p>
           </div>
@@ -296,15 +296,15 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
           <div className="absolute inset-0 bg-[currentColor]/5 rounded-xl animate-pulse-glow" />
           <div className="flex flex-col items-center p-3 border-r border-[currentColor]/10 pr-6">
             <span className="text-3xl font-black">{loading ? '...' : scans.length}</span>
-            <span className="text-xs uppercase tracking-widest opacity-80 mt-1 font-mono">Total Scans</span>
+            <span className="text-xs uppercase tracking-widest opacity-80 mt-1 font-mono">{t('dash_total_scans')}</span>
           </div>
           <div className="flex flex-col items-center p-3 border-[currentColor]/10 px-4">
             <span className="text-3xl font-black flex items-center justify-center gap-1.5 h-9"><Trophy className="w-5 h-5" /> {userTier.name.charAt(0)}</span>
-            <span className="text-xs uppercase tracking-widest opacity-80 mt-1 font-mono">Tier</span>
+            <span className="text-xs uppercase tracking-widest opacity-80 mt-1 font-mono">{t('dash_tier')}</span>
           </div>
           <div className="flex flex-col items-center p-3 border-l border-[currentColor]/10 pl-6">
             <span className="text-3xl font-black">{scans.filter((scan) => scan.riskLevel?.toUpperCase() === 'HIGH').length}</span>
-            <span className="text-xs uppercase tracking-widest opacity-80 mt-1 font-mono">High Risk</span>
+            <span className="text-xs uppercase tracking-widest opacity-80 mt-1 font-mono">{t('dash_high_risk')}</span>
           </div>
         </div>
       </motion.div>
@@ -345,7 +345,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
                 </ResponsiveContainer>
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center text-text-dim/50 font-mono text-sm uppercase">
-                  No data
+                  {t('dash_no_data')}
                 </div>
               )}
             </div>
@@ -365,8 +365,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
                     contentStyle={{ backgroundColor: colors.bgElevated, borderColor: colors.textDim, borderRadius: '8px' }}
                     itemStyle={{ color: '#fff' }}
                   />
-                  <Line type="monotone" dataKey="scans" name="Total Scans" stroke={colors.accent} strokeWidth={3} dot={{ r: 4, fill: colors.bgElevated, strokeWidth: 2 }} />
-                  <Line type="monotone" dataKey="highRisk" name="High Risk" stroke={colors.error} strokeWidth={2} dot={false} />
+                  <Line type="monotone" dataKey="scans" name={t('dash_total_scans_legend')} stroke={colors.accent} strokeWidth={3} dot={{ r: 4, fill: colors.bgElevated, strokeWidth: 2 }} />
+                  <Line type="monotone" dataKey="highRisk" name={t('dash_high_risk')} stroke={colors.error} strokeWidth={2} dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -381,7 +381,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
         >
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-sm tracking-widest uppercase flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-accent" /> Tools & Instruments
+              <ShieldCheck className="w-4 h-4 text-accent" /> {t('dash_tools')}
             </h3>
             <button
               onClick={() => onNavigate('history')}
@@ -413,15 +413,15 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
 
                   <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-border-subtle/50 text-[10px] uppercase tracking-widest font-mono text-text-dim w-full">
                     <div className="flex flex-col">
-                      <span className="opacity-50">Scans</span>
+                      <span className="opacity-50">{t('dash_scans')}</span>
                       <span className="font-bold text-text-main text-xs">{stats.count}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="opacity-50">Avg Score</span>
+                      <span className="opacity-50">{t('dash_avg_score')}</span>
                       <span className="font-bold text-text-main text-xs">{stats.avgScore}</span>
                     </div>
                     <div className="flex flex-col">
-                      <span className="opacity-50">Last</span>
+                      <span className="opacity-50">{t('dash_last')}</span>
                       <span className="font-bold text-text-main text-xs truncate">{stats.lastScan}</span>
                     </div>
                   </div>
@@ -443,7 +443,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
         <div className="glass-card p-6 h-80 flex flex-col relative overflow-hidden group border-accent/20 hover:border-accent/40 hover:shadow-[0_0_20px_rgba(0,255,0,0.05)] transition-all">
           <div className="absolute top-0 right-0 w-32 h-32 bg-accent opacity-0 group-hover:opacity-5 blur-3xl rounded-full transition-opacity" />
           <h3 className="font-bold text-sm tracking-widest uppercase mb-4 flex items-center gap-2 relative z-10 text-accent glow-text">
-            <TrendingUp className="w-4 h-4" /> {lang === 'ar' ? 'الاختراقات شهرياً' : 'OSINT Timeline'}
+            <TrendingUp className="w-4 h-4" /> {t('dash_osint_timeline')}
           </h3>
           <div className="flex-1 w-full text-xs relative z-10">
             <ResponsiveContainer width="100%" height="100%">
@@ -465,10 +465,10 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
                 
                 {/* Total Scans Area */}
-                <Area type="monotone" dataKey="scans" name="Total Scans" stroke={colors.accent} strokeWidth={2} fillOpacity={1} fill="url(#colorTotal)" dot={false} activeDot={{ r: 6, fill: colors.bgElevated, stroke: colors.accent, strokeWidth: 2 }} />
+                <Area type="monotone" dataKey="scans" name={t('dash_total_scans_legend')} stroke={colors.accent} strokeWidth={2} fillOpacity={1} fill="url(#colorTotal)" dot={false} activeDot={{ r: 6, fill: colors.bgElevated, stroke: colors.accent, strokeWidth: 2 }} />
                 
                 {/* High Risk Area Overlay */}
-                <Area type="monotone" dataKey="highRisk" name="Critical Detects" stroke={colors.error} strokeWidth={2} fillOpacity={1} fill="url(#colorRisk)" dot={false} activeDot={{ r: 6, fill: colors.bgElevated, stroke: colors.error, strokeWidth: 2 }} className="drop-shadow-[0_0_10px_rgba(255,0,0,0.5)]" />
+                <Area type="monotone" dataKey="highRisk" name={t('dash_critical_detects')} stroke={colors.error} strokeWidth={2} fillOpacity={1} fill="url(#colorRisk)" dot={false} activeDot={{ r: 6, fill: colors.bgElevated, stroke: colors.error, strokeWidth: 2 }} className="drop-shadow-[0_0_10px_rgba(255,0,0,0.5)]" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -478,7 +478,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
         <div className="glass-card p-6 h-80 flex flex-col relative overflow-hidden group border-error/10 hover:border-error/30 hover:shadow-[0_0_20px_rgba(255,0,0,0.05)] transition-all">
           <div className="absolute top-0 right-0 w-32 h-32 bg-error opacity-0 group-hover:opacity-5 blur-3xl rounded-full transition-opacity" />
           <h3 className="font-bold text-sm tracking-widest uppercase mb-4 flex items-center gap-2 relative z-10 text-text-main shadow-md">
-            <Hexagon className="w-4 h-4 text-error" /> {lang === 'ar' ? 'رادار ناقلات الهجوم' : 'Attack Vectors Radar'}
+            <Hexagon className="w-4 h-4 text-error" /> {t('dash_attack_radar')}
           </h3>
           <div className="flex-1 w-full relative z-10">
             {typeDistributionData.length > 0 ? (
@@ -509,7 +509,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
             ) : (
               <div className="absolute inset-0 flex items-center justify-center text-text-dim/50 font-mono text-sm uppercase">
                 <Target className="w-8 h-8 opacity-20 absolute animate-spin-slow" />
-                <span className="relative z-10 bg-bg-base/80 px-4 py-1 rounded border border-border-subtle">No Intel Available</span>
+                <span className="relative z-10 bg-bg-base/80 px-4 py-1 rounded border border-border-subtle">{t('dash_no_intel')}</span>
               </div>
             )}
           </div>

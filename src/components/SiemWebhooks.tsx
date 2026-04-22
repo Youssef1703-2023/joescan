@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Webhook, Plus, Trash2, Zap, CheckCircle, XCircle, Copy, Bell, Shield, Globe, MessageSquare, AlertTriangle } from 'lucide-react';
 import { auth, db, logActivity, getUserTier } from '../lib/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { useLanguage } from '../contexts/LanguageContext';
 
 const EVENT_TYPES = [
   { id: 'scan_complete', label: 'Scan Completed', icon: '🔍' },
@@ -23,6 +24,7 @@ const PRESETS = [
 ];
 
 export default function SiemWebhooks() {
+  const { t } = useLanguage();
   const [webhooks, setWebhooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState('free');
@@ -121,19 +123,19 @@ export default function SiemWebhooks() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
-            <Webhook className="w-8 h-8 text-cyan-400" /> SIEM & Webhooks
+            <Webhook className="w-8 h-8 text-cyan-400" /> {t('siem_title')}
           </h1>
-          <p className="text-text-dim text-sm mt-1 font-mono">Forward threat intelligence events to your security infrastructure.</p>
+          <p className="text-text-dim text-sm mt-1 font-mono">{t('siem_desc')}</p>
         </div>
         <button onClick={() => setShowForm(!showForm)} disabled={webhooks.length >= maxHooks}
           className="flex items-center gap-2 px-4 py-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 text-xs font-bold uppercase tracking-widest hover:bg-cyan-500/20 transition-all disabled:opacity-40">
-          <Plus className="w-4 h-4" /> New Endpoint
+          <Plus className="w-4 h-4" /> {t('siem_new_endpoint')}
         </button>
       </div>
 
       {/* Quota */}
       <div className="glass-card p-4 rounded-xl flex items-center justify-between">
-        <span className="text-sm font-bold">{webhooks.length} / {maxHooks} Endpoints Active</span>
+        <span className="text-sm font-bold">{webhooks.length} / {maxHooks} {t('siem_endpoints_active')}</span>
         <span className={`text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded ${tier === 'enterprise' ? 'bg-error/20 text-error' : 'bg-accent/20 text-accent'}`}>{tier}</span>
       </div>
 
@@ -225,7 +227,7 @@ export default function SiemWebhooks() {
         {webhooks.length === 0 && !showForm && (
           <div className="text-center py-12 glass-card rounded-xl">
             <Webhook className="w-12 h-12 text-text-dim/30 mx-auto mb-3" />
-            <p className="text-text-dim font-mono text-sm">No endpoints configured. Forward your alerts to Slack, Discord, or your SIEM.</p>
+            <p className="text-text-dim font-mono text-sm">{t('siem_no_endpoints')}</p>
           </div>
         )}
       </div>
