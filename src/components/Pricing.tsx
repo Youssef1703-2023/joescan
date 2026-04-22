@@ -24,7 +24,7 @@ const STRIPE_CONFIG = {
 };
 
 export default function Pricing() {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const [currentTier, setCurrentTier] = useState<SubscriptionTier>('free');
   const [loading, setLoading] = useState(true);
   const [currency, setCurrency] = useState<'USD' | 'EGP'>('USD');
@@ -183,8 +183,14 @@ export default function Pricing() {
   }
 
   const formatPrice = (usdPrice: number) => {
-    if (usdPrice === 0) return currency === 'EGP' ? '٠ ج.م' : '$0';
-    return currency === 'EGP' ? `${usdPrice * 50} ج.م` : `$${usdPrice}`;
+    if (usdPrice === 0) {
+      if (currency === 'EGP') return language === 'en' ? '0 EGP' : '٠ ج.م';
+      return '$0';
+    }
+    if (currency === 'EGP') {
+      return language === 'en' ? `${usdPrice * 50} EGP` : `${usdPrice * 50} ج.م`;
+    }
+    return `$${usdPrice}`;
   };
 
   const tiers = [
