@@ -1,0 +1,265 @@
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, CreditCard, Lock, CheckCircle, Loader2, Shield, ScanFace } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
+
+interface CheckoutModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  planName: string;
+  price: string;
+  tier: 'pro' | 'enterprise';
+  onPaymentSuccess: (tier: 'pro' | 'enterprise') => Promise<void>;
+}
+
+export default function CheckoutModal({ isOpen, onClose, planName, price, tier, onPaymentSuccess }: CheckoutModalProps) {
+  const { dir, t } = useLanguage();
+  
+  const [cardNumber, setCardNumber] = useState('');
+  const [expiry, setExpiry] = useState('');
+  const [cvc, setCvc] = useState('');
+  const [name, setName] = useState('');
+  
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const formatCardNumber = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const matches = v.match(/\d{4,16}/g);
+    const match = matches && matches[0] || '';
+    const parts = [];
+    for (let i = 0, len = match.length; i < len; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    if (parts.length) {
+      return parts.join(' ');
+    } else {
+      return value;
+    }
+  };
+
+  const formatExpiry = (value: string) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    if (v.length >= 2) {
+      return `${v.substring(0, 2)}/${v.substring(2, 4)}`;
+    }
+    return v;
+  };
+
+  const handlePay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cardNumber.length < 19 || expiry.length < 5 || cvc.length < 3 || name.length < 3) {
+      setError("Please fill in all card details correctly.");
+      return;
+    }
+    
+    setError(null);
+    setIsProcessing(true);
+    
+    // Simulate network delay and processing
+    await new Promise(resolve => setTimeout(resolve, 2500));
+    
+    try {
+      await onPaymentSuccess(tier);
+      setIsProcessing(false);
+      setIsSuccess(true);
+      
+      // Close modal after showing success message
+      setTimeout(() => {
+        setIsSuccess(false);
+        setCardNumber('');
+        setExpiry('');
+        setCvc('');
+        setName('');
+        onClose();
+      }, 2000);
+      
+    } catch (err: any) {
+      setIsProcessing(false);
+      setError("Error upgrading account. Please try again.");
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" dir={dir}>
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="w-full max-w-4xl bg-[#0a0a0a] border border-white/10 rounded-3xl shadow-2xl overflow-hidden relative flex flex-col md:flex-row"
+        >
+          {/* Left Side - Receipt Summary */}
+          <div className="w-full md:w-2/5 bg-gradient-to-br from-bg-surface to-bg-base p-8 border-r border-white/5 flex flex-col justify-between relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-accent/10 rounded-full blur-[100px] -mr-32 -mt-32" />
+            
+            <div className="relative z-10">
+              <div className="flex items-center gap-2 mb-12">
+                <Shield className="w-8 h-8 text-accent" />
+                <span className="text-xl font-bold tracking-widest text-white">JOESCAN</span>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-mono text-text-dim uppercase tracking-widest mb-1">Subscription</h3>
+                  <div className="text-2xl font-bold text-white uppercase tracking-wider">{planName}</div>
+                </div>
+                
+                <div className="h-px w-full bg-white/10" />
+                
+                <div>
+                  <h3 className="text-sm font-mono text-text-dim uppercase tracking-widest mb-1">Total Amount</h3>
+                  <div className="text-4xl font-bold text-accent">{price} <span className="text-lg text-text-dim font-normal">/mo</span></div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="relative z-10 mt-12 flex items-center gap-3 text-sm text-text-dim">
+              <Lock className="w-4 h-4 text-accent" />
+              <span>Secured by Advanced 256-bit Encryption</span>
+            </div>
+          </div>
+
+          {/* Right Side - Payment Form */}
+          <div className="w-full md:w-3/5 bg-[#0f0f0f] p-8 relative">
+            <button onClick={onClose} disabled={isProcessing || isSuccess} className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/5 text-text-dim hover:text-white transition-colors z-20">
+              <X className="w-5 h-5" />
+            </button>
+            
+            <div className="max-w-md mx-auto mt-4">
+              <h2 className="text-2xl font-bold text-white mb-8">Payment Details</h2>
+              
+              {isSuccess ? (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex flex-col items-center justify-center py-12 text-center"
+                >
+                  <div className="w-24 h-24 bg-accent/20 rounded-full flex items-center justify-center mb-6">
+                    <CheckCircle className="w-12 h-12 text-accent" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Payment Successful!</h3>
+                  <p className="text-text-dim">Your account has been upgraded. Welcome to {planName}.</p>
+                </motion.div>
+              ) : (
+                <form onSubmit={handlePay} className="space-y-6">
+                  {/* Virtual Card Visualization */}
+                  <div className="w-full h-48 rounded-2xl p-6 bg-gradient-to-tr from-accent/80 to-accent relative overflow-hidden shadow-[0_10px_40px_-10px_rgba(34,197,94,0.4)] transition-all hover:scale-[1.02] duration-300">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-2xl -mr-20 -mt-20" />
+                    <div className="relative z-10 h-full flex flex-col justify-between">
+                      <div className="flex justify-between items-center text-white/80">
+                        <ScanFace className="w-8 h-8 opacity-75" />
+                        <span className="font-mono tracking-widest opacity-75 text-sm">CREDIT</span>
+                      </div>
+                      <div>
+                        <div className="font-mono text-xl tracking-[0.2em] text-white/90 mb-2 truncate">
+                          {cardNumber || '•••• •••• •••• ••••'}
+                        </div>
+                        <div className="flex justify-between items-end">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] uppercase tracking-widest text-white/60 mb-1">Card Holder</span>
+                            <span className="font-medium text-white tracking-wider truncate max-w-[150px]">
+                              {name || 'YOUR NAME'}
+                            </span>
+                          </div>
+                          <div className="flex flex-col text-right">
+                            <span className="text-[10px] uppercase tracking-widest text-white/60 mb-1">Expires</span>
+                            <span className="font-mono text-white tracking-widest">{expiry || 'MM/YY'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="text-error text-sm bg-error/10 border border-error/20 p-3 rounded-xl flex items-center gap-2">
+                      <Shield className="w-4 h-4" /> {error}
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-mono text-text-dim uppercase tracking-widest mb-2">Cardholder Name</label>
+                      <input 
+                        type="text" 
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value.toUpperCase())}
+                        className="w-full bg-black/50 border border-border-subtle rounded-xl px-4 py-3 text-white focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all"
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-xs font-mono text-text-dim uppercase tracking-widest mb-2">Card Number</label>
+                      <div className="relative">
+                        <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-text-dim" />
+                        <input 
+                          type="text" 
+                          required
+                          maxLength={19}
+                          value={cardNumber}
+                          onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                          className="w-full bg-black/50 border border-border-subtle rounded-xl pl-12 pr-4 py-3 text-white font-mono tracking-widest focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all"
+                          placeholder="0000 0000 0000 0000"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-mono text-text-dim uppercase tracking-widest mb-2">Expiry Date</label>
+                        <input 
+                          type="text" 
+                          required
+                          maxLength={5}
+                          value={expiry}
+                          onChange={(e) => setExpiry(formatExpiry(e.target.value))}
+                          className="w-full bg-black/50 border border-border-subtle rounded-xl px-4 py-3 text-white font-mono focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all"
+                          placeholder="MM/YY"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-mono text-text-dim uppercase tracking-widest mb-2">CVC</label>
+                        <input 
+                          type="password" 
+                          required
+                          maxLength={4}
+                          value={cvc}
+                          onChange={(e) => setCvc(e.target.value.replace(/[^0-9]/g, ''))}
+                          className="w-full bg-black/50 border border-border-subtle rounded-xl px-4 py-3 text-white font-mono focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all"
+                          placeholder="•••"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={isProcessing}
+                    className="w-full h-14 bg-accent hover:bg-accent-hover text-black font-bold uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center mt-8 relative overflow-hidden group disabled:opacity-70 disabled:hover:scale-100"
+                  >
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                    <span className="relative z-10 flex items-center gap-2">
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" /> Processing Payment...
+                        </>
+                      ) : (
+                        `Pay ${price}`
+                      )}
+                    </span>
+                  </button>
+                  <p className="text-center text-[10px] text-text-dim mt-4 uppercase tracking-widest">Payments are processed securely</p>
+                </form>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}

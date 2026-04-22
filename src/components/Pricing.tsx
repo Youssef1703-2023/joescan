@@ -4,24 +4,9 @@ import { Shield, Zap, Lock, CreditCard, Gift, Check, X, ShieldCheck, ExternalLin
 import { auth, db, getUserTier, upgradeUserTier, SubscriptionTier } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
+import CheckoutModal from './CheckoutModal';
 
-// ─── Stripe Configuration ───
-// Replace these with your real Stripe Payment Links when ready
-const STRIPE_CONFIG = {
-  // Stripe Payment Links (create these in your Stripe Dashboard)
-  // Format: https://buy.stripe.com/xxxxx?client_reference_id={uid}
-  pro: {
-    paymentLink: '', // e.g. 'https://buy.stripe.com/test_xxxxx'
-    priceId: '',     // e.g. 'price_xxxxx'
-  },
-  enterprise: {
-    paymentLink: '', // e.g. 'https://buy.stripe.com/test_yyyyy'
-    priceId: '',     // e.g. 'price_yyyyy'
-  },
-  // After payment, Stripe redirects here
-  successUrl: `${window.location.origin}/pricing?payment=success`,
-  cancelUrl: `${window.location.origin}/pricing?payment=cancelled`,
-};
+// External Checkout Modal handled payment
 
 export default function Pricing() {
   const { language, t } = useLanguage();
@@ -32,12 +17,8 @@ export default function Pricing() {
   // Checkout Modal State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('free');
-  const [promoCode, setPromoCode] = useState('');
-  const [promoDiscount, setPromoDiscount] = useState<number>(0);
-  const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'promo'>('stripe');
 
   useEffect(() => {
     if (auth.currentUser) {
@@ -77,105 +58,16 @@ export default function Pricing() {
     if (tier === 'free') return;
     setSelectedTier(tier);
     setPaymentSuccess(false);
+    setPaymentSuccess(false);
     setCheckoutError('');
-    setPromoCode('');
-    setPromoDiscount(0);
-    setPaymentMethod('stripe');
     setIsCheckoutOpen(true);
   };
 
-  const handleApplyPromo = async () => {
-    setCheckoutError('');
-    setIsProcessing(true);
-    const code = promoCode.toUpperCase().trim();
-    if (!code) {
-       setCheckoutError('Enter a valid promo code');
-       setIsProcessing(false);
-       return;
-    }
-
-    try {
-      const codeRef = doc(db, 'promoCodes', code);
-      const codeSnap = await getDoc(codeRef);
-
-      if (codeSnap.exists() && codeSnap.data().active !== false) {
-        const promoData = codeSnap.data();
-        if (promoData.targetTier === selectedTier) {
-          setPromoDiscount(promoData.discount || 100);
-          setPaymentMethod('promo');
-        } else {
-          setCheckoutError(`This code is valid for ${promoData.targetTier} tier.`);
-          setPromoDiscount(0);
-        }
-      } else {
-        // Fallbacks
-        if (code === 'JOEPRO' && selectedTier === 'pro') {
-          setPromoDiscount(100);
-          setPaymentMethod('promo');
-        } else if (code === 'JOE99' && selectedTier === 'enterprise') {
-          setPromoDiscount(100);
-          setPaymentMethod('promo');
-        } else {
-          setCheckoutError('Invalid or expired promo code');
-          setPromoDiscount(0);
-        }
-      }
-    } catch (err) {
-       console.error("Promo error", err);
-       setCheckoutError('Failed to verify code securely');
-    } finally {
-       setIsProcessing(false);
-    }
-  };
-
-  const handleStripeCheckout = () => {
-    if (!auth.currentUser) return;
-    
-    const config = selectedTier === 'enterprise' ? STRIPE_CONFIG.enterprise : STRIPE_CONFIG.pro;
-    
-    if (!config.paymentLink) {
-      setCheckoutError('Payment system is being configured. Use a promo code for now, or contact support.');
-      return;
-    }
-    
-    // Build Stripe Payment Link URL with client_reference_id
-    const url = new URL(config.paymentLink);
-    url.searchParams.set('client_reference_id', auth.currentUser.uid);
-    url.searchParams.set('prefilled_email', auth.currentUser.email || '');
-    
-    // Redirect to Stripe
-    window.open(url.toString(), '_blank');
-  };
-
-  const handlePromoCheckout = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCheckoutError('');
-    setIsProcessing(true);
-
-    try {
-      if (!auth.currentUser) throw new Error("Not logged in");
-
-      if (promoDiscount < 100) {
-        setCheckoutError('Promo code does not provide full discount. Please complete payment via Stripe.');
-        setIsProcessing(false);
-        return;
-      }
-
-      // Promo provides full discount — upgrade directly
-      await new Promise(r => setTimeout(r, 1500)); // Visual processing delay
-      await upgradeUserTier(auth.currentUser.uid, selectedTier, 30);
-      setCurrentTier(selectedTier);
-      setPaymentSuccess(true);
-
-      setTimeout(() => {
-        setIsCheckoutOpen(false);
-      }, 3000);
-      
-    } catch (err: any) {
-      setCheckoutError(err.message || 'Payment processing failed');
-    } finally {
-      setIsProcessing(false);
-    }
+  const handlePaymentSuccess = async (tier: 'pro' | 'enterprise') => {
+    if (!auth.currentUser) throw new Error("Not logged in");
+    await upgradeUserTier(auth.currentUser.uid, tier, 30);
+    setCurrentTier(tier);
+    setPaymentSuccess(true);
   };
 
   if (loading) {
@@ -340,229 +232,14 @@ export default function Pricing() {
       </div>
 
       {/* Payment Gateway Modal */}
-      <AnimatePresence>
-        {isCheckoutOpen && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className={`glass-card max-w-lg w-full p-0 relative overflow-hidden flex flex-col ${selectedTier === 'enterprise' ? 'border-error/50 shadow-[0_0_40px_rgba(255,0,0,0.15)]' : 'border-accent/50 shadow-[0_0_40px_rgba(0,255,0,0.1)]'}`}
-            >
-              {paymentSuccess ? (
-                <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
-                  <motion.div 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', bounce: 0.5 }}
-                    className={`w-20 h-20 rounded-full flex items-center justify-center border-4 ${selectedTier === 'enterprise' ? 'border-error text-error bg-error/10' : 'border-accent text-accent bg-accent/10'}`}
-                  >
-                    <ShieldCheck className="w-10 h-10" />
-                  </motion.div>
-                  <h2 className="text-2xl font-black uppercase tracking-widest">{t('pricing_access_granted')}</h2>
-                  <p className="text-text-dim">{t('pricing_telemetry_upgraded')}</p>
-                  <p className="text-xs text-text-dim font-mono">Tier: {selectedTier.toUpperCase()} • Active for 30 days</p>
-                </div>
-              ) : (
-                <form onSubmit={handlePromoCheckout}>
-                  {/* Header */}
-                  <div className={`p-6 border-b ${selectedTier === 'enterprise' ? 'border-error/20 bg-error/5' : 'border-accent/20 bg-accent/5'} flex justify-between items-center`}>
-                    <div>
-                      <h2 className="text-lg font-bold font-mono uppercase tracking-widest flex items-center gap-2">
-                        <Lock className={`w-5 h-5 ${selectedTier === 'enterprise' ? 'text-error' : 'text-accent'}`} /> {t('pricing_secure_gateway')}
-                      </h2>
-                      <p className="text-xs text-text-dim mt-1">{t('pricing_acquiring')} {selectedTier === 'enterprise' ? t('pricing_enterprise') : t('pricing_pro')} {t('pricing_clearance')}</p>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-3xl font-black font-mono">
-                        {promoDiscount === 100 ? formatPrice(0) : selectedTier === 'enterprise' ? formatPrice(30) : formatPrice(6)}
-                      </div>
-                      <span className="text-[10px] text-text-dim font-mono">/month</span>
-                    </div>
-                  </div>
-
-                  <div className="p-6 space-y-6">
-                    {checkoutError && (
-                      <div className="p-3 bg-error/10 border border-error/50 text-error text-xs rounded-lg font-mono">
-                        [ERROR] {checkoutError}
-                      </div>
-                    )}
-
-                    {/* Payment Method Tabs */}
-                    <div className="flex gap-2 bg-bg-base rounded-xl p-1 border border-border-subtle">
-                      <button 
-                        type="button"
-                        onClick={() => setPaymentMethod('stripe')}
-                        className={`flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                          paymentMethod === 'stripe' 
-                            ? selectedTier === 'enterprise' 
-                              ? 'bg-error/10 text-error border border-error/30' 
-                              : 'bg-accent/10 text-accent border border-accent/30'
-                            : 'text-text-dim hover:text-text-main'
-                        }`}
-                      >
-                        <CreditCard className="w-4 h-4" /> {t('pricing_card_stripe')}
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => setPaymentMethod('promo')}
-                        className={`flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
-                          paymentMethod === 'promo' 
-                            ? selectedTier === 'enterprise' 
-                              ? 'bg-error/10 text-error border border-error/30' 
-                              : 'bg-accent/10 text-accent border border-accent/30'
-                            : 'text-text-dim hover:text-text-main'
-                        }`}
-                      >
-                        <Gift className="w-4 h-4" /> {t('pricing_promo_code')}
-                      </button>
-                    </div>
-
-                    {/* Stripe Payment Section */}
-                    {paymentMethod === 'stripe' && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-4"
-                      >
-                        <div className="bg-bg-surface border border-border-subtle rounded-xl p-5 space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedTier === 'enterprise' ? 'bg-error/10' : 'bg-accent/10'}`}>
-                              <Shield className={`w-5 h-5 ${selectedTier === 'enterprise' ? 'text-error' : 'text-accent'}`} />
-                            </div>
-                            <div>
-                              <h3 className="font-bold text-sm">{t('pricing_secure_checkout')}</h3>
-                              <p className="text-[10px] text-text-dim font-mono">{t('pricing_encrypted')}</p>
-                            </div>
-                          </div>
-                          
-                          <p className="text-sm text-text-dim leading-relaxed">
-                            {t('pricing_stripe_desc')}
-                          </p>
-
-                          <div className="flex flex-wrap gap-3">
-                            <div className="flex items-center gap-1.5 bg-bg-base px-3 py-1.5 rounded-lg border border-border-subtle">
-                              <span className="text-[10px] font-mono text-text-dim">Visa</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 bg-bg-base px-3 py-1.5 rounded-lg border border-border-subtle">
-                              <span className="text-[10px] font-mono text-text-dim">Mastercard</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 bg-bg-base px-3 py-1.5 rounded-lg border border-border-subtle">
-                              <span className="text-[10px] font-mono text-text-dim">Apple Pay</span>
-                            </div>
-                            <div className="flex items-center gap-1.5 bg-bg-base px-3 py-1.5 rounded-lg border border-border-subtle">
-                              <span className="text-[10px] font-mono text-text-dim">Google Pay</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <button 
-                          type="button"
-                          onClick={handleStripeCheckout}
-                          disabled={isProcessing}
-                          className={`w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3 transition-all ${
-                            selectedTier === 'enterprise' 
-                              ? 'bg-error text-white hover:bg-error/90 shadow-lg shadow-error/20' 
-                              : 'btn-glow'
-                          }`}
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                          {t('pricing_pay_stripe')}
-                        </button>
-                      </motion.div>
-                    )}
-
-                    {/* Promo Code Section */}
-                    {paymentMethod === 'promo' && (
-                      <motion.div 
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="space-y-4"
-                      >
-                        <div className="space-y-3">
-                          <h3 className="text-xs font-bold uppercase tracking-widest text-text-dim flex items-center gap-2">
-                            <Sparkles className="w-4 h-4" /> {t('pricing_clearance_code')}
-                          </h3>
-                          <div className="flex gap-2">
-                            <input 
-                              type="text" 
-                              value={promoCode}
-                              onChange={e => setPromoCode(e.target.value)}
-                              placeholder={t('pricing_enter_code')}
-                              className="flex-1 bg-bg-base border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent outline-none font-mono uppercase" 
-                            />
-                            <button 
-                              type="button" 
-                              onClick={handleApplyPromo} 
-                              disabled={isProcessing}
-                              className={`px-5 rounded-lg font-bold text-xs uppercase transition-all ${
-                                selectedTier === 'enterprise'
-                                  ? 'bg-error/10 border border-error/30 hover:bg-error/20 text-error'
-                                  : 'bg-bg-elevated border border-border-subtle hover:border-accent'
-                              }`}
-                            >
-                              {t('pricing_verify')}
-                            </button>
-                          </div>
-                          {promoDiscount > 0 && (
-                            <motion.div 
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              className={`p-3 rounded-lg border text-xs font-mono flex items-center gap-2 ${
-                                selectedTier === 'enterprise' 
-                                  ? 'bg-error/10 border-error/30 text-error' 
-                                  : 'bg-accent/10 border-accent/30 text-accent'
-                              }`}
-                            >
-                              <Check className="w-4 h-4" />
-                              {t('pricing_code_accepted')}: {promoDiscount}% {t('pricing_override_active')}.
-                            </motion.div>
-                          )}
-                        </div>
-
-                        {promoDiscount === 100 && (
-                          <button 
-                            type="submit" 
-                            disabled={isProcessing}
-                            className={`w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2 transition-all ${
-                              selectedTier === 'enterprise' 
-                                ? 'bg-error text-white hover:bg-error/90 shadow-lg shadow-error/20' 
-                                : 'btn-glow'
-                            }`}
-                          >
-                            {isProcessing ? <Zap className="w-4 h-4 animate-pulse" /> : t('pricing_confirm')}
-                          </button>
-                        )}
-                      </motion.div>
-                    )}
-                  </div>
-
-                  {/* Footer */}
-                  <div className="p-4 border-t border-border-subtle bg-bg-surface flex items-center justify-between">
-                    <button 
-                      type="button"
-                      onClick={() => setIsCheckoutOpen(false)}
-                      disabled={isProcessing}
-                      className="px-5 py-2.5 bg-bg-elevated text-text-main rounded-lg text-xs font-bold uppercase hover:bg-bg-base transition-colors border border-border-subtle"
-                    >
-                      {t('pricing_abort')}
-                    </button>
-                    <div className="flex items-center gap-2 text-[10px] text-text-dim font-mono">
-                      <Lock className="w-3 h-3" />
-                      <span>{t('pricing_e2e_encrypted')}</span>
-                    </div>
-                  </div>
-                </form>
-              )}
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <CheckoutModal 
+        isOpen={isCheckoutOpen} 
+        onClose={() => setIsCheckoutOpen(false)}
+        tier={selectedTier as 'pro' | 'enterprise'}
+        planName={selectedTier === 'enterprise' ? t('pricing_enterprise') : t('pricing_pro')}
+        price={selectedTier === 'enterprise' ? formatPrice(30) : formatPrice(6)}
+        onPaymentSuccess={handlePaymentSuccess}
+      />
     </div>
   );
 }
