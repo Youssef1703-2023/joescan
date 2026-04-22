@@ -1,24 +1,25 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
-import type { NextFunction, Request, Response } from 'express';
 import path from 'path';
 import type { Plugin } from 'vite';
 import { defineConfig, loadEnv } from 'vite';
-import { createApp } from './server';
 
 function socialOsintDevApi(): Plugin {
   return {
     name: 'social-osint-dev-api',
     enforce: 'pre',
     configureServer(server) {
-      const app = createApp({ apiOnly: true });
-      server.middlewares.use((req, res, next) => {
-        const pathOnly = (req.url ?? '').split('?')[0] ?? '';
-        if (pathOnly.startsWith('/api/social-osint')) {
-          app(req as Request, res as Response, next as NextFunction);
-        } else {
-          next();
-        }
+      // Dynamic import - only runs during dev, not during production build
+      import('./server').then(({ createApp }) => {
+        const app = createApp({ apiOnly: true });
+        server.middlewares.use((req: any, res: any, next: any) => {
+          const pathOnly = (req.url ?? '').split('?')[0] ?? '';
+          if (pathOnly.startsWith('/api/social-osint')) {
+            app(req, res, next);
+          } else {
+            next();
+          }
+        });
       });
     },
   };
