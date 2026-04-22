@@ -1,6 +1,6 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth, isUserBanned, logActivity, ADMIN_EMAIL, getUserTier } from './lib/firebase';
+import { auth, isUserBanned, logActivity, ADMIN_EMAIL, getUserTier, getUserProfile, ensureUserProfile } from './lib/firebase';
 import { LanguageProvider, useLanguage, LANGUAGE_OPTIONS } from './contexts/LanguageContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import Sidebar, { TabId } from './components/Sidebar';
@@ -72,8 +72,10 @@ function AppContent() {
       setUser(u);
       setLoading(false);
       if (u) {
-        const saved = localStorage.getItem(`joescan_avatar_${u.uid}`);
-        if (saved) setCustomAvatar(saved);
+        // Load profile from Firestore (cross-device sync)
+        ensureUserProfile(u.uid, u.email, u.displayName).then(profile => {
+          if (profile?.avatarURL) setCustomAvatar(profile.avatarURL);
+        });
         // Check ban status
         isUserBanned(u.uid).then(result => {
           setIsBanned(result.banned);
@@ -89,11 +91,18 @@ function AppContent() {
       }
     });
     // Listen for avatar updates from ProfileSettings
-    const onAvatarUpdate = () => {
-      const u = auth.currentUser;
-      if (u) {
-        const saved = localStorage.getItem(`joescan_avatar_${u.uid}`);
-        setCustomAvatar(saved);
+    const onAvatarUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail) {
+        setCustomAvatar(detail);
+      } else {
+        // Fallback: reload from Firestore
+        const u = auth.currentUser;
+        if (u) {
+          getUserProfile(u.uid).then(profile => {
+            if (profile?.avatarURL) setCustomAvatar(profile.avatarURL);
+          });
+        }
       }
     };
     window.addEventListener('avatar_updated', onAvatarUpdate);

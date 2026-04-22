@@ -1,9 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Zap, Lock, CreditCard, Gift, Check, X, ShieldCheck } from 'lucide-react';
+import { Shield, Zap, Lock, CreditCard, Gift, Check, X, ShieldCheck, ExternalLink, Sparkles } from 'lucide-react';
 import { auth, db, getUserTier, upgradeUserTier, SubscriptionTier } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
+
+// ─── Stripe Configuration ───
+// Replace these with your real Stripe Payment Links when ready
+const STRIPE_CONFIG = {
+  // Stripe Payment Links (create these in your Stripe Dashboard)
+  // Format: https://buy.stripe.com/xxxxx?client_reference_id={uid}
+  pro: {
+    paymentLink: '', // e.g. 'https://buy.stripe.com/test_xxxxx'
+    priceId: '',     // e.g. 'price_xxxxx'
+  },
+  enterprise: {
+    paymentLink: '', // e.g. 'https://buy.stripe.com/test_yyyyy'
+    priceId: '',     // e.g. 'price_yyyyy'
+  },
+  // After payment, Stripe redirects here
+  successUrl: `${window.location.origin}/pricing?payment=success`,
+  cancelUrl: `${window.location.origin}/pricing?payment=cancelled`,
+};
 
 export default function Pricing() {
   const { lang } = useLanguage();
@@ -18,6 +36,7 @@ export default function Pricing() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'stripe' | 'promo'>('stripe');
 
   useEffect(() => {
     if (auth.currentUser) {
@@ -26,16 +45,29 @@ export default function Pricing() {
         setLoading(false);
       });
     }
+    
+    // Check for Stripe redirect success
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+      setPaymentSuccess(true);
+      // Clean URL
+      window.history.replaceState({}, '', window.location.pathname);
+      // Refresh tier
+      if (auth.currentUser) {
+        getUserTier(auth.currentUser.uid).then(t => setCurrentTier(t));
+      }
+    }
   }, []);
 
   const handleSelectTier = (tier: SubscriptionTier) => {
     if (tier === currentTier) return;
-    if (tier === 'free') return; // Cannot downgrade to free from UI currently
+    if (tier === 'free') return;
     setSelectedTier(tier);
     setPaymentSuccess(false);
     setCheckoutError('');
     setPromoCode('');
     setPromoDiscount(0);
+    setPaymentMethod('stripe');
     setIsCheckoutOpen(true);
   };
 
@@ -57,6 +89,7 @@ export default function Pricing() {
         const promoData = codeSnap.data();
         if (promoData.targetTier === selectedTier) {
           setPromoDiscount(promoData.discount || 100);
+          setPaymentMethod('promo');
         } else {
           setCheckoutError(`This code is valid for ${promoData.targetTier} tier.`);
           setPromoDiscount(0);
@@ -65,8 +98,10 @@ export default function Pricing() {
         // Fallbacks
         if (code === 'JOEPRO' && selectedTier === 'pro') {
           setPromoDiscount(100);
+          setPaymentMethod('promo');
         } else if (code === 'JOE99' && selectedTier === 'enterprise') {
           setPromoDiscount(100);
+          setPaymentMethod('promo');
         } else {
           setCheckoutError('Invalid or expired promo code');
           setPromoDiscount(0);
@@ -80,7 +115,26 @@ export default function Pricing() {
     }
   };
 
-  const handleCheckout = async (e: React.FormEvent) => {
+  const handleStripeCheckout = () => {
+    if (!auth.currentUser) return;
+    
+    const config = selectedTier === 'enterprise' ? STRIPE_CONFIG.enterprise : STRIPE_CONFIG.pro;
+    
+    if (!config.paymentLink) {
+      setCheckoutError('Payment system is being configured. Use a promo code for now, or contact support.');
+      return;
+    }
+    
+    // Build Stripe Payment Link URL with client_reference_id
+    const url = new URL(config.paymentLink);
+    url.searchParams.set('client_reference_id', auth.currentUser.uid);
+    url.searchParams.set('prefilled_email', auth.currentUser.email || '');
+    
+    // Redirect to Stripe
+    window.open(url.toString(), '_blank');
+  };
+
+  const handlePromoCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     setCheckoutError('');
     setIsProcessing(true);
@@ -88,10 +142,14 @@ export default function Pricing() {
     try {
       if (!auth.currentUser) throw new Error("Not logged in");
 
-      // Simulate Gateway Processing (Visa / Stripe Mock)
-      await new Promise(r => setTimeout(r, 2000));
-      
-      // Update locally & remotely
+      if (promoDiscount < 100) {
+        setCheckoutError('Promo code does not provide full discount. Please complete payment via Stripe.');
+        setIsProcessing(false);
+        return;
+      }
+
+      // Promo provides full discount — upgrade directly
+      await new Promise(r => setTimeout(r, 1500)); // Visual processing delay
       await upgradeUserTier(auth.currentUser.uid, selectedTier, 30);
       setCurrentTier(selectedTier);
       setPaymentSuccess(true);
@@ -159,6 +217,22 @@ export default function Pricing() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-12 w-full">
+      {/* Payment Success Banner */}
+      {paymentSuccess && !isCheckoutOpen && (
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-accent/10 border border-accent/30 rounded-2xl p-6 text-center relative overflow-hidden"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-accent/5 via-transparent to-accent/5 animate-pulse" />
+          <div className="relative z-10 flex flex-col items-center gap-3">
+            <ShieldCheck className="w-10 h-10 text-accent" />
+            <h2 className="text-xl font-black uppercase tracking-widest">Access Granted</h2>
+            <p className="text-text-dim text-sm">Your clearance level has been successfully upgraded.</p>
+          </div>
+        </motion.div>
+      )}
+
       <div className="text-center space-y-4 pt-8">
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight">Expand Your Arsenal</h1>
         <p className="text-text-dim max-w-2xl mx-auto text-lg">
@@ -192,7 +266,7 @@ export default function Pricing() {
                 </div>
               )}
               {isEnterprise && (
-                <div className="absolute inset-0 bg-error/5 animate-pulse-glow" style={{ animationDuration: '4s' }} pointerEvents="none" />
+                <div className="absolute inset-0 bg-error/5 animate-pulse-glow" style={{ animationDuration: '4s' }} />
               )}
               
               <div className="relative z-10 flex-1">
@@ -258,14 +332,21 @@ export default function Pricing() {
             >
               {paymentSuccess ? (
                 <div className="p-12 flex flex-col items-center justify-center text-center space-y-4">
-                  <div className={`w-20 h-20 rounded-full flex items-center justify-center border-4 ${selectedTier === 'enterprise' ? 'border-error text-error bg-error/10' : 'border-accent text-accent bg-accent/10'}`}>
+                  <motion.div 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', bounce: 0.5 }}
+                    className={`w-20 h-20 rounded-full flex items-center justify-center border-4 ${selectedTier === 'enterprise' ? 'border-error text-error bg-error/10' : 'border-accent text-accent bg-accent/10'}`}
+                  >
                     <ShieldCheck className="w-10 h-10" />
-                  </div>
+                  </motion.div>
                   <h2 className="text-2xl font-black uppercase tracking-widest">Access Granted</h2>
                   <p className="text-text-dim">Your telemetry arrays have been successfully upgraded.</p>
+                  <p className="text-xs text-text-dim font-mono">Tier: {selectedTier.toUpperCase()} • Active for 30 days</p>
                 </div>
               ) : (
-                <form onSubmit={handleCheckout}>
+                <form onSubmit={handlePromoCheckout}>
+                  {/* Header */}
                   <div className={`p-6 border-b ${selectedTier === 'enterprise' ? 'border-error/20 bg-error/5' : 'border-accent/20 bg-accent/5'} flex justify-between items-center`}>
                     <div>
                       <h2 className="text-lg font-bold font-mono uppercase tracking-widest flex items-center gap-2">
@@ -273,8 +354,11 @@ export default function Pricing() {
                       </h2>
                       <p className="text-xs text-text-dim mt-1">Acquiring {selectedTier === 'enterprise' ? 'SOC Enterprise' : 'Pro Analyst'} clearance</p>
                     </div>
-                    <div className="text-3xl font-black font-mono">
-                      {promoDiscount === 100 ? '$0' : selectedTier === 'enterprise' ? '$99' : '$6'}
+                    <div className="text-right">
+                      <div className="text-3xl font-black font-mono">
+                        {promoDiscount === 100 ? '$0' : selectedTier === 'enterprise' ? '$99' : '$6'}
+                      </div>
+                      <span className="text-[10px] text-text-dim font-mono">/month</span>
                     </div>
                   </div>
 
@@ -285,67 +369,169 @@ export default function Pricing() {
                       </div>
                     )}
 
-                    <div className="space-y-4 border-b border-border-subtle pb-6">
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-text-dim flex items-center gap-2">
-                        <CreditCard className="w-4 h-4" /> Payment Details
-                      </h3>
-                      <div>
-                        <label className="text-[10px] font-mono uppercase text-text-dim">Card Number</label>
-                        <input type="text" required={promoDiscount < 100} placeholder="4242 4242 4242 4242" className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent outline-none font-mono" />
-                      </div>
-                      <div className="flex gap-4">
-                        <div className="flex-1">
-                          <label className="text-[10px] font-mono uppercase text-text-dim">Expiry</label>
-                          <input type="text" required={promoDiscount < 100} placeholder="MM/YY" className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent outline-none font-mono" />
-                        </div>
-                        <div className="flex-1">
-                          <label className="text-[10px] font-mono uppercase text-text-dim">CVC</label>
-                          <input type="text" required={promoDiscount < 100} placeholder="123" className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent outline-none font-mono" />
-                        </div>
-                      </div>
-                      <div className="pt-2">
-                        <button type="button" className={`w-full py-3 rounded-lg border flex items-center justify-center gap-2 text-sm font-bold transition-all ${selectedTier === 'enterprise' ? 'border-error/30 hover:bg-error/10 hover:border-error text-error/80' : 'border-border-subtle hover:bg-bg-surface'}`}>
-                          Pay with Google Pay
-                        </button>
-                      </div>
+                    {/* Payment Method Tabs */}
+                    <div className="flex gap-2 bg-bg-base rounded-xl p-1 border border-border-subtle">
+                      <button 
+                        type="button"
+                        onClick={() => setPaymentMethod('stripe')}
+                        className={`flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                          paymentMethod === 'stripe' 
+                            ? selectedTier === 'enterprise' 
+                              ? 'bg-error/10 text-error border border-error/30' 
+                              : 'bg-accent/10 text-accent border border-accent/30'
+                            : 'text-text-dim hover:text-text-main'
+                        }`}
+                      >
+                        <CreditCard className="w-4 h-4" /> Card / Stripe
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={() => setPaymentMethod('promo')}
+                        className={`flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 ${
+                          paymentMethod === 'promo' 
+                            ? selectedTier === 'enterprise' 
+                              ? 'bg-error/10 text-error border border-error/30' 
+                              : 'bg-accent/10 text-accent border border-accent/30'
+                            : 'text-text-dim hover:text-text-main'
+                        }`}
+                      >
+                        <Gift className="w-4 h-4" /> Promo Code
+                      </button>
                     </div>
 
-                    <div className="space-y-2">
-                      <h3 className="text-xs font-bold uppercase tracking-widest text-text-dim flex items-center gap-2">
-                        <Gift className="w-4 h-4" /> Promotional Override
-                      </h3>
-                      <div className="flex gap-2">
-                        <input 
-                          type="text" 
-                          value={promoCode}
-                          onChange={e => setPromoCode(e.target.value)}
-                          placeholder="ENTER CLEARANCE CODE" 
-                          className="flex-1 bg-bg-base border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent outline-none font-mono uppercase" 
-                        />
-                        <button type="button" onClick={handleApplyPromo} className="px-4 bg-bg-elevated border border-border-subtle rounded-lg hover:border-accent transition-colors font-bold text-xs uppercase">
-                          Apply
+                    {/* Stripe Payment Section */}
+                    {paymentMethod === 'stripe' && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-4"
+                      >
+                        <div className="bg-bg-surface border border-border-subtle rounded-xl p-5 space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedTier === 'enterprise' ? 'bg-error/10' : 'bg-accent/10'}`}>
+                              <Shield className={`w-5 h-5 ${selectedTier === 'enterprise' ? 'text-error' : 'text-accent'}`} />
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-sm">Secure Stripe Checkout</h3>
+                              <p className="text-[10px] text-text-dim font-mono">256-bit encrypted • PCI DSS compliant</p>
+                            </div>
+                          </div>
+                          
+                          <p className="text-sm text-text-dim leading-relaxed">
+                            You'll be redirected to Stripe's secure payment page. After successful payment, your account will be automatically upgraded.
+                          </p>
+
+                          <div className="flex flex-wrap gap-3">
+                            <div className="flex items-center gap-1.5 bg-bg-base px-3 py-1.5 rounded-lg border border-border-subtle">
+                              <span className="text-[10px] font-mono text-text-dim">Visa</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-bg-base px-3 py-1.5 rounded-lg border border-border-subtle">
+                              <span className="text-[10px] font-mono text-text-dim">Mastercard</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-bg-base px-3 py-1.5 rounded-lg border border-border-subtle">
+                              <span className="text-[10px] font-mono text-text-dim">Apple Pay</span>
+                            </div>
+                            <div className="flex items-center gap-1.5 bg-bg-base px-3 py-1.5 rounded-lg border border-border-subtle">
+                              <span className="text-[10px] font-mono text-text-dim">Google Pay</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <button 
+                          type="button"
+                          onClick={handleStripeCheckout}
+                          disabled={isProcessing}
+                          className={`w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-3 transition-all ${
+                            selectedTier === 'enterprise' 
+                              ? 'bg-error text-white hover:bg-error/90 shadow-lg shadow-error/20' 
+                              : 'btn-glow'
+                          }`}
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          Pay with Stripe →
                         </button>
-                      </div>
-                      {promoDiscount > 0 && <p className="text-xs text-accent font-mono animate-pulse">Code Accepted: 100% Override Active.</p>}
-                    </div>
+                      </motion.div>
+                    )}
+
+                    {/* Promo Code Section */}
+                    {paymentMethod === 'promo' && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="space-y-4"
+                      >
+                        <div className="space-y-3">
+                          <h3 className="text-xs font-bold uppercase tracking-widest text-text-dim flex items-center gap-2">
+                            <Sparkles className="w-4 h-4" /> Clearance Override Code
+                          </h3>
+                          <div className="flex gap-2">
+                            <input 
+                              type="text" 
+                              value={promoCode}
+                              onChange={e => setPromoCode(e.target.value)}
+                              placeholder="ENTER CLEARANCE CODE" 
+                              className="flex-1 bg-bg-base border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent outline-none font-mono uppercase" 
+                            />
+                            <button 
+                              type="button" 
+                              onClick={handleApplyPromo} 
+                              disabled={isProcessing}
+                              className={`px-5 rounded-lg font-bold text-xs uppercase transition-all ${
+                                selectedTier === 'enterprise'
+                                  ? 'bg-error/10 border border-error/30 hover:bg-error/20 text-error'
+                                  : 'bg-bg-elevated border border-border-subtle hover:border-accent'
+                              }`}
+                            >
+                              Verify
+                            </button>
+                          </div>
+                          {promoDiscount > 0 && (
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              className={`p-3 rounded-lg border text-xs font-mono flex items-center gap-2 ${
+                                selectedTier === 'enterprise' 
+                                  ? 'bg-error/10 border-error/30 text-error' 
+                                  : 'bg-accent/10 border-accent/30 text-accent'
+                              }`}
+                            >
+                              <Check className="w-4 h-4" />
+                              Code Accepted: {promoDiscount}% Override Active.
+                            </motion.div>
+                          )}
+                        </div>
+
+                        {promoDiscount === 100 && (
+                          <button 
+                            type="submit" 
+                            disabled={isProcessing}
+                            className={`w-full py-4 rounded-xl text-sm font-bold uppercase tracking-widest disabled:opacity-50 flex items-center justify-center gap-2 transition-all ${
+                              selectedTier === 'enterprise' 
+                                ? 'bg-error text-white hover:bg-error/90 shadow-lg shadow-error/20' 
+                                : 'btn-glow'
+                            }`}
+                          >
+                            {isProcessing ? <Zap className="w-4 h-4 animate-pulse" /> : 'Confirm Authorization'}
+                          </button>
+                        )}
+                      </motion.div>
+                    )}
                   </div>
 
-                  <div className="p-6 border-t border-border-subtle bg-bg-surface flex gap-3">
+                  {/* Footer */}
+                  <div className="p-4 border-t border-border-subtle bg-bg-surface flex items-center justify-between">
                     <button 
                       type="button"
                       onClick={() => setIsCheckoutOpen(false)}
                       disabled={isProcessing}
-                      className="px-6 py-3 bg-bg-elevated text-text-main rounded-lg text-sm font-bold uppercase hover:bg-bg-base transition-colors border border-border-subtle"
+                      className="px-5 py-2.5 bg-bg-elevated text-text-main rounded-lg text-xs font-bold uppercase hover:bg-bg-base transition-colors border border-border-subtle"
                     >
                       Abort
                     </button>
-                    <button 
-                      type="submit" 
-                      disabled={isProcessing}
-                      className={`flex-1 py-3 rounded-lg text-sm font-bold uppercase disabled:opacity-50 flex items-center justify-center gap-2 ${selectedTier === 'enterprise' ? 'bg-error text-error-fg glow-low-error' : 'btn-glow'}`}
-                    >
-                      {isProcessing ? <Zap className="w-4 h-4 animate-pulse" /> : 'Confirm Authorization'}
-                    </button>
+                    <div className="flex items-center gap-2 text-[10px] text-text-dim font-mono">
+                      <Lock className="w-3 h-3" />
+                      <span>End-to-end encrypted</span>
+                    </div>
                   </div>
                 </form>
               )}

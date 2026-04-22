@@ -54,11 +54,58 @@ export interface UserProfileDocument {
   uid: string;
   email: string | null;
   name: string | null;
+  username?: string | null;
+  avatarURL?: string | null;
   tier: SubscriptionTier;
   subscriptionExpiry?: Date | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export const ADMIN_EMAIL = 'operator@joescan.cloud';
+
+// ─── Profile Sync (Firestore-based, cross-device) ───
+
+export async function getUserProfile(uid: string): Promise<UserProfileDocument | null> {
+  try {
+    const userDoc = await getDocFromServer(doc(db, 'users', uid));
+    if (userDoc.exists()) {
+      return userDoc.data() as UserProfileDocument;
+    }
+  } catch (err) {
+    console.error("Failed to fetch user profile", err);
+  }
+  return null;
+}
+
+export async function updateUserProfile(uid: string, updates: Partial<UserProfileDocument>): Promise<void> {
+  try {
+    await setDoc(doc(db, 'users', uid), {
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (err) {
+    console.error("Failed to update user profile", err);
+    throw err;
+  }
+}
+
+export async function ensureUserProfile(uid: string, email: string | null, displayName: string | null): Promise<UserProfileDocument> {
+  const existing = await getUserProfile(uid);
+  if (existing) return existing;
+  
+  // Create initial profile
+  const newProfile: UserProfileDocument = {
+    uid,
+    email,
+    name: displayName,
+    tier: 'free',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  await setDoc(doc(db, 'users', uid), newProfile, { merge: true });
+  return newProfile;
+}
 
 export function isCurrentUserAdmin(): boolean {
   return auth.currentUser?.email === ADMIN_EMAIL;

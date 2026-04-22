@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { updateProfile, deleteUser, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { auth, getUserProfile, updateUserProfile } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Shield, X, User as UserIcon, Loader2, AlertTriangle, LogOut, Upload, Link as LinkIcon, Image as ImageIcon, Fingerprint, Lock, Trophy, Bell } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -25,14 +25,15 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
   const [uploadMode, setUploadMode] = useState<'url' | 'file'>('file');
 
-  // Load custom avatar from localStorage
+  // Load avatar from Firestore (cross-device sync)
   useEffect(() => {
     if (!user) return;
-    const saved = localStorage.getItem(`joescan_avatar_${user.uid}`);
-    if (saved) {
-      setCustomAvatar(saved);
-      setPhotoURL(saved);
-    }
+    getUserProfile(user.uid).then(profile => {
+      if (profile?.avatarURL) {
+        setCustomAvatar(profile.avatarURL);
+        setPhotoURL(profile.avatarURL);
+      }
+    });
   }, [user]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,13 +69,13 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
         }));
       }
 
-      // Save avatar to localStorage (no permissions needed, high quality)
+      // Save avatar to Firestore (cross-device sync)
       if (photoURL.trim() && photoURL.trim() !== (customAvatar || user.photoURL || '')) {
-        localStorage.setItem(`joescan_avatar_${user.uid}`, photoURL.trim());
+        await updateUserProfile(user.uid, { avatarURL: photoURL.trim() });
         setCustomAvatar(photoURL.trim());
         // Notify App.tsx to update header avatar
-        window.dispatchEvent(new Event('avatar_updated'));
-        successMessages.push("Avatar updated successfully.");
+        window.dispatchEvent(new CustomEvent('avatar_updated', { detail: photoURL.trim() }));
+        successMessages.push("Avatar updated & synced across devices.");
       }
 
       // Update Email
