@@ -1,0 +1,6 @@
+{
+  "name": "JoeScan",
+  "description": "Cybersecurity web app to analyze email exposure to data breaches.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

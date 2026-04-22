@@ -1,0 +1,40 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["uid"]
+    },
+    "Scan": {
+      "title": "Scan",
+      "description": "An email breach scan report",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "emailScanned": { "type": "string" },
+        "riskLevel": { "type": "string", "enum": ["Low", "Medium", "High"] },
+        "reportText": { "type": "string" },
+        "actionPlan": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "language": { "type": "string" }
+      },
+      "required": ["userId", "emailScanned", "riskLevel", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "User profiles"
+    },
+    "/scans/{scanId}": {
+      "schema": { "$ref": "Scan" },
+      "description": "User email scans"
+    }
+  }
+}
