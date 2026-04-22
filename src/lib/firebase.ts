@@ -139,7 +139,7 @@ export async function upgradeUserTier(uid: string, newTier: SubscriptionTier, du
 }
 
 // ─── Activity Logger ───
-export type ActivityType = 'login' | 'scan' | 'upgrade' | 'ban' | 'unban' | 'promo_create' | 'promo_delete' | 'ticket_create' | 'ticket_reply' | 'apikey_create' | 'apikey_delete' | 'profile_update' | 'config_update' | 'flag_update' | 'broadcast';
+export type ActivityType = 'login' | 'scan' | 'upgrade' | 'ban' | 'unban' | 'promo_create' | 'promo_delete' | 'ticket_create' | 'ticket_reply' | 'apikey_create' | 'apikey_delete' | 'profile_update' | 'config_update' | 'flag_update' | 'broadcast' | 'user_deleted';
 
 export async function logActivity(action: ActivityType, details: string = '', targetUser?: string) {
   try {

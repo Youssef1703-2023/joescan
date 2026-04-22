@@ -50,6 +50,7 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if isAuthenticated() && isValidUser();
       allow update: if (isOwner(userId) || isAdmin()) && isValidUser();
+      allow delete: if isAdmin();
     }
 
     // ─── Usernames (unique username registry) ───

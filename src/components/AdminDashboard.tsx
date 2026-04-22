@@ -7,7 +7,7 @@ import {
   Send, Flag, Download, Settings, Megaphone, Wifi, ToggleLeft, ToggleRight,
   FileSpreadsheet, Globe
 } from 'lucide-react';
-import { db, logActivity, banUser, unbanUser, ADMIN_EMAIL } from '../lib/firebase';
+import { db, auth, logActivity, banUser, unbanUser, ADMIN_EMAIL } from '../lib/firebase';
 import {
   collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, limit, getDoc, addDoc, serverTimestamp, onSnapshot
 } from 'firebase/firestore';
@@ -179,12 +179,39 @@ export default function AdminDashboard() {
     fetchData();
   };
 
-  const handleBan = async (userId: string) => {
+  const handleBan = async (uid: string) => {
     if (!banReason.trim()) return;
-    await banUser(userId, banReason);
-    setBanReason('');
-    setBanTarget(null);
-    fetchData();
+    try {
+      await banUser(uid, banReason);
+      setBannedMap(prev => ({ ...prev, [uid]: { reason: banReason, timestamp: new Date().toISOString() } }));
+      setBanTarget(null);
+      setBanReason('');
+    } catch(err) {
+      console.error(err);
+      alert('Failed to ban user: ' + (err as any).message);
+    }
+  };
+
+  const handleDeleteUser = async (uid: string) => {
+    if (uid === auth.currentUser?.uid) {
+      alert("You cannot delete your own admin account.");
+      return;
+    }
+    if (confirm('Are you sure you want to PERMANENTLY delete this user? This will erase all their profile data.')) {
+      try {
+        await deleteDoc(doc(db, 'users', uid));
+        setUsers(users.filter(u => u.id !== uid));
+        await logActivity('user_deleted', `Deleted user account: ${uid}`);
+        if (bannedMap[uid]) {
+          const newMap = { ...bannedMap };
+          delete newMap[uid];
+          setBannedMap(newMap);
+        }
+      } catch (err) {
+        console.error('Failed to delete user:', err);
+        alert('Failed to delete user.');
+      }
+    }
   };
 
   const handleUnban = async (userId: string) => {
@@ -371,8 +398,8 @@ export default function AdminDashboard() {
                 <h2 className="text-xl font-bold uppercase tracking-widest text-text-main">Operatives ({users.length})</h2>
               </div>
 
-              <div className="bg-[#0a0a0a] border border-border-subtle rounded-xl overflow-hidden overflow-x-auto">
-                <table className="w-full text-left text-sm text-text-dim">
+              <div className="bg-[#0a0a0a] border border-border-subtle rounded-xl overflow-hidden overflow-x-auto scroller">
+                <table className="w-full text-left text-sm text-text-dim min-w-[800px] whitespace-nowrap">
                   <thead className="bg-bg-surface border-b border-border-subtle font-mono text-[10px] uppercase tracking-widest text-text-main">
                     <tr>
                       <th className="px-4 py-3">Email</th>
@@ -431,6 +458,9 @@ export default function AdminDashboard() {
                                         Ban
                                       </button>
                                     )}
+                                    <button onClick={() => handleDeleteUser(u.id)} title="Delete User" className="text-[10px] p-1.5 bg-error/10 text-error rounded-lg font-bold hover:bg-error/20 transition-colors border border-error/20 flex items-center justify-center">
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
                                   </>
                                 )}
                               </div>
