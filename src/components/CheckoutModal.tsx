@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Lock, CheckCircle, Loader2, Shield } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { httpsCallable } from 'firebase/functions';
-import { functions } from '../lib/firebase';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -23,31 +21,18 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier }
 
   const handlePay = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setIsProcessing(true);
     
-    try {
-      // Create payment token via Firebase Cloud Functions
-      const createPaymentToken = httpsCallable(functions, 'createPaymentToken');
-      const result = await createPaymentToken({ tier });
-      // @ts-ignore
-      const { paymentToken } = result.data;
-
-      // REMINDER: Add integration ID securely from Paymob if not handled dynamically by webhook
-      const IFRAME_ID = "YOUR_IFRAME_ID"; // User must put iframe ID here later
-      
-      if (!paymentToken) {
-        throw new Error("Invalid payment token received. Please check backend API logs.");
-      }
-
-      // Redirect to Paymob Secure Iframe
-      window.location.href = `https://accept.paymob.com/api/acceptance/iframes/${IFRAME_ID}?payment_token=${paymentToken}`;
-      
-    } catch (err: any) {
-      console.error(err);
+    // Redirect to WhatsApp
+    const phoneNumber = "201123343296";
+    const message = `Hello JoeScan Team, I would like to subscribe to the ${planName} plan (${price}/month) for my account. Please let me know how to proceed with the payment.`;
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
+    
+    setTimeout(() => {
+      window.open(whatsappUrl, '_blank');
       setIsProcessing(false);
-      setError("Paymob Backend API Keys are not configured. Cannot generate order secure token.");
-    }
+      onClose();
+    }, 500);
   };
 
   if (!isOpen) return null;
@@ -116,12 +101,12 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier }
               ) : (
                 <form onSubmit={handlePay} className="space-y-6">
                   <div className="bg-bg-surface border border-border-subtle p-6 rounded-xl flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 rounded-lg bg-accent/10 flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-accent" />
+                    <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
+                      <Shield className="w-6 h-6 text-green-500" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-white uppercase tracking-widest text-sm">Secure Paymob Gateway</h3>
-                      <p className="text-text-dim text-xs mt-1">You will be redirected safely to Paymob to complete your payment.</p>
+                      <h3 className="font-bold text-white uppercase tracking-widest text-sm">WhatsApp Manual Payment</h3>
+                      <p className="text-text-dim text-xs mt-1">You will be redirected to WhatsApp to contact our team and complete your subscription manually.</p>
                     </div>
                   </div>
 
@@ -134,20 +119,20 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier }
                   <button 
                     type="submit" 
                     disabled={isProcessing}
-                    className="w-full h-14 bg-accent hover:bg-accent-hover text-black font-bold uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center mt-8 relative overflow-hidden group disabled:opacity-70 disabled:hover:scale-100"
+                    className="w-full h-14 bg-green-500 hover:bg-green-400 text-black font-bold uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center mt-8 relative overflow-hidden group disabled:opacity-70 disabled:hover:scale-100"
                   >
                     <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
                     <span className="relative z-10 flex items-center gap-2">
                       {isProcessing ? (
                         <>
-                          <Loader2 className="w-5 h-5 animate-spin" /> Redirecting to Paymob...
+                          <Loader2 className="w-5 h-5 animate-spin" /> Redirecting to WhatsApp...
                         </>
                       ) : (
-                        `Pay ${price} Safely`
+                        `Pay ${price} via WhatsApp`
                       )}
                     </span>
                   </button>
-                  <p className="text-center text-[10px] text-text-dim mt-4 uppercase tracking-widest">Powered by Stripe / Paymob</p>
+                  <p className="text-center text-[10px] text-text-dim mt-4 uppercase tracking-widest">Instant Activation via Support</p>
                 </form>
               )}
             </div>
