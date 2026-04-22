@@ -129,7 +129,7 @@ export default function PasswordAnalyzer() {
       if (!res.ok) throw new Error("Could not connect to vulnerability database.");
       
       const text = await res.text();
-      const lines = text.split('\\n');
+      const lines = text.split(/\r?\n/);
       
       let pwnCount = 0;
       for (const line of lines) {
@@ -158,8 +158,8 @@ export default function PasswordAnalyzer() {
            : `Zero Exposure. This password was not found in any monitored public data breaches. Continue enforcing password complexity.`);
            
       const actionPlan = isArabic
-        ? (pwnCount > 0 ? "1. قم بتغيير هذه الكلمة فورا في جميع حساباتك الحالية.\\n2. لا تقم بإعادة استخدامها نهائيا لتجنب اختراق القاموس.\\n3. استخدم مولد الكلمات السفلية لإنشاء بديل قوي." : "1. استمر بإنشاء كلمات سر فريدة لكل منصة.\\n2. احفظ الكلمة في تطبيق لإدارة كلمات المرور (Password Manager).\\n3. فعّل التحقق بخطوتين (2FA) للأمان الإضافي.")
-        : (pwnCount > 0 ? "1. Change this exact password IMMEDIATELY on all utilized accounts.\\n2. Hackers already employ this within their brute-forcing dictionaries.\\n3. Utilize the onboard generator to deploy a new uncompromised key." : "1. Maintain unique passwords mapping across services.\\n2. Store operations inside an encrypted Password Vault.\\n3. Enforce multi-factor authentication (2FA) configurations.");
+        ? (pwnCount > 0 ? "1. قم بتغيير هذه الكلمة فورا في جميع حساباتك الحالية.\n2. لا تقم بإعادة استخدامها نهائيا لتجنب اختراق القاموس.\n3. استخدم مولد الكلمات السفلية لإنشاء بديل قوي." : "1. استمر بإنشاء كلمات سر فريدة لكل منصة.\n2. احفظ الكلمة في تطبيق لإدارة كلمات المرور (Password Manager).\n3. فعّل التحقق بخطوتين (2FA) للأمان الإضافي.")
+        : (pwnCount > 0 ? "1. Change this exact password IMMEDIATELY on all utilized accounts.\n2. Hackers already employ this within their brute-forcing dictionaries.\n3. Utilize the onboard generator to deploy a new uncompromised key." : "1. Maintain unique passwords mapping across services.\n2. Store operations inside an encrypted Password Vault.\n3. Enforce multi-factor authentication (2FA) configurations.");
 
       const scanResult: ScanResult = {
         riskLevel,
@@ -456,10 +456,10 @@ export default function PasswordAnalyzer() {
                     <ArrowRight className="w-5 h-5" /> Remediation Steps
                   </h4>
                   <ul className="space-y-3 text-sm opacity-95 text-left">
-                    {(typeof result.actionPlan === 'string' ? result.actionPlan : String(result.actionPlan || '')).split('\\n').filter(Boolean).map((step, i) => (
+                    {(typeof result.actionPlan === 'string' ? result.actionPlan : String(result.actionPlan || '')).split('\n').filter(Boolean).map((step, i) => (
                       <li key={i} className="flex gap-3 items-start">
                         <span className="font-mono opacity-50 shrink-0 font-bold mt-0.5">{i + 1}.</span>
-                        <span className="leading-relaxed">{step.replace(/^\\d+\\.\\s*/, '')}</span>
+                        <span className="leading-relaxed">{step.replace(/^\d+\.\s*/, '')}</span>
                       </li>
                     ))}
                   </ul>
