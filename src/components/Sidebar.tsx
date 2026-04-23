@@ -14,6 +14,36 @@ import { useState, useEffect } from 'react';
 
 export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'phone' | 'url' | 'username' | 'message' | 'ip' | 'social' | 'domain' | 'fingerprint' | 'device_security' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'siem' | 'team' | 'threat_3d';
 
+// URL path <-> TabId mapping
+export const TAB_TO_PATH: Record<TabId, string> = {
+  dashboard: '/',
+  history: '/history',
+  watchlist: '/watchlist',
+  email: '/email-audit',
+  password: '/password-vault',
+  phone: '/phone-number',
+  url: '/suspicious-link',
+  username: '/osint-username',
+  message: '/message-phishing',
+  ip: '/ip-scan',
+  social: '/social-osint',
+  domain: '/domain-whois',
+  fingerprint: '/browser-fingerprint',
+  device_security: '/device-security',
+  pricing: '/pricing',
+  admin: '/admin',
+  threat_map: '/threat-map',
+  support: '/support',
+  api_keys: '/api-keys',
+  siem: '/siem-webhooks',
+  team: '/team',
+  threat_3d: '/threat-3d',
+};
+
+export const PATH_TO_TAB: Record<string, TabId> = Object.fromEntries(
+  Object.entries(TAB_TO_PATH).map(([tab, path]) => [path, tab as TabId])
+) as Record<string, TabId>;
+
 interface SidebarProps {
   activeTab: TabId;
   setActiveTab: (tab: TabId) => void;

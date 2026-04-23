@@ -3,7 +3,7 @@ import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebas
 import { auth, db, isUserBanned, logActivity, ADMIN_EMAIL, getUserTier, getUserProfile, ensureUserProfile } from './lib/firebase';
 import { LanguageProvider, useLanguage, LANGUAGE_OPTIONS } from './contexts/LanguageContext';
 import { NotificationProvider } from './contexts/NotificationContext';
-import Sidebar, { TabId } from './components/Sidebar';
+import Sidebar, { TabId, TAB_TO_PATH, PATH_TO_TAB } from './components/Sidebar';
 import NotificationCenter from './components/NotificationCenter';
 import { Shield, LogOut, Moon, Sun, User as UserIcon, BrainCircuit, Menu, Loader2, AlertTriangle, Wrench } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -43,6 +43,12 @@ const PageLoader = () => (
   </div>
 );
 
+// Derive initial tab from URL
+function getTabFromUrl(): TabId {
+  const path = window.location.pathname;
+  return PATH_TO_TAB[path] || 'dashboard';
+}
+
 function AppContent() {
   const { lang, setLang, theme, setTheme, t } = useLanguage();
   const [user, setUser] = useState(auth.currentUser);
@@ -51,7 +57,7 @@ function AppContent() {
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<TabId>('dashboard');
+  const [activeTab, setActiveTabState] = useState<TabId>(getTabFromUrl);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mfaPassed, setMfaPassed] = useState(false);
@@ -60,6 +66,27 @@ function AppContent() {
   const [userTier, setUserTier] = useState('free');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [signupsEnabled, setSignupsEnabled] = useState(true);
+
+  // URL-based routing: sync URL with active tab
+  const setActiveTab = (tab: TabId) => {
+    setActiveTabState(tab);
+    const path = TAB_TO_PATH[tab] || '/';
+    if (window.location.pathname !== path) {
+      window.history.pushState({ tab }, '', path);
+    }
+  };
+
+  // Handle browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const tab = e.state?.tab || getTabFromUrl();
+      setActiveTabState(tab);
+    };
+    window.addEventListener('popstate', handlePopState);
+    // Replace current history entry with the tab info
+    window.history.replaceState({ tab: activeTab }, '', TAB_TO_PATH[activeTab] || '/');
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
