@@ -4,7 +4,7 @@ import {
   Database, History, Mail, KeyRound, Smartphone, Link as LinkIcon,
   UserSearch, Globe, MessageSquareWarning, Wifi, Fingerprint, Monitor,
   ChevronLeft, ChevronRight, Menu, X, Target, ShieldAlert, Ticket, Key, Radio,
-  Webhook, Users
+  Webhook, Users, GraduationCap, Gift, BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -12,7 +12,7 @@ import { auth, getUserTier, SubscriptionTier, ADMIN_EMAIL } from '../lib/firebas
 import { Sparkles, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'phone' | 'url' | 'username' | 'message' | 'ip' | 'social' | 'domain' | 'fingerprint' | 'device_security' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'siem' | 'team' | 'threat_3d';
+export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'phone' | 'url' | 'username' | 'message' | 'ip' | 'social' | 'domain' | 'fingerprint' | 'device_security' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'siem' | 'team' | 'threat_3d' | 'academy' | 'referral' | 'blog';
 
 // URL path <-> TabId mapping
 export const TAB_TO_PATH: Record<TabId, string> = {
@@ -38,6 +38,9 @@ export const TAB_TO_PATH: Record<TabId, string> = {
   siem: '/siem-webhooks',
   team: '/team',
   threat_3d: '/threat-3d',
+  academy: '/academy',
+  referral: '/referral',
+  blog: '/blog',
 };
 
 export const PATH_TO_TAB: Record<string, TabId> = Object.fromEntries(
@@ -100,6 +103,14 @@ export default function Sidebar({ activeTab, setActiveTab, isCollapsed, setIsCol
         { id: 'domain', icon: Globe, label: t('nav_domain') },
         { id: 'fingerprint', icon: Fingerprint, label: t('nav_fingerprint') },
         { id: 'device_security', icon: Monitor, label: t('nav_device_security') },
+      ]
+    },
+    {
+      title: lang === 'ar' ? 'المجتمع' : 'COMMUNITY',
+      items: [
+        { id: 'academy', icon: GraduationCap, label: lang === 'ar' ? 'أكاديمية الأمن' : 'Cyber Academy' },
+        { id: 'blog', icon: BookOpen, label: lang === 'ar' ? 'المدوّنة' : 'Blog' },
+        { id: 'referral', icon: Gift, label: lang === 'ar' ? 'ادعِ أصحابك' : 'Refer Friends' },
       ]
     },
     ...((userTier === 'enterprise' || isAdmin) ? [{
