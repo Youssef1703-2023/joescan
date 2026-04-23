@@ -16,11 +16,12 @@
 
     <!-- Open Graph / Social Media -->
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="JoeScan — Know Your Exposure" />
+    <meta property="og:title" content="JoeScan — AI Cybersecurity & OSINT Intelligence Platform" />
     <meta property="og:description" content="AI-powered cybersecurity scanner. Check emails, passwords, phones, and more for data breaches and dark web exposure." />
-    <meta property="og:image" content="/icon-512.png" />
-    <meta property="og:url" content="https://joescan.cloud" />
+    <meta property="og:image" content="https://joescan.me/icon-512.png" />
+    <meta property="og:url" content="https://joescan.me" />
     <meta property="og:site_name" content="JoeScan" />
+    <link rel="canonical" href="https://joescan.me" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
@@ -45,5 +46,29 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- Structured Data for Google Rich Results -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "JoeScan",
+      "url": "https://joescan.me",
+      "description": "AI-powered OSINT and cybersecurity intelligence platform. Scan emails, passwords, phones, IPs, domains for data breaches, dark web exposure, and cyber threats.",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD",
+        "description": "Free tier available with premium upgrades"
+      },
+      "creator": {
+        "@type": "Organization",
+        "name": "JoeTech",
+        "url": "https://joescan.me"
+      },
+      "featureList": ["Email Breach Scanner", "Password Vault Check", "Phone Number OSINT", "Suspicious Link Analyzer", "IP Scanner", "Domain WHOIS", "Browser Fingerprinting", "Dark Web Monitoring", "Threat Intelligence Map"]
+    }
+    </script>
   </body>
 </html>
