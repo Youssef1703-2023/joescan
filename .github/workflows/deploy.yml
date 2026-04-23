@@ -59,9 +59,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-      - name: Purge CDN cache
-        run: |
-          curl -s "https://joescan.me/?purge=$(date +%s)" -o /dev/null || true
-          curl -s "https://joescan.me/blog?purge=$(date +%s)" -o /dev/null || true
-          echo "Cache purge requested"
