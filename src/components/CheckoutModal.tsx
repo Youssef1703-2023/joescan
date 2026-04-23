@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Lock, CheckCircle, Loader2, Shield } from 'lucide-react';
+import { X, Lock, CheckCircle, Loader2, Shield, MessageCircle, Tag, Sparkles } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -12,20 +14,90 @@ interface CheckoutModalProps {
   onPaymentSuccess: (tier: 'pro' | 'enterprise') => Promise<void>;
 }
 
-export default function CheckoutModal({ isOpen, onClose, planName, price, tier }: CheckoutModalProps) {
+export default function CheckoutModal({ isOpen, onClose, planName, price, tier, onPaymentSuccess }: CheckoutModalProps) {
   const { dir } = useLanguage();
   
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Promo code state
+  const [promoCode, setPromoCode] = useState('');
+  const [promoLoading, setPromoLoading] = useState(false);
+  const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number } | null>(null);
+  const [promoError, setPromoError] = useState('');
 
-  const handlePay = async (e: React.FormEvent) => {
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) return;
+    setPromoLoading(true);
+    setPromoError('');
+    setPromoApplied(null);
+
+    try {
+      const code = promoCode.toUpperCase().trim();
+      const promoRef = doc(db, 'promoCodes', code);
+      const promoSnap = await getDoc(promoRef);
+
+      if (!promoSnap.exists()) {
+        setPromoError('Invalid promo code');
+        setPromoLoading(false);
+        return;
+      }
+
+      const data = promoSnap.data();
+      
+      if (!data.active) {
+        setPromoError('This promo code has expired');
+        setPromoLoading(false);
+        return;
+      }
+
+      if (data.targetTier && data.targetTier !== tier && data.targetTier !== 'all') {
+        setPromoError(`This code is only valid for ${data.targetTier} plan`);
+        setPromoLoading(false);
+        return;
+      }
+
+      // If discount is 100%, auto-upgrade immediately
+      if (data.discount >= 100) {
+        setPromoApplied({ code, discount: 100 });
+        setIsProcessing(true);
+        try {
+          await onPaymentSuccess(tier);
+          setIsSuccess(true);
+        } catch (err: any) {
+          setError(err.message || 'Failed to upgrade');
+        }
+        setIsProcessing(false);
+      } else {
+        setPromoApplied({ code, discount: data.discount });
+      }
+    } catch (err) {
+      setPromoError('Failed to verify promo code');
+    }
+
+    setPromoLoading(false);
+  };
+
+  const getDiscountedPrice = () => {
+    if (!promoApplied) return price;
+    const numericPrice = parseFloat(price.replace(/[^\d.]/g, ''));
+    const discounted = numericPrice * (1 - promoApplied.discount / 100);
+    // Keep the same currency format
+    if (price.includes('EGP') || price.includes('ج.م')) {
+      return price.includes('EGP') ? `${Math.round(discounted)} EGP` : `${Math.round(discounted)} ج.م`;
+    }
+    return `$${discounted.toFixed(0)}`;
+  };
+
+  const handleWhatsApp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
     
-    // Redirect to WhatsApp
     const phoneNumber = "201123343296";
-    const message = `Hello JoeScan Team, I would like to subscribe to the ${planName} plan (${price}/month) for my account. Please let me know how to proceed with the payment.`;
+    const promoText = promoApplied ? ` (Promo: ${promoApplied.code} - ${promoApplied.discount}% off)` : '';
+    const finalPrice = promoApplied ? getDiscountedPrice() : price;
+    const message = `Hello JoeScan Team, I would like to subscribe to the ${planName} plan (${finalPrice}/month)${promoText}. Please let me know how to proceed with the payment.`;
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
     
     setTimeout(() => {
@@ -44,99 +116,142 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier }
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="w-full max-w-4xl bg-[#0a0a0a] border border-white/10 rounded-3xl shadow-2xl overflow-hidden relative flex flex-col md:flex-row"
+          className="w-full max-w-lg bg-[#0a0a0a] border border-white/10 rounded-3xl shadow-2xl overflow-hidden relative"
         >
-          {/* Left Side - Receipt Summary */}
-          <div className="w-full md:w-2/5 bg-gradient-to-br from-bg-surface to-bg-base p-8 border-r border-white/5 flex flex-col justify-between relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-accent/10 rounded-full blur-[100px] -mr-32 -mt-32" />
-            
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-12">
-                <Shield className="w-8 h-8 text-accent" />
-                <span className="text-xl font-bold tracking-widest text-white">JOESCAN</span>
+          {/* Close Button */}
+          <button onClick={onClose} disabled={isProcessing || isSuccess} className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/5 text-text-dim hover:text-white transition-colors z-20">
+            <X className="w-5 h-5" />
+          </button>
+
+          {/* Header */}
+          <div className="p-6 pb-0">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-accent" />
               </div>
-              
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-sm font-mono text-text-dim uppercase tracking-widest mb-1">Subscription</h3>
-                  <div className="text-2xl font-bold text-white uppercase tracking-wider">{planName}</div>
-                </div>
-                
-                <div className="h-px w-full bg-white/10" />
-                
-                <div>
-                  <h3 className="text-sm font-mono text-text-dim uppercase tracking-widest mb-1">Total Amount</h3>
-                  <div className="text-4xl font-bold text-accent">{price} <span className="text-lg text-text-dim font-normal">/mo</span></div>
-                </div>
+              <div>
+                <h2 className="text-lg font-black uppercase tracking-widest text-white">Upgrade to {planName}</h2>
+                <p className="text-xs text-text-dim font-mono">Select your payment method</p>
               </div>
-            </div>
-            
-            <div className="relative z-10 mt-12 flex items-center gap-3 text-sm text-text-dim">
-              <Lock className="w-4 h-4 text-accent" />
-              <span>Secured by Advanced 256-bit Encryption</span>
             </div>
           </div>
 
-          {/* Right Side - Payment Form */}
-          <div className="w-full md:w-3/5 bg-[#0f0f0f] p-8 relative">
-            <button onClick={onClose} disabled={isProcessing || isSuccess} className="absolute top-6 right-6 p-2 rounded-full hover:bg-white/5 text-text-dim hover:text-white transition-colors z-20">
-              <X className="w-5 h-5" />
-            </button>
-            
-            <div className="max-w-md mx-auto mt-4">
-              <h2 className="text-2xl font-bold text-white mb-8">Payment Details</h2>
-              
-              {isSuccess ? (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="flex flex-col items-center justify-center py-12 text-center"
-                >
-                  <div className="w-24 h-24 bg-accent/20 rounded-full flex items-center justify-center mb-6">
-                    <CheckCircle className="w-12 h-12 text-accent" />
-                  </div>
-                  <h3 className="text-2xl font-bold text-white mb-2">Payment Successful!</h3>
-                  <p className="text-text-dim">Your account has been upgraded. Welcome to {planName}.</p>
-                </motion.div>
-              ) : (
-                <form onSubmit={handlePay} className="space-y-6">
-                  <div className="bg-bg-surface border border-border-subtle p-6 rounded-xl flex items-center gap-4 mb-8">
-                    <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-green-500" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-white uppercase tracking-widest text-sm">WhatsApp Manual Payment</h3>
-                      <p className="text-text-dim text-xs mt-1">You will be redirected to WhatsApp to contact our team and complete your subscription manually.</p>
-                    </div>
-                  </div>
-
-                  {error && (
-                    <div className="text-error text-sm bg-error/10 border border-error/20 p-3 rounded-xl flex items-center gap-2 mb-6">
-                      <Shield className="w-4 h-4 shrink-0" /> {error}
-                    </div>
+          {/* Price Display */}
+          <div className="px-6 py-4">
+            <div className="bg-bg-surface border border-border-subtle rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-text-dim font-mono uppercase tracking-widest">Total Amount</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  {promoApplied ? (
+                    <>
+                      <span className="text-2xl font-black text-accent">{getDiscountedPrice()}</span>
+                      <span className="text-sm line-through text-text-dim/50">{price}</span>
+                      <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full font-bold">-{promoApplied.discount}%</span>
+                    </>
+                  ) : (
+                    <span className="text-2xl font-black text-accent">{price}</span>
                   )}
-
-                  <button 
-                    type="submit" 
-                    disabled={isProcessing}
-                    className="w-full h-14 bg-green-500 hover:bg-green-400 text-black font-bold uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center mt-8 relative overflow-hidden group disabled:opacity-70 disabled:hover:scale-100"
-                  >
-                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                    <span className="relative z-10 flex items-center gap-2">
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" /> Redirecting to WhatsApp...
-                        </>
-                      ) : (
-                        `Pay ${price} via WhatsApp`
-                      )}
-                    </span>
-                  </button>
-                  <p className="text-center text-[10px] text-text-dim mt-4 uppercase tracking-widest">Instant Activation via Support</p>
-                </form>
-              )}
+                  <span className="text-text-dim text-xs">/mo</span>
+                </div>
+              </div>
+              <Lock className="w-5 h-5 text-text-dim/30" />
             </div>
           </div>
+
+          {isSuccess ? (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex flex-col items-center justify-center py-10 px-6 text-center"
+            >
+              <div className="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-10 h-10 text-accent" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-1">Upgrade Successful!</h3>
+              <p className="text-text-dim text-sm">Welcome to {planName}. All features are now unlocked.</p>
+              <button onClick={onClose} className="mt-6 px-8 py-3 bg-accent text-accent-fg font-bold uppercase tracking-widest rounded-xl text-sm">
+                Continue
+              </button>
+            </motion.div>
+          ) : (
+            <div className="px-6 pb-6 space-y-4">
+              {error && (
+                <div className="text-error text-sm bg-error/10 border border-error/20 p-3 rounded-xl flex items-center gap-2">
+                  <Shield className="w-4 h-4 shrink-0" /> {error}
+                </div>
+              )}
+
+              {/* ── Promo Code Section ── */}
+              <div className="bg-bg-surface border border-border-subtle rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Tag className="w-4 h-4 text-accent" />
+                  <span className="text-xs font-bold uppercase tracking-widest text-text-dim">Promo Code</span>
+                </div>
+                
+                {promoApplied ? (
+                  <div className="flex items-center gap-3 bg-accent/10 border border-accent/30 rounded-lg p-3">
+                    <Sparkles className="w-5 h-5 text-accent" />
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-accent">{promoApplied.code} Applied!</p>
+                      <p className="text-xs text-text-dim">{promoApplied.discount}% discount active</p>
+                    </div>
+                    <button 
+                      onClick={() => { setPromoApplied(null); setPromoCode(''); }}
+                      className="text-xs text-text-dim hover:text-white transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoError(''); }}
+                      placeholder="ENTER CODE"
+                      className="flex-1 bg-bg-base border border-border-subtle rounded-lg px-3 py-2.5 text-sm font-mono uppercase tracking-widest text-white placeholder:text-text-dim/40 focus:outline-none focus:border-accent/50 transition-colors"
+                    />
+                    <button
+                      onClick={handleApplyPromo}
+                      disabled={promoLoading || !promoCode.trim()}
+                      className="px-4 py-2.5 bg-accent/10 border border-accent/30 text-accent font-bold uppercase text-xs tracking-widest rounded-lg hover:bg-accent/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      {promoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
+                    </button>
+                  </div>
+                )}
+                
+                {promoError && (
+                  <p className="text-error text-xs mt-2 font-mono">{promoError}</p>
+                )}
+              </div>
+
+              {/* ── WhatsApp Payment Button ── */}
+              <button 
+                onClick={handleWhatsApp}
+                disabled={isProcessing}
+                className="w-full h-14 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center relative overflow-hidden group disabled:opacity-70 disabled:hover:scale-100"
+              >
+                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+                <span className="relative z-10 flex items-center gap-3">
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" /> Redirecting...
+                    </>
+                  ) : (
+                    <>
+                      <MessageCircle className="w-5 h-5" />
+                      Pay {promoApplied ? getDiscountedPrice() : price} via WhatsApp
+                    </>
+                  )}
+                </span>
+              </button>
+
+              <p className="text-center text-[10px] text-text-dim uppercase tracking-widest">
+                Contact our team to complete payment • Instant activation
+              </p>
+            </div>
+          )}
         </motion.div>
       </div>
     </AnimatePresence>
