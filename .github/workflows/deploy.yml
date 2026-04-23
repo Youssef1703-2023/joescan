@@ -36,6 +36,15 @@ jobs:
       - name: Add CNAME for custom domain
         run: echo 'joescan.me' > dist/CNAME
 
+      - name: Add cache control headers
+        run: |
+          cat > dist/_headers << 'EOF'
+          /*
+            Cache-Control: no-cache, must-revalidate
+          /*.html
+            Cache-Control: no-store
+          EOF
+
       - name: Copy index.html to 404.html (SPA routing)
         run: cp dist/index.html dist/404.html
 
