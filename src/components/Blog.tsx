@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Calendar, Clock, ChevronRight, ArrowRight, Tag, TrendingUp, Shield, AlertTriangle, Eye, Lock, Wifi, X, Zap, Newspaper, Filter, Search, Smartphone, Brain, Baby, Bitcoin, CreditCard, Globe } from 'lucide-react';
+import { BookOpen, Calendar, Clock, ChevronRight, ArrowRight, Tag, TrendingUp, Shield, AlertTriangle, Eye, Lock, Wifi, X, Zap, Newspaper, Filter, Search, Smartphone, Brain, Baby, Bitcoin, CreditCard, Globe, ExternalLink, Radio, RefreshCw } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { ARTICLES, CATEGORIES, type Article } from '../data/blogArticles';
+import dailyNewsData from '../data/dailyNews.json';
 
 const CATEGORY_ICONS: Record<string, any> = {
   'تسريبات': AlertTriangle,
@@ -54,9 +55,30 @@ export default function Blog() {
             <p className="text-xs text-text-dim font-mono">مقالات وأخبار لحمايتك الرقمية — بالعربي</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-xl">
-          <Newspaper className="w-4 h-4 text-accent" />
-          <span className="text-xs font-bold text-accent">{ARTICLES.length} مقال</span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
+            <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" style={{ animationDuration: '3s' }} />
+            <span className="text-[10px] font-bold text-emerald-400">تحديث يومي تلقائي</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-xl">
+            <Newspaper className="w-4 h-4 text-accent" />
+            <span className="text-xs font-bold text-accent">{ARTICLES.length} مقال</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Auto-Update Banner */}
+      <div className="bg-gradient-to-r from-emerald-500/10 via-cyan-500/5 to-accent/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-4">
+        <div className="w-10 h-10 bg-emerald-500/20 border border-emerald-500/30 rounded-xl flex items-center justify-center shrink-0">
+          <Radio className="w-5 h-5 text-emerald-400" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-sm font-bold text-text-main">📡 أخبار يومية تلقائية</h3>
+          <p className="text-[11px] text-text-dim mt-0.5">يتم تحديث الأخبار تلقائياً كل يوم الساعة 8 صباحاً من مصادر إخبارية عربية موثوقة</p>
+        </div>
+        <div className="text-left shrink-0">
+          <div className="text-[10px] text-text-dim font-mono">آخر تحديث</div>
+          <div className="text-xs font-bold text-emerald-400">{dailyNewsData.lastUpdated ? new Date(dailyNewsData.lastUpdated).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</div>
         </div>
       </div>
 
@@ -145,13 +167,53 @@ export default function Blog() {
             exit={{ opacity: 0, y: -10 }}
             className="space-y-6"
           >
+            {/* Daily Auto-Fetched News */}
+            {dailyNewsData.articles && dailyNewsData.articles.length > 0 && (
+              <div className="bg-gradient-to-br from-cyan-500/5 via-bg-surface to-emerald-500/5 border border-cyan-500/20 rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="px-2.5 py-1 bg-cyan-500/20 rounded-lg flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                      <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">آخر الأخبار — تحديث تلقائي</span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-text-dim font-mono">{dailyNewsData.articles.length} خبر</span>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {dailyNewsData.articles.slice(0, 6).map((news: any, idx: number) => (
+                    <motion.a
+                      key={idx}
+                      href={news.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      whileHover={{ scale: 1.005 }}
+                      className="flex items-start gap-3 p-3 bg-bg-surface/50 border border-border-subtle rounded-xl cursor-pointer hover:border-cyan-500/30 transition-all group"
+                    >
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full mt-1.5 shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-bold text-text-main leading-relaxed line-clamp-2 group-hover:text-cyan-400 transition-colors">{news.title}</h4>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-cyan-400/80 font-mono">{news.source}</span>
+                          <span className="text-[10px] text-text-dim font-mono">• {new Date(news.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}</span>
+                        </div>
+                      </div>
+                      <ExternalLink className="w-3.5 h-3.5 text-text-dim group-hover:text-cyan-400 shrink-0 mt-1 transition-colors" />
+                    </motion.a>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Breaking News Ticker */}
             {newsArticles.length > 0 && (
               <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="px-2.5 py-1 bg-red-500/20 rounded-lg flex items-center gap-1.5 animate-pulse">
                     <Zap className="w-3.5 h-3.5 text-red-400" />
-                    <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider">أخبار عاجلة</span>
+                    <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider">مقالات عاجلة</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

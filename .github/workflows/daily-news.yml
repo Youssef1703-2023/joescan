@@ -1,0 +1,38 @@
+name: Daily Cybersecurity News
+
+on:
+  schedule:
+    # Run daily at 6:00 AM UTC (8:00 AM Egypt time)
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-news:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Fetch latest cybersecurity news
+        run: node scripts/fetch-news.mjs
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet src/data/dailyNews.json || echo "changed=true" >> $GITHUB_OUTPUT
+
+      - name: Commit and push new articles
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git config user.name "JoeScan Bot"
+          git config user.email "bot@joescan.me"
+          git add src/data/dailyNews.json
+          git commit -m "🤖 auto: daily cybersecurity news update"
+          git push
