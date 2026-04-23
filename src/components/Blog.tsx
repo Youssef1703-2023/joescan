@@ -1,292 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Calendar, Clock, ChevronRight, ArrowRight, Tag, TrendingUp, Shield, AlertTriangle, Eye, Lock, Wifi, X } from 'lucide-react';
+import { BookOpen, Calendar, Clock, ChevronRight, ArrowRight, Tag, TrendingUp, Shield, AlertTriangle, Eye, Lock, Wifi, X, Zap, Newspaper, Filter, Search, Smartphone, Brain, Baby, Bitcoin, CreditCard, Globe } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-
-interface Article {
-  id: string;
-  title: string;
-  summary: string;
-  content: string;
-  category: string;
-  date: string;
-  readTime: string;
-  tags: string[];
-  featured?: boolean;
-}
-
-const ARTICLES: Article[] = [
-  {
-    id: '1',
-    title: 'أكبر 10 تسريبات بيانات في عام 2025 — هل بياناتك من ضمنهم؟',
-    summary: 'شهد عام 2025 موجة غير مسبوقة من تسريبات البيانات التي أثرت على مليارات المستخدمين حول العالم. تعرف على أخطر التسريبات وكيف تحمي نفسك.',
-    content: `## أكبر 10 تسريبات بيانات في عام 2025
-
-شهد العالم الرقمي في 2025 تصاعداً مخيفاً في حجم ونوعية تسريبات البيانات. فيما يلي أخطر 10 تسريبات والدروس المستفادة منها:
-
-### 1. تسريب National Public Data — 2.9 مليار سجل
-في بداية 2025، تم تسريب قاعدة بيانات ضخمة تحتوي على بيانات شخصية لملايين الأشخاص بما في ذلك أرقام الضمان الاجتماعي والعناوين.
-
-**الدرس المستفاد:** لا تثق في أي شركة تخزن بياناتك — حتى لو كانت شركة حكومية.
-
-### 2. اختراق MOVEit — سلسلة توريد كاملة
-استغل المهاجمون ثغرة zero-day في برنامج نقل الملفات MOVEit مما أثر على آلاف الشركات والمؤسسات.
-
-**الدرس المستفاد:** الأمان ليس فقط في نظامك — بل في أنظمة مورديك أيضاً.
-
-### 3. تسريب ChatGPT — محادثات ملايين المستخدمين
-تم تسريب تاريخ محادثات ملايين المستخدمين مع ChatGPT بما في ذلك معلومات حساسة شاركوها مع الذكاء الاصطناعي.
-
-**الدرس المستفاد:** لا تشارك معلومات شخصية أو سرية مع أدوات الذكاء الاصطناعي.
-
-### 4. اختراق AT&T — 73 مليون عميل
-تم تسريب بيانات 73 مليون عميل بما في ذلك أرقام الضمان الاجتماعي وكلمات المرور المشفرة.
-
-### 5. هجوم الفدية على مستشفيات — أرواح في خطر
-استهدفت مجموعات ransomware مستشفيات في عدة دول عربية مما أدى لتوقف أنظمة حيوية.
-
----
-
-## كيف تحمي نفسك؟
-
-1. **استخدم مدير كلمات مرور** — لا تستخدم نفس الكلمة في أكثر من موقع
-2. **فعّل المصادقة الثنائية (2FA)** على كل حساباتك
-3. **راقب بياناتك** باستمرار باستخدام أدوات مثل JoeScan
-4. **لا تشارك معلومات حساسة** على الإنترنت أبداً
-5. **حدّث برامجك** فوراً عند صدور تحديثات أمنية`,
-    category: 'تسريبات',
-    date: '2025-04-20',
-    readTime: '7 دقائق',
-    tags: ['تسريبات', 'حماية البيانات', '2025'],
-    featured: true,
-  },
-  {
-    id: '2',
-    title: 'كلمة المرور "123456" لسه الأكثر استخداماً — كيف تحمي حساباتك؟',
-    summary: 'رغم كل التحذيرات، لا يزال ملايين المستخدمين يستخدمون كلمات مرور ضعيفة. دليلك الشامل لإنشاء كلمات مرور لا يمكن اختراقها.',
-    content: `## لماذا كلمة المرور "123456" مشكلة حقيقية؟
-
-حسب تقرير NordPass لعام 2025، فإن كلمة المرور "123456" لا تزال **الأكثر استخداماً عالمياً** للعام الخامس على التوالي. هذه كلمة مرور يمكن كسرها في **أقل من ثانية واحدة**.
-
-### أكثر 10 كلمات مرور شيوعاً (وخطورة):
-
-| الترتيب | كلمة المرور | وقت الكسر |
-|---------|------------|-----------|
-| 1 | 123456 | أقل من ثانية |
-| 2 | password | أقل من ثانية |
-| 3 | 123456789 | أقل من ثانية |
-| 4 | 12345678 | أقل من ثانية |
-| 5 | qwerty123 | أقل من ثانية |
-
-### كيف تنشئ كلمة مرور قوية؟
-
-**الطريقة المثالية:** استخدم **جملة** بدل كلمة واحدة:
-- ❌ \`ahmed123\`
-- ✅ \`أحب_القهوة_الساعة_7_صباحاً!\`
-
-**قواعد الكلمة القوية:**
-1. **12 حرف على الأقل** — كل حرف إضافي يضاعف الصعوبة
-2. **أحرف كبيرة وصغيرة** — تزيد التعقيد
-3. **أرقام ورموز** — مثل @, #, $, %
-4. **لا تستخدم معلومات شخصية** — اسمك، تاريخ ميلادك، اسم حيوانك
-
-### استخدم مدير كلمات مرور
-
-مدير كلمات المرور يحفظ كل كلمات المرور بشكل آمن ويولد كلمات عشوائية قوية:
-- **Bitwarden** (مجاني ومفتوح المصدر)
-- **1Password** (مدفوع ولكن ممتاز)
-- **KeePass** (مجاني ويعمل بدون إنترنت)
-
-### المصادقة الثنائية: خط الدفاع الأخير
-
-حتى لو سُرقت كلمة المرور، المصادقة الثنائية تمنع الوصول:
-- **تطبيق Authenticator** (الأفضل) — Google Authenticator أو Authy
-- **رسالة SMS** (مقبول) — أفضل من لا شيء
-- **مفتاح أمان فعلي** (الأقوى) — YubiKey
-
----
-
-💡 **نصيحة:** افحص كلمات المرور الحالية باستخدام أداة "فحص كلمات المرور" في JoeScan لمعرفة إذا كانت مسربة.`,
-    category: 'كلمات المرور',
-    date: '2025-04-18',
-    readTime: '5 دقائق',
-    tags: ['كلمات المرور', 'حماية الحسابات', 'نصائح'],
-  },
-  {
-    id: '3',
-    title: 'رسائل التصيد الاحتيالي بالعربي — أساليب جديدة وخطيرة',
-    summary: 'المحتالون أصبحوا أذكى! تعرف على أحدث أساليب التصيد الاحتيالي التي تستهدف المستخدمين العرب وكيف تكشفها.',
-    content: `## التصيد الاحتيالي بالعربي: موجة جديدة من الاحتيال
-
-في 2025، شهدنا زيادة **300%** في رسائل التصيد الاحتيالي باللغة العربية. المحتالون أصبحوا يستخدمون الذكاء الاصطناعي لكتابة رسائل مقنعة جداً.
-
-### أشهر أنواع التصيد في المنطقة العربية:
-
-#### 1. رسائل البنك المزيفة 🏦
-"عزيزي العميل، تم تجميد حسابك. اضغط هنا لتحديث بياناتك."
-- **الحقيقة:** البنك لا يطلب بياناتك عبر إيميل أو SMS أبداً
-
-#### 2. عروض التوظيف الوهمية 💼
-"مبروك! تم قبولك في وظيفة بمرتب 50,000 ريال/شهر. ادفع رسوم التسجيل..."
-- **الحقيقة:** الوظائف الحقيقية لا تطلب رسوم تسجيل
-
-#### 3. جوائز مسابقات لم تشترك فيها 🎁
-"ربحت iPhone 16 Pro! ادخل بياناتك لاستلام الجائزة."
-- **الحقيقة:** لا أحد يقدم هدايا مجانية لأشخاص لا يعرفهم
-
-#### 4. رسائل شركات الشحن 📦
-"طردك في الطريق! ادفع رسوم الجمارك لاستلامه."
-- **الحقيقة:** تواصل مع شركة الشحن مباشرة من موقعها الرسمي
-
-### كيف تكشف رسالة التصيد؟
-
-| العلامة | التفاصيل |
-|---------|----------|
-| 🔴 عنوان المرسل غريب | تحقق من البريد الإلكتروني كاملاً |
-| 🔴 أخطاء إملائية | الشركات الكبرى لا تخطئ إملائياً |
-| 🔴 عاجل جداً! | يحاولون إخافتك لتتصرف بسرعة |
-| 🔴 روابط مشبوهة | مرر الماوس فوق الرابط قبل الضغط |
-| 🔴 طلب معلومات شخصية | لا تشارك بياناتك أبداً عبر رابط |
-
-### ماذا تفعل لو تلقيت رسالة مشبوهة؟
-
-1. **لا تضغط على أي رابط**
-2. **لا ترد على الرسالة**
-3. **افحص الرابط** باستخدام أداة "فحص الروابط المشبوهة" في JoeScan
-4. **بلّغ عن الرسالة** لمزود خدمة البريد
-5. **احذف الرسالة** فوراً
-
----
-
-🛡️ **استخدم أداة فحص الرسائل المشبوهة** في JoeScan لتحليل أي رسالة تثير شكوكك.`,
-    category: 'التصيد',
-    date: '2025-04-15',
-    readTime: '6 دقائق',
-    tags: ['تصيد احتيالي', 'حماية', 'نصائح'],
-  },
-  {
-    id: '4',
-    title: 'واي فاي المقاهي والفنادق — لماذا هو خطير وكيف تحمي نفسك؟',
-    summary: 'شبكات الواي فاي العامة هي جنة المخترقين. تعلم كيف تتصفح بأمان عندما تكون خارج المنزل.',
-    content: `## شبكات الواي فاي العامة: الخطر المخفي
-
-كل مرة تتصل بشبكة واي فاي في مقهى أو فندق أو مطار، أنت **تعرض بياناتك للخطر**. المخترقون يستغلون هذه الشبكات بعدة طرق:
-
-### كيف يسرقون بياناتك؟
-
-#### 1. هجوم Man-in-the-Middle (الرجل في المنتصف) 👤
-المخترق يضع نفسه بينك وبين الراوتر ويقرأ كل ما ترسله وتستقبله.
-
-#### 2. Evil Twin (التوأم الشرير) 👥
-ينشئ شبكة واي فاي بنفس اسم شبكة المقهى. تتصل بها ظناً أنها الشبكة الحقيقية، لكنها فخ.
-
-#### 3. Packet Sniffing (التنصت على البيانات) 📡
-باستخدام أدوات بسيطة، يستطيع أي شخص على نفس الشبكة التقاط بياناتك غير المشفرة.
-
-### ماذا يمكنهم سرقته؟
-
-- 🔐 كلمات المرور
-- 💳 بيانات البطاقة البنكية
-- 📧 رسائل البريد الإلكتروني
-- 📱 رسائل الواتساب (في بعض الحالات)
-- 🍪 ملفات الكوكيز (يمكنهم تسجيل الدخول لحساباتك)
-
-### كيف تحمي نفسك؟
-
-#### ✅ استخدم VPN دائماً
-VPN يشفر كل بياناتك ويجعلها غير قابلة للقراءة حتى لو اعترضها أحد.
-- **ProtonVPN** — مجاني وآمن
-- **NordVPN** — سريع وموثوق
-- **Mullvad** — خصوصية قصوى
-
-#### ✅ تأكد من HTTPS
-- ابحث عن 🔒 في شريط العنوان
-- لا تدخل بيانات في مواقع HTTP (بدون S)
-
-#### ✅ أوقف الاتصال التلقائي
-- في إعدادات الواي فاي، أوقف "الاتصال التلقائي بالشبكات المفتوحة"
-
-#### ✅ استخدم بيانات الموبايل للعمليات الحساسة
-- الشراء أونلاين؟ استخدم 4G/5G
-- تسجيل دخول للبنك؟ استخدم 4G/5G
-
-#### ✅ فعّل الجدار الناري (Firewall)
-- في Windows: ابحث عن "Windows Firewall" وتأكد إنه مفعل
-- في Mac: System Preferences → Security & Privacy → Firewall
-
----
-
-🔍 **افحص أمان شبكتك** باستخدام أداة "فحص IP" في JoeScan.`,
-    category: 'شبكات',
-    date: '2025-04-10',
-    readTime: '8 دقائق',
-    tags: ['واي فاي', 'VPN', 'شبكات عامة'],
-  },
-  {
-    id: '5',
-    title: 'بصمتك الرقمية — الإنترنت يعرف عنك أكثر مما تظن',
-    summary: 'كل نقرة، كل بحث، كل صورة — الإنترنت يتذكر كل شيء. تعلم كيف تقلل بصمتك الرقمية وتحمي خصوصيتك.',
-    content: `## بصمتك الرقمية: ماذا يعرف عنك الإنترنت؟
-
-في كل مرة تستخدم الإنترنت، تترك **بصمة رقمية**. هذه البصمة تتضمن معلومات أكثر بكثير مما تتخيل:
-
-### ماذا يعرف عنك الإنترنت؟
-
-- 📍 **موقعك الجغرافي** — بدقة تصل لعدة أمتار
-- 🖥️ **جهازك** — نوعه، نظام التشغيل، دقة الشاشة
-- 🌐 **متصفحك** — الإضافات المثبتة، اللغة، الخطوط
-- 🕐 **عاداتك** — متى تتصل، ماذا تبحث، ماذا تشتري
-- 👤 **هويتك** — حتى لو لم تسجل دخولك، يمكن تتبعك
-
-### أنواع البصمة الرقمية
-
-#### بصمة نشطة (Active Footprint)
-ما تشاركه بنفسك عمداً:
-- منشورات السوشيال ميديا
-- التعليقات والمراجعات
-- الصور والفيديوهات
-- المعلومات في ملفاتك الشخصية
-
-#### بصمة سلبية (Passive Footprint)
-ما يُجمع عنك بدون علمك:
-- سجل التصفح
-- عنوان IP
-- ملفات الكوكيز
-- بيانات التطبيقات
-
-### كيف تقلل بصمتك الرقمية؟
-
-#### 1. راجع إعدادات الخصوصية 🔧
-- Facebook: Settings → Privacy
-- Google: myaccount.google.com → Privacy
-- Instagram: Settings → Privacy
-
-#### 2. احذف الحسابات القديمة 🗑️
-- استخدم موقع justdelete.me لمعرفة كيف تحذف حساباتك
-- احذف التطبيقات اللي مش بتستخدمها
-
-#### 3. استخدم محرك بحث يحترم خصوصيتك 🔍
-- **DuckDuckGo** — لا يتتبعك أبداً
-- **Brave Search** — خصوصية مدمجة
-- **Startpage** — يستخدم نتائج Google بدون التتبع
-
-#### 4. استخدم بريد إلكتروني مشفر 📧
-- **ProtonMail** — مشفر من طرف لطرف
-- **Tutanota** — بديل ممتاز
-
-#### 5. راجع بياناتك المسربة بانتظام 🛡️
-- استخدم JoeScan لفحص إيميلك وأرقامك
-- غيّر كلمات المرور المسربة فوراً
-
----
-
-🔍 **اكتشف بصمتك الرقمية** باستخدام أداة "بصمة المتصفح" في JoeScan — ستندهش من كمية المعلومات التي يكشفها متصفحك!`,
-    category: 'خصوصية',
-    date: '2025-04-05',
-    readTime: '9 دقائق',
-    tags: ['خصوصية', 'بصمة رقمية', 'تتبع'],
-  },
-];
+import { ARTICLES, CATEGORIES, type Article } from '../data/blogArticles';
 
 const CATEGORY_ICONS: Record<string, any> = {
   'تسريبات': AlertTriangle,
@@ -294,25 +10,53 @@ const CATEGORY_ICONS: Record<string, any> = {
   'التصيد': Eye,
   'شبكات': Wifi,
   'خصوصية': Shield,
+  'أخبار عاجلة': Zap,
+  'تقارير': Brain,
+  'نصائح': Smartphone,
 };
 
 export default function Blog() {
   const { lang } = useLanguage();
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [activeCategory, setActiveCategory] = useState('الكل');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredArticles = useMemo(() => {
+    let articles = ARTICLES;
+    if (activeCategory !== 'الكل') {
+      articles = articles.filter(a => a.category === activeCategory);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      articles = articles.filter(a =>
+        a.title.toLowerCase().includes(q) ||
+        a.summary.toLowerCase().includes(q) ||
+        a.tags.some(t => t.toLowerCase().includes(q))
+      );
+    }
+    return articles;
+  }, [activeCategory, searchQuery]);
 
   const featured = ARTICLES.find(a => a.featured);
-  const rest = ARTICLES.filter(a => !a.featured);
+  const newsArticles = ARTICLES.filter(a => a.isNews).slice(0, 4);
+  const regularArticles = filteredArticles.filter(a => !a.featured || activeCategory !== 'الكل');
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6" dir="rtl">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center">
-          <BookOpen className="w-5 h-5 text-accent" />
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center">
+            <BookOpen className="w-5 h-5 text-accent" />
+          </div>
+          <div>
+            <h1 className="text-xl font-black uppercase tracking-widest text-text-main">مدوّنة الأمن السيبراني</h1>
+            <p className="text-xs text-text-dim font-mono">مقالات وأخبار لحمايتك الرقمية — بالعربي</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-black uppercase tracking-widest text-text-main">مدوّنة الأمن السيبراني</h1>
-          <p className="text-xs text-text-dim font-mono">مقالات ونصائح لحمايتك الرقمية — بالعربي</p>
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-xl">
+          <Newspaper className="w-4 h-4 text-accent" />
+          <span className="text-xs font-bold text-accent">{ARTICLES.length} مقال</span>
         </div>
       </div>
 
@@ -335,9 +79,13 @@ export default function Blog() {
             </button>
 
             <div className="bg-bg-surface border border-border-subtle rounded-2xl p-6 sm:p-8 space-y-6">
-              {/* Article Header */}
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
+                  {selectedArticle.isNews && (
+                    <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-red-500/30 flex items-center gap-1 animate-pulse">
+                      <Zap className="w-3 h-3" /> عاجل
+                    </span>
+                  )}
                   <span className="px-3 py-1 bg-accent/10 text-accent text-[10px] font-bold uppercase tracking-widest rounded-lg border border-accent/20">
                     {selectedArticle.category}
                   </span>
@@ -397,8 +145,69 @@ export default function Blog() {
             exit={{ opacity: 0, y: -10 }}
             className="space-y-6"
           >
+            {/* Breaking News Ticker */}
+            {newsArticles.length > 0 && (
+              <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="px-2.5 py-1 bg-red-500/20 rounded-lg flex items-center gap-1.5 animate-pulse">
+                    <Zap className="w-3.5 h-3.5 text-red-400" />
+                    <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider">أخبار عاجلة</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {newsArticles.map(article => (
+                    <motion.div
+                      key={article.id}
+                      whileHover={{ scale: 1.01 }}
+                      onClick={() => setSelectedArticle(article)}
+                      className="flex items-start gap-3 p-3 bg-bg-surface/50 border border-red-500/10 rounded-xl cursor-pointer hover:border-red-500/30 transition-all group"
+                    >
+                      <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 shrink-0 animate-pulse" />
+                      <div>
+                        <h4 className="text-xs font-bold text-text-main leading-relaxed line-clamp-2">{article.title}</h4>
+                        <span className="text-[10px] text-text-dim font-mono mt-1 flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> {article.readTime}
+                        </span>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Search and Filter */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="ابحث في المقالات..."
+                  className="w-full pr-10 pl-4 py-2.5 bg-bg-surface border border-border-subtle rounded-xl text-sm text-text-main placeholder-text-dim focus:outline-none focus:border-accent/40"
+                />
+              </div>
+            </div>
+
+            {/* Category Filter */}
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                    activeCategory === cat
+                      ? 'bg-accent/20 text-accent border-accent/30'
+                      : 'bg-bg-surface text-text-dim border-border-subtle hover:border-accent/20'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
             {/* Featured Article */}
-            {featured && (
+            {activeCategory === 'الكل' && !searchQuery && featured && (
               <motion.div
                 whileHover={{ scale: 1.005 }}
                 onClick={() => setSelectedArticle(featured)}
@@ -426,26 +235,33 @@ export default function Blog() {
               </motion.div>
             )}
 
-            {/* Other Articles */}
+            {/* Articles Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {rest.map((article, idx) => {
+              {regularArticles.map((article, idx) => {
                 const CatIcon = CATEGORY_ICONS[article.category] || Shield;
                 return (
                   <motion.div
                     key={article.id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.1 }}
+                    transition={{ delay: idx * 0.05 }}
                     whileHover={{ scale: 1.01 }}
                     onClick={() => setSelectedArticle(article)}
-                    className="bg-bg-surface border border-border-subtle rounded-2xl p-5 cursor-pointer hover:border-accent/30 transition-all group"
+                    className={`bg-bg-surface border rounded-2xl p-5 cursor-pointer transition-all group ${
+                      article.isNews ? 'border-red-500/20 hover:border-red-500/40' : 'border-border-subtle hover:border-accent/30'
+                    }`}
                   >
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center shrink-0 mt-1">
-                        <CatIcon className="w-5 h-5 text-accent" />
+                      <div className={`w-10 h-10 border rounded-xl flex items-center justify-center shrink-0 mt-1 ${
+                        article.isNews ? 'bg-red-500/10 border-red-500/20' : 'bg-accent/10 border-accent/20'
+                      }`}>
+                        <CatIcon className={`w-5 h-5 ${article.isNews ? 'text-red-400' : 'text-accent'}`} />
                       </div>
                       <div className="space-y-2 flex-1 min-w-0">
                         <div className="flex items-center gap-2">
+                          {article.isNews && (
+                            <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 text-[9px] font-bold rounded animate-pulse">عاجل</span>
+                          )}
                           <span className="text-[10px] text-text-dim font-mono flex items-center gap-1">
                             <Calendar className="w-3 h-3" />
                             {new Date(article.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}
@@ -462,6 +278,30 @@ export default function Blog() {
                   </motion.div>
                 );
               })}
+            </div>
+
+            {/* No Results */}
+            {regularArticles.length === 0 && (
+              <div className="text-center py-12">
+                <Search className="w-12 h-12 text-text-dim/30 mx-auto mb-3" />
+                <p className="text-sm text-text-dim">لا توجد مقالات تطابق البحث</p>
+              </div>
+            )}
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-bg-surface border border-border-subtle rounded-xl p-3 text-center">
+                <div className="text-lg font-black text-accent">{ARTICLES.length}</div>
+                <div className="text-[10px] text-text-dim font-mono">مقال منشور</div>
+              </div>
+              <div className="bg-bg-surface border border-border-subtle rounded-xl p-3 text-center">
+                <div className="text-lg font-black text-red-400">{ARTICLES.filter(a => a.isNews).length}</div>
+                <div className="text-[10px] text-text-dim font-mono">خبر عاجل</div>
+              </div>
+              <div className="bg-bg-surface border border-border-subtle rounded-xl p-3 text-center">
+                <div className="text-lg font-black text-purple-400">{CATEGORIES.length - 1}</div>
+                <div className="text-[10px] text-text-dim font-mono">تصنيف</div>
+              </div>
             </div>
           </motion.div>
         )}
