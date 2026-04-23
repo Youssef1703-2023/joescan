@@ -36,14 +36,10 @@ jobs:
       - name: Add CNAME for custom domain
         run: echo 'joescan.me' > dist/CNAME
 
-      - name: Add cache control headers
+      - name: Inject build timestamp for cache busting
         run: |
-          cat > dist/_headers << 'EOF'
-          /*
-            Cache-Control: no-cache, must-revalidate
-          /*.html
-            Cache-Control: no-store
-          EOF
+          TIMESTAMP=$(date +%s)
+          sed -i "s|</head>|<meta name=\"build-time\" content=\"$TIMESTAMP\" /></head>|" dist/index.html
 
       - name: Copy index.html to 404.html (SPA routing)
         run: cp dist/index.html dist/404.html
@@ -63,3 +59,9 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+      - name: Purge CDN cache
+        run: |
+          curl -s "https://joescan.me/?purge=$(date +%s)" -o /dev/null || true
+          curl -s "https://joescan.me/blog?purge=$(date +%s)" -o /dev/null || true
+          echo "Cache purge requested"
