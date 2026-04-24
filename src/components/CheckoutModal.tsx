@@ -214,7 +214,7 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
                     <button
                       onClick={handleApplyPromo}
                       disabled={promoLoading || !promoCode.trim()}
-                      className="px-4 py-2.5 bg-accent/10 border border-accent/30 text-accent font-bold uppercase text-xs tracking-widest rounded-lg hover:bg-accent/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="shrink-0 px-3 sm:px-4 py-2.5 bg-accent/10 border border-accent/30 text-accent font-bold uppercase text-xs tracking-widest rounded-lg hover:bg-accent/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {promoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
                     </button>
@@ -230,18 +230,18 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
               <button 
                 onClick={handleWhatsApp}
                 disabled={isProcessing}
-                className="w-full h-14 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold uppercase tracking-widest rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center relative overflow-hidden group disabled:opacity-70 disabled:hover:scale-100"
+                className="w-full min-h-[3.5rem] py-3 px-2 sm:px-4 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold uppercase tracking-wide text-xs sm:text-sm rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center relative overflow-hidden group disabled:opacity-70 disabled:hover:scale-100"
               >
                 <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                <span className="relative z-10 flex items-center gap-3">
+                <span className="relative z-10 flex items-center justify-center gap-2 max-w-full">
                   {isProcessing ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" /> Redirecting...
                     </>
                   ) : (
                     <>
-                      <MessageCircle className="w-5 h-5" />
-                      Pay {promoApplied ? getDiscountedPrice() : price} via WhatsApp
+                      <MessageCircle className="w-5 h-5 shrink-0" />
+                      <span className="truncate whitespace-normal text-center leading-snug">Pay {promoApplied ? getDiscountedPrice() : price} via WhatsApp</span>
                     </>
                   )}
                 </span>
