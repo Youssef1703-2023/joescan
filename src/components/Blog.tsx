@@ -196,11 +196,11 @@ export default function Blog() {
                     {Math.max(2, Math.ceil(((selectedNews as any).content || '').length / 500))} {t('minRead', lang)}
                   </span>
                 </div>
-                <h1 className="text-2xl font-black text-text-main leading-relaxed">{selectedNews.title.replace(/ - .*$/, '')}</h1>
+                <h1 dir="ltr" className="text-2xl font-black text-text-main leading-relaxed">{selectedNews.title.replace(/ - .*$/, '')}</h1>
               </div>
 
-              {/* Full Article Content */}
-              <div className="prose prose-invert max-w-none">
+              {/* Full Article Content — always LTR since RSS is English */}
+              <div dir="ltr" className="prose prose-invert max-w-none text-left">
                 {((selectedNews as any).content || selectedNews.title.replace(/ - .*$/, '')).split('\n').map((line: string, i: number) => {
                   if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-text-main mt-8 mb-4 border-b border-border-subtle pb-2">{line.replace('## ', '')}</h2>;
                   if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold text-accent mt-6 mb-3">{line.replace('### ', '')}</h3>;
@@ -333,8 +333,8 @@ export default function Blog() {
                       className="flex items-start gap-3 p-3 bg-bg-surface/50 border border-border-subtle rounded-xl cursor-pointer hover:border-cyan-500/30 transition-all group"
                     >
                       <div className="w-2 h-2 bg-cyan-400 rounded-full mt-1.5 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-xs font-bold text-text-main leading-relaxed line-clamp-2 group-hover:text-cyan-400 transition-colors">{news.title}</h4>
+                      <div className="flex-1 min-w-0" dir="ltr">
+                        <h4 className="text-xs font-bold text-text-main leading-relaxed line-clamp-2 group-hover:text-cyan-400 transition-colors text-left">{news.title}</h4>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] text-cyan-400/80 font-mono">{news.source}</span>
                           <span className="text-[10px] text-text-dim font-mono">• {new Date(news.date).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' })}</span>
