@@ -39,6 +39,10 @@ const Blog = lazy(() => import('./components/Blog'));
 import LoadingSkeleton from './components/LoadingSkeleton';
 import ToastContainer from './components/Toast';
 import CommandPalette from './components/CommandPalette';
+import OnboardingTour from './components/OnboardingTour';
+import KeyboardShortcuts from './components/KeyboardShortcuts';
+import SEOHead from './components/SEOHead';
+import { HelmetProvider } from 'react-helmet-async';
 
 // Loading fallback
 const PageLoader = () => (
@@ -71,6 +75,7 @@ function AppContent() {
   const [userTier, setUserTier] = useState('free');
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [signupsEnabled, setSignupsEnabled] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // URL-based routing: sync URL with active tab
   const setActiveTab = (tab: TabId) => {
@@ -117,6 +122,10 @@ function AppContent() {
         });
         // Log login activity
         logActivity('login', 'User authenticated');
+        // Show onboarding for first-time users
+        if (!localStorage.getItem(`onboarding_${u.uid}`)) {
+          setShowOnboarding(true);
+        }
         // Fetch tier
         getUserTier(u.uid).then(t => setUserTier(t));
         // Fetch platform config for maintenance mode
@@ -380,6 +389,7 @@ function AppContent() {
             className="w-full flex-1 flex flex-col max-w-7xl"
           >
             <Suspense fallback={<PageLoader />}>
+            <SEOHead path={TAB_TO_PATH[activeTab] || '/'} />
             {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab as any} />}
             {activeTab === 'history' && <ScanHistory />}
             {activeTab === 'watchlist' && <Watchlist />}
@@ -411,6 +421,21 @@ function AppContent() {
 
       {/* Command Palette (Ctrl+K) */}
       <CommandPalette onNavigate={(id) => setActiveTab(id as TabId)} />
+      <KeyboardShortcuts onNavigate={(id) => setActiveTab(id as TabId)} enabled={!!user && mfaPassed} />
+
+      {/* Onboarding Tour (first visit only) */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingTour
+            isAr={lang === 'ar'}
+            onNavigate={(id) => setActiveTab(id as TabId)}
+            onComplete={() => {
+              setShowOnboarding(false);
+              if (user) localStorage.setItem(`onboarding_${user.uid}`, 'done');
+            }}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Modals outside the flex layout */}
       <AnimatePresence>
@@ -431,11 +456,13 @@ function AppContent() {
 }
 export default function App() {
   return (
+    <HelmetProvider>
     <LanguageProvider>
       <NotificationProvider>
         <AppContent />
         <ToastContainer />
       </NotificationProvider>
     </LanguageProvider>
+    </HelmetProvider>
   );
 }
