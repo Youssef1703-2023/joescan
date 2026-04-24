@@ -29,6 +29,15 @@ export default function Blog() {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [selectedNews, setSelectedNews] = useState<DailyNewsItem | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
+
+  const openArticle = (article: Article | null) => {
+    setSelectedArticle(article);
+    if (article) window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  const openNews = (news: DailyNewsItem | null) => {
+    setSelectedNews(news);
+    if (news) window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredArticles = useMemo(() => {
@@ -256,7 +265,7 @@ export default function Blog() {
                   {dailyNewsData.articles.slice(0, 10).map((news: any, idx: number) => (
                     <motion.div
                       key={idx}
-                      onClick={() => setSelectedNews(news as DailyNewsItem)}
+                      onClick={() => openNews(news as DailyNewsItem)}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
@@ -294,7 +303,7 @@ export default function Blog() {
                     <motion.div
                       key={article.id}
                       whileHover={{ scale: 1.01 }}
-                      onClick={() => setSelectedArticle(article)}
+                      onClick={() => openArticle(article)}
                       className="flex items-start gap-3 p-3 bg-bg-surface/50 border border-red-500/10 rounded-xl cursor-pointer hover:border-red-500/30 transition-all group"
                     >
                       <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 shrink-0 animate-pulse" />
@@ -345,7 +354,7 @@ export default function Blog() {
             {activeCategory === 'All' && !searchQuery && featured && (
               <motion.div
                 whileHover={{ scale: 1.005 }}
-                onClick={() => setSelectedArticle(featured)}
+                onClick={() => openArticle(featured)}
                 className="bg-gradient-to-br from-accent/10 via-bg-surface to-purple-500/5 border border-accent/20 rounded-2xl p-6 cursor-pointer hover:border-accent/40 transition-all relative overflow-hidden group"
               >
                 <div className="absolute top-3 left-3 px-2 py-0.5 bg-accent/20 text-accent text-[10px] font-bold uppercase tracking-widest rounded-lg border border-accent/30 flex items-center gap-1">
@@ -381,7 +390,7 @@ export default function Blog() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: idx * 0.05 }}
                     whileHover={{ scale: 1.01 }}
-                    onClick={() => setSelectedArticle(article)}
+                    onClick={() => openArticle(article)}
                     className={`bg-bg-surface border rounded-2xl p-5 cursor-pointer transition-all group ${
                       article.isNews ? 'border-red-500/20 hover:border-red-500/40' : 'border-border-subtle hover:border-accent/30'
                     }`}
