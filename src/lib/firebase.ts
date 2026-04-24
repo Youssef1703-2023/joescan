@@ -70,7 +70,7 @@ export interface UserProfileDocument {
   updatedAt?: string;
 }
 
-export const ADMIN_EMAIL = 'operator@joescan.me';
+export const ADMIN_EMAIL = 'joetech.dev.systems@gmail.com';
 
 // ─── Profile Sync (Firestore-based, cross-device) ───
 
