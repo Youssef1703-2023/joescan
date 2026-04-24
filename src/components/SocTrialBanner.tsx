@@ -60,8 +60,8 @@ export default function SocTrialBanner() {
 
     setActivating(true);
     try {
-      // Upgrade to pro for 3 days
-      await upgradeUserTier(user.uid, 'pro', 3);
+      // Upgrade to enterprise (SOC) for 3 days
+      await upgradeUserTier(user.uid, 'enterprise', 3);
 
       // Mark trial as used so they can't activate again
       const { setDoc } = await import('firebase/firestore');
@@ -123,25 +123,25 @@ export default function SocTrialBanner() {
             {activated ? (
               <>
                 <h3 className="text-lg font-black uppercase tracking-wide text-accent mb-1">
-                  {lang === 'ar' ? '✅ تم تفعيل النسخة التجريبية!' : '✅ SOC Trial Activated!'}
+                  {lang === 'ar' ? '✅ تم تفعيل النسخة التجريبية!' : '✅ SOC Enterprise Trial Activated!'}
                 </h3>
                 <p className="text-sm text-text-dim">
                   {lang === 'ar'
-                    ? `لديك ${daysLeft} أيام متبقية من اشتراك SOC Pro المجاني. استمتع بجميع أدوات الفحص المتقدمة!`
-                    : `You have ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining on your free SOC Pro trial. Enjoy all advanced scanning tools!`}
+                    ? `لديك ${daysLeft} أيام متبقية من اشتراك SOC Enterprise المجاني. استمتع بجميع الأدوات المتقدمة بما فيها SIEM وإدارة الفريق وخريطة التهديدات!`
+                    : `You have ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining on your free SOC Enterprise trial. Enjoy SIEM, Team Management, Threat Map & all tools!`}
                 </p>
               </>
             ) : (
               <>
                 <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
                   <h3 className="text-lg font-black uppercase tracking-wide text-text-main">
-                    {lang === 'ar' ? '🎁 نسخة SOC التجريبية — مجاناً!' : '🎁 Free SOC Trial — 3 Days!'}
+                    {lang === 'ar' ? '🎁 نسخة SOC Enterprise التجريبية — مجاناً!' : '🎁 Free SOC Enterprise Trial — 3 Days!'}
                   </h3>
                 </div>
                 <p className="text-sm text-text-dim max-w-lg">
                   {lang === 'ar'
-                    ? 'فعّل اشتراك SOC Pro المجاني لمدة 3 أيام واحصل على صلاحيات كاملة: فحوصات غير محدودة، تقارير PDF بدون علامة مائية، مراقبة الدارك ويب، وأدوات التحقيق المتقدمة.'
-                    : 'Activate your free 3-day SOC Pro trial and unlock full access: unlimited scans, watermark-free PDF reports, dark web monitoring, and advanced investigation tools.'}
+                    ? 'فعّل اشتراك SOC Enterprise المجاني لمدة 3 أيام واحصل على كل شيء: فحوصات غير محدودة، SIEM Webhooks، إدارة الفريق، خريطة التهديدات ثلاثية الأبعاد، تقارير PDF بدون علامة مائية، وكل الأدوات المتقدمة.'
+                    : 'Activate your free 3-day SOC Enterprise trial and unlock everything: unlimited scans, SIEM Webhooks, Team Management, 3D Threat Map, watermark-free PDF reports, and all advanced tools.'}
                 </p>
                 <div className="flex items-center gap-4 mt-2 text-[11px] font-mono text-text-dim">
                   <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {lang === 'ar' ? '3 أيام مجانية' : '3 days free'}</span>
