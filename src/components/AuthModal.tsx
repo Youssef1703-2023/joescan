@@ -8,11 +8,13 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   updateProfile,
-  getAdditionalUserInfo
+  getAdditionalUserInfo,
+  sendEmailVerification
 } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc, getDoc, getDocs, collection, query, where, updateDoc, increment } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
+import { isDisposableEmail } from '../utils/disposableDomains';
 
 type AuthMode = 'login' | 'signup' | 'forgot_password';
 
@@ -96,6 +98,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         if (usernameStatus === 'taken') throw new Error('This username is already taken. Please choose another.');
         if (password.length < 6) throw new Error('Password must be at least 6 characters.');
         
+        // Anti-Spam: Check if email is from a disposable domain
+        if (isDisposableEmail(email)) {
+          throw new Error('Prepaid or temporary email addresses are blocked. Please use a valid email.');
+        }
+        
         // Double-check username availability
         const existingDoc = await getDoc(doc(db, 'usernames', username.toLowerCase()));
         if (existingDoc.exists()) throw new Error('This username is already taken. Please choose another.');
@@ -119,6 +126,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         
         // Create account
         const cred = await createUserWithEmailAndPassword(auth, email, password);
+        
+        // Anti-Spam: Send email verification immediately
+        await sendEmailVerification(cred.user);
         
         // Set display name to username
         await updateProfile(cred.user, { displayName: username });

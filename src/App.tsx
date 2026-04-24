@@ -41,6 +41,7 @@ import CommandPalette from './components/CommandPalette';
 import OnboardingTour from './components/OnboardingTour';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import SEOHead from './components/SEOHead';
+import EmailVerificationGuard from './components/EmailVerificationGuard';
 import { HelmetProvider } from 'react-helmet-async';
 
 // Loading fallback
@@ -390,19 +391,19 @@ function AppContent() {
             <Suspense fallback={<PageLoader />}>
             <SEOHead path={TAB_TO_PATH[activeTab] || '/'} />
             {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab as any} />}
-            {activeTab === 'history' && <ScanHistory />}
-            {activeTab === 'watchlist' && <Watchlist />}
-            {activeTab === 'email' && <EmailAnalyzer />}
-            {activeTab === 'password' && <PasswordAnalyzer />}
-            {activeTab === 'phone' && <PhoneAnalyzer />}
-            {activeTab === 'url' && <UrlAnalyzer />}
-            {activeTab === 'username' && <UsernameAnalyzer />}
-            { activeTab === 'message' && <MessageAnalyzer /> }
-            { activeTab === 'ip' && <IpAnalyzer /> }
-            { activeTab === 'social' && <SocialOsintScanner /> }
-            { activeTab === 'domain' && <DomainLookup /> }
-            { activeTab === 'fingerprint' && <BrowserFingerprint /> }
-            { activeTab === 'device_security' && <DeviceSecurityCheck /> }
+            {activeTab === 'history' && <EmailVerificationGuard><ScanHistory /></EmailVerificationGuard>}
+            {activeTab === 'watchlist' && <EmailVerificationGuard><Watchlist /></EmailVerificationGuard>}
+            {activeTab === 'email' && <EmailVerificationGuard><EmailAnalyzer /></EmailVerificationGuard>}
+            {activeTab === 'password' && <EmailVerificationGuard><PasswordAnalyzer /></EmailVerificationGuard>}
+            {activeTab === 'phone' && <EmailVerificationGuard><PhoneAnalyzer /></EmailVerificationGuard>}
+            {activeTab === 'url' && <EmailVerificationGuard><UrlAnalyzer /></EmailVerificationGuard>}
+            {activeTab === 'username' && <EmailVerificationGuard><UsernameAnalyzer /></EmailVerificationGuard>}
+            { activeTab === 'message' && <EmailVerificationGuard><MessageAnalyzer /></EmailVerificationGuard> }
+            { activeTab === 'ip' && <EmailVerificationGuard><IpAnalyzer /></EmailVerificationGuard> }
+            { activeTab === 'social' && <EmailVerificationGuard><SocialOsintScanner /></EmailVerificationGuard> }
+            { activeTab === 'domain' && <EmailVerificationGuard><DomainLookup /></EmailVerificationGuard> }
+            { activeTab === 'fingerprint' && <EmailVerificationGuard><BrowserFingerprint /></EmailVerificationGuard> }
+            { activeTab === 'device_security' && <EmailVerificationGuard><DeviceSecurityCheck /></EmailVerificationGuard> }
             { activeTab === 'pricing' && <Pricing /> }
             { activeTab === 'threat_map' && <ThreatMap /> }
             { activeTab === 'siem' && (userTier === 'enterprise' || auth.currentUser?.email === ADMIN_EMAIL) && <SiemWebhooks /> }
