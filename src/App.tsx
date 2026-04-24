@@ -37,6 +37,8 @@ const CyberAcademy = lazy(() => import('./components/CyberAcademy'));
 const ReferralSystem = lazy(() => import('./components/ReferralSystem'));
 const Blog = lazy(() => import('./components/Blog'));
 import LoadingSkeleton from './components/LoadingSkeleton';
+import ToastContainer from './components/Toast';
+import CommandPalette from './components/CommandPalette';
 
 // Loading fallback
 const PageLoader = () => (
@@ -407,6 +409,9 @@ function AppContent() {
         </main>
       </div>
 
+      {/* Command Palette (Ctrl+K) */}
+      <CommandPalette onNavigate={(id) => setActiveTab(id as TabId)} />
+
       {/* Modals outside the flex layout */}
       <AnimatePresence>
         {showProfileSettings && (
@@ -429,6 +434,7 @@ export default function App() {
     <LanguageProvider>
       <NotificationProvider>
         <AppContent />
+        <ToastContainer />
       </NotificationProvider>
     </LanguageProvider>
   );
