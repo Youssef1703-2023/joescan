@@ -304,7 +304,7 @@ export default function ReferralSystem() {
             >
               <div className="flex-1 w-full sm:w-auto bg-bg-base border-2 border-dashed border-accent/40 rounded-xl px-5 py-4 text-center group hover:border-accent transition-colors relative overflow-hidden">
                 <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="text-2xl font-black tracking-[0.3em] text-text-main font-mono relative z-10">{referralCode}</span>
+                <span className="text-2xl font-black tracking-[0.3em] text-black dark:text-white font-mono relative z-10">{referralCode}</span>
               </div>
               <button
                 onClick={handleCopy}
@@ -321,17 +321,17 @@ export default function ReferralSystem() {
         </AnimatePresence>
 
         {/* Share Buttons */}
-        <div className="flex gap-3 flex-wrap sm:flex-nowrap pt-2">
+        <div className="flex flex-col sm:flex-row gap-3 pt-2">
           <button
             onClick={handleShareWhatsApp}
-            className="flex-1 w-full sm:w-auto flex items-center justify-center gap-2 py-4 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold rounded-xl transition-all hover:scale-[1.02] text-sm shadow-lg shadow-[#25D366]/20"
+            className="flex-1 w-full flex items-center justify-center gap-2 py-4 px-4 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold rounded-xl transition-all hover:scale-[1.02] text-sm shadow-lg shadow-[#25D366]/20"
           >
             <MessageCircle className="w-5 h-5" />
             {t('share_whatsapp')}
           </button>
           <button
             onClick={handleCopy}
-            className="flex-1 w-full sm:w-auto flex items-center justify-center gap-2 py-4 bg-bg-elevated border border-border-subtle text-text-main font-bold rounded-xl transition-all hover:border-accent/30 text-sm"
+            className="flex-1 w-full flex items-center justify-center gap-2 py-4 px-4 bg-bg-elevated border border-border-subtle text-text-main font-bold rounded-xl transition-all hover:border-accent/30 text-sm"
           >
             <Share2 className="w-5 h-5" />
             {t('copy_link')}

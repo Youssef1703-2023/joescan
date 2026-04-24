@@ -346,14 +346,14 @@ export default function Blog() {
             {/* Daily Auto-Fetched News */}
             {sortedDailyNews.length > 0 && (
               <div className="bg-gradient-to-br from-cyan-500/5 via-bg-surface to-emerald-500/5 border border-cyan-500/20 rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="px-2.5 py-1 bg-cyan-500/20 rounded-lg flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-cyan-400" />
-                      <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">{t('latestNews', lang)}</span>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                  <div className="flex items-center gap-2 max-w-full">
+                    <div className="px-2.5 py-1.5 bg-cyan-500/20 rounded-lg flex items-center gap-1.5">
+                      <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                      <span className="text-[10px] sm:text-[11px] font-bold text-cyan-400 uppercase tracking-wider leading-tight">{t('latestNews', lang)}</span>
                     </div>
                   </div>
-                  <span className="text-[10px] text-text-dim font-mono">{sortedDailyNews.length} {t('articles', lang)}</span>
+                  <span className="text-[10px] text-text-dim font-mono whitespace-nowrap">{sortedDailyNews.length} {t('articles', lang)}</span>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
                   {sortedDailyNews.slice(0, 10).map((news: any, idx: number) => (
