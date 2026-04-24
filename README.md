@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🛡️ JoeScan
+<img src="public/icon-512.png" alt="JoeScan Logo" width="120">
+
+# JoeScan
 
 ### Advanced Cybersecurity & OSINT Intelligence Platform
 
@@ -11,6 +13,12 @@
 **Enterprise-grade cybersecurity intelligence platform with deep OSINT capabilities, real-time threat monitoring, automated daily news pipeline, and a cinematic dark-mode interface.**
 
 🔗 **[Visit the Live Platform →](https://joescan.me)**
+
+<br>
+
+<img src="docs/assets/dashboard.png" alt="JoeScan Platform Preview" width="900">
+
+*The JoeScan Command Center — your security posture at a glance*
 
 </div>
 
