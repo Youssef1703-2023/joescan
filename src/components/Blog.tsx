@@ -1,9 +1,17 @@
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { BookOpen, Calendar, Clock, ChevronRight, ArrowRight, Tag, TrendingUp, Shield, AlertTriangle, Eye, Lock, Wifi, X, Zap, Newspaper, Filter, Search, Smartphone, Brain, Baby, Bitcoin, CreditCard, Globe, ExternalLink, Radio, RefreshCw } from 'lucide-react';
+import { BookOpen, Calendar, Clock, ChevronRight, ArrowRight, Tag, TrendingUp, Shield, AlertTriangle, Eye, Lock, Wifi, X, Zap, Newspaper, Filter, Search, Smartphone, Brain, Baby, Bitcoin, CreditCard, Globe, ExternalLink, Radio, RefreshCw, Link2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { ARTICLES, CATEGORIES, type Article } from '../data/blogArticles';
 import dailyNewsData from '../data/dailyNews.json';
+
+interface DailyNewsItem {
+  title: string;
+  link: string;
+  date: string;
+  source: string;
+  summary: string;
+}
 
 const CATEGORY_ICONS: Record<string, any> = {
   'تسريبات': AlertTriangle,
@@ -19,6 +27,7 @@ const CATEGORY_ICONS: Record<string, any> = {
 export default function Blog() {
   const { lang } = useLanguage();
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
+  const [selectedNews, setSelectedNews] = useState<DailyNewsItem | null>(null);
   const [activeCategory, setActiveCategory] = useState('الكل');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -83,7 +92,110 @@ export default function Blog() {
       </div>
 
       <AnimatePresence mode="wait">
-        {selectedArticle ? (
+        {selectedNews ? (
+          /* Daily News Article View */
+          <motion.div
+            key="news-article"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-6"
+          >
+            <button
+              onClick={() => setSelectedNews(null)}
+              className="flex items-center gap-2 text-sm text-accent hover:underline font-bold"
+            >
+              <ArrowRight className="w-4 h-4" />
+              العودة للمقالات
+            </button>
+
+            <div className="bg-bg-surface border border-border-subtle rounded-2xl p-6 sm:p-8 space-y-6">
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-cyan-500/30 flex items-center gap-1">
+                    <Globe className="w-3 h-3" /> خبر يومي تلقائي
+                  </span>
+                  <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 text-[10px] font-bold rounded-lg border border-emerald-500/30">
+                    {selectedNews.source}
+                  </span>
+                  <span className="text-[10px] text-text-dim font-mono flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    {new Date(selectedNews.date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}
+                  </span>
+                </div>
+                <h1 className="text-2xl font-black text-text-main leading-relaxed">{selectedNews.title.replace(/ - .*$/, '')}</h1>
+              </div>
+
+              {/* News Content */}
+              <div className="prose prose-invert max-w-none space-y-4">
+                <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-xl p-4">
+                  <p className="text-sm text-text-dim leading-relaxed">
+                    هذا الخبر تم جلبه تلقائياً من مصادر إخبارية عربية موثوقة عبر نظام التحديث اليومي التلقائي لمنصة JoeScan.
+                  </p>
+                </div>
+
+                <h2 className="text-xl font-bold text-text-main mt-6 mb-4 border-b border-border-subtle pb-2">ملخص الخبر</h2>
+                <p className="text-sm text-text-dim leading-relaxed mb-2">
+                  {selectedNews.title.replace(/ - .*$/, '')}
+                </p>
+                <p className="text-sm text-text-dim leading-relaxed mb-2">
+                  تم نشر هذا الخبر عبر <span className="text-cyan-400 font-bold">{selectedNews.source}</span> بتاريخ {new Date(selectedNews.date).toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' })}.
+                </p>
+
+                <h2 className="text-xl font-bold text-text-main mt-8 mb-4 border-b border-border-subtle pb-2">لماذا هذا الخبر مهم؟</h2>
+                <p className="text-sm text-text-dim leading-relaxed mb-2">
+                  يُعد هذا الخبر جزءاً من التطورات الأمنية السيبرانية المهمة التي يجب على كل مستخدم عربي متابعتها. نحرص في JoeScan على تقديم أحدث الأخبار الأمنية لمساعدتك في حماية بياناتك الرقمية.
+                </p>
+
+                <div className="bg-gradient-to-r from-accent/5 via-purple-500/5 to-cyan-500/5 border border-accent/20 rounded-xl p-5 mt-6">
+                  <h3 className="text-base font-bold text-accent mb-3 flex items-center gap-2">
+                    <Shield className="w-4 h-4" />
+                    نصائح أمنية عامة
+                  </h3>
+                  <ul className="space-y-2">
+                    <li className="text-sm text-text-dim leading-relaxed flex items-start gap-2">
+                      <span className="text-accent mt-1">•</span>
+                      تأكد دائماً من تحديث أنظمة التشغيل والتطبيقات لديك لأحدث إصدار
+                    </li>
+                    <li className="text-sm text-text-dim leading-relaxed flex items-start gap-2">
+                      <span className="text-accent mt-1">•</span>
+                      استخدم كلمات مرور قوية وفريدة لكل حساب مع تفعيل المصادقة الثنائية
+                    </li>
+                    <li className="text-sm text-text-dim leading-relaxed flex items-start gap-2">
+                      <span className="text-accent mt-1">•</span>
+                      تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات والثغرات
+                    </li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Source Link */}
+              <div className="flex flex-col gap-3 pt-4 border-t border-border-subtle">
+                <a
+                  href={selectedNews.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 text-sm font-bold hover:bg-cyan-500/20 transition-all"
+                >
+                  <Link2 className="w-4 h-4" />
+                  قراءة الخبر من المصدر الأصلي — {selectedNews.source}
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <div className="flex flex-wrap gap-2">
+                  <span className="flex items-center gap-1 px-2 py-1 bg-bg-base border border-border-subtle rounded-lg text-[10px] text-text-dim font-mono">
+                    <Tag className="w-3 h-3" /> أمن سيبراني
+                  </span>
+                  <span className="flex items-center gap-1 px-2 py-1 bg-bg-base border border-border-subtle rounded-lg text-[10px] text-text-dim font-mono">
+                    <Tag className="w-3 h-3" /> أخبار يومية
+                  </span>
+                  <span className="flex items-center gap-1 px-2 py-1 bg-bg-base border border-border-subtle rounded-lg text-[10px] text-text-dim font-mono">
+                    <Tag className="w-3 h-3" /> {selectedNews.source}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ) : selectedArticle ? (
           /* Full Article View */
           <motion.div
             key="article"
@@ -180,12 +292,10 @@ export default function Blog() {
                   <span className="text-[10px] text-text-dim font-mono">{dailyNewsData.articles.length} خبر</span>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
-                  {dailyNewsData.articles.slice(0, 6).map((news: any, idx: number) => (
-                    <motion.a
+                  {dailyNewsData.articles.slice(0, 10).map((news: any, idx: number) => (
+                    <motion.div
                       key={idx}
-                      href={news.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      onClick={() => setSelectedNews(news as DailyNewsItem)}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: idx * 0.05 }}
@@ -200,8 +310,10 @@ export default function Blog() {
                           <span className="text-[10px] text-text-dim font-mono">• {new Date(news.date).toLocaleDateString('ar-EG', { month: 'short', day: 'numeric' })}</span>
                         </div>
                       </div>
-                      <ExternalLink className="w-3.5 h-3.5 text-text-dim group-hover:text-cyan-400 shrink-0 mt-1 transition-colors" />
-                    </motion.a>
+                      <div className="flex items-center gap-1 text-[10px] text-text-dim group-hover:text-cyan-400 shrink-0 mt-1 transition-colors font-bold">
+                        اقرأ <ChevronRight className="w-3 h-3 rotate-180" />
+                      </div>
+                    </motion.div>
                   ))}
                 </div>
               </div>
