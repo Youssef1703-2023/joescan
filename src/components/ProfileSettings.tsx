@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { updateProfile, deleteUser, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
-import { auth, getUserProfile, updateUserProfile } from '../lib/firebase';
+import { auth, db, getUserProfile, updateUserProfile } from '../lib/firebase';
+import { doc, getDoc, setDoc, deleteField } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Shield, X, User as UserIcon, Loader2, AlertTriangle, LogOut, Upload, Link as LinkIcon, Image as ImageIcon, Fingerprint, Lock, Trophy, Bell, RefreshCw, CheckCircle, Download, Trash2 } from 'lucide-react';
+import { Shield, ShieldCheck, ShieldOff, X, User as UserIcon, Loader2, AlertTriangle, LogOut, Upload, Link as LinkIcon, Image as ImageIcon, Fingerprint, Lock, Trophy, Bell, RefreshCw, CheckCircle, Download, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import BadgeSystem from './BadgeSystem';
 import PushNotifSettings from './PushNotifSettings';
@@ -49,6 +50,24 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // MFA State
+  const [mfaEnabled, setMfaEnabled] = useState<boolean | null>(null);
+  const [mfaToggling, setMfaToggling] = useState(false);
+
+  // Load MFA status
+  useEffect(() => {
+    if (!user) return;
+    getDoc(doc(db, 'users', user.uid)).then(snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        // MFA is enabled if mfaSecret exists and mfaSkipped is not true
+        setMfaEnabled(!!data.mfaSecret && data.mfaSkipped !== true);
+      } else {
+        setMfaEnabled(false);
+      }
+    }).catch(() => setMfaEnabled(false));
+  }, [user]);
 
   if (!user) return null;
 
@@ -465,6 +484,71 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : t('update_password')}
                 </button>
               </form>
+
+              <hr className="border-border-subtle my-2" />
+
+              {/* MFA Toggle */}
+              <div className="bg-bg-surface/50 border border-border-subtle rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    {mfaEnabled ? (
+                      <div className="p-2 bg-accent/10 border border-accent/20 rounded-lg">
+                        <ShieldCheck className="w-5 h-5 text-accent" />
+                      </div>
+                    ) : (
+                      <div className="p-2 bg-bg-elevated border border-border-subtle rounded-lg">
+                        <ShieldOff className="w-5 h-5 text-text-dim" />
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="text-sm font-bold text-text-main">Two-Factor Authentication</h4>
+                      <p className="text-[10px] text-text-dim font-mono uppercase tracking-wider">
+                        {mfaEnabled ? 'Active — TOTP Authenticator' : 'Disabled — Not configured'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={async () => {
+                      if (!user) return;
+                      setMfaToggling(true);
+                      setError(null);
+                      setSuccess(null);
+                      try {
+                        if (mfaEnabled) {
+                          // Disable MFA: set mfaSkipped=true, clear mfaSecret
+                          await setDoc(doc(db, 'users', user.uid), {
+                            mfaSkipped: true,
+                            mfaSecret: deleteField(),
+                          }, { merge: true });
+                          setMfaEnabled(false);
+                          setSuccess('Two-Factor Authentication has been disabled. You can re-enable it anytime.');
+                        } else {
+                          // Enable MFA: remove mfaSkipped so next login triggers setup
+                          await setDoc(doc(db, 'users', user.uid), {
+                            mfaSkipped: deleteField(),
+                            mfaSecret: deleteField(),
+                          }, { merge: true });
+                          setMfaEnabled(false);
+                          setSuccess('Two-Factor Authentication will be set up on your next login. Please log out and log back in to configure it.');
+                        }
+                      } catch (err: any) {
+                        setError(err.message || 'Failed to update MFA settings.');
+                      } finally {
+                        setMfaToggling(false);
+                      }
+                    }}
+                    disabled={mfaToggling || mfaEnabled === null}
+                    className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${mfaEnabled ? 'bg-accent' : 'bg-bg-elevated border border-border-subtle'} ${mfaToggling ? 'opacity-50' : ''}`}
+                  >
+                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-300 ${mfaEnabled ? 'left-[26px]' : 'left-0.5'}`} />
+                  </button>
+                </div>
+                {!mfaEnabled && (
+                  <p className="text-[11px] text-text-dim mt-3 leading-relaxed border-t border-border-subtle/50 pt-3">
+                    🔐 Enabling 2FA adds an extra layer of protection. Even if someone steals your password, they won't be able to access your account without your phone.
+                  </p>
+                )}
+              </div>
 
               <hr className="border-border-subtle my-2" />
 

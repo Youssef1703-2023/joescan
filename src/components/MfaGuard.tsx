@@ -150,6 +150,10 @@ export default function MfaGuard({ user, onVerified, onLogout }: MfaGuardProps) 
           // MFA already setup, just ask for code
           setSecret(userDoc.data().mfaSecret);
           setSetupMode(false);
+        } else if (userDoc.exists() && userDoc.data().mfaSkipped === true) {
+          // User previously skipped MFA — auto-pass
+          onVerified();
+          return;
         } else {
           // New User Setup — generate a new TOTP secret
           const newSecret = generateSecret();
@@ -168,6 +172,21 @@ export default function MfaGuard({ user, onVerified, onLogout }: MfaGuardProps) 
     }
     checkMfa();
   }, [user]);
+
+  const handleSkip = async () => {
+    try {
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        email: user.email || '',
+        mfaSkipped: true,
+      }, { merge: true });
+      onVerified();
+    } catch (err: any) {
+      console.error('Failed to skip MFA:', err);
+      // Still let them in even if save fails
+      onVerified();
+    }
+  };
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -282,11 +301,19 @@ export default function MfaGuard({ user, onVerified, onLogout }: MfaGuardProps) 
              </button>
           </form>
 
-          <div className="pt-4">
+          <div className="pt-4 flex flex-col items-center gap-3">
+             {setupMode && (
+               <button
+                 onClick={handleSkip}
+                 className="text-xs text-accent font-mono tracking-widest uppercase hover:text-accent/80 transition-colors border border-accent/20 rounded-lg px-6 py-2 hover:bg-accent/5"
+               >
+                 ⏭ Skip for now
+               </button>
+             )}
              <button onClick={onLogout} className="text-xs text-text-dim font-mono tracking-widest uppercase hover:text-error transition-colors">
                ABORT / RETURN TO LOGIN
              </button>
-          </div>
+           </div>
         </div>
       </motion.div>
     </div>
