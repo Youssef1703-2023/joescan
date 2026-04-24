@@ -154,12 +154,19 @@ service cloud.firestore {
 
     // ─── Referrals ───
     match /referrals/{userId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      allow read: if isAuthenticated();
+      allow create, delete: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId || 
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['referralCount']) && 
+         request.resource.data.referralCount == resource.data.referralCount + 1)
+      );
     }
 
     // ─── Referral Signups ───
     match /referralSignups/{signupId} {
       allow read: if isAuthenticated() && resource.data.referrerUid == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.newUid == request.auth.uid;
     }
   }
 }

@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mail, Lock, X, ArrowRight, ShieldCheck, Zap, User, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, X, ArrowRight, ShieldCheck, Zap, User, AlertCircle, CheckCircle2, Gift } from 'lucide-react';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
-  updateProfile
+  updateProfile,
+  getAdditionalUserInfo
 } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
-import { doc, setDoc, getDoc, getDocs, collection, query, where } from 'firebase/firestore';
+import { doc, setDoc, getDoc, getDocs, collection, query, where, updateDoc, increment } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
 
 type AuthMode = 'login' | 'signup' | 'forgot_password';
@@ -29,6 +30,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   
   // Username validation state
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
@@ -97,6 +99,23 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         // Double-check username availability
         const existingDoc = await getDoc(doc(db, 'usernames', username.toLowerCase()));
         if (existingDoc.exists()) throw new Error('This username is already taken. Please choose another.');
+
+        // Validate Referral Code if provided
+        let validReferrerCodeDoc = null;
+        if (referralCode.trim()) {
+           const cleanCode = referralCode.trim().toUpperCase();
+           const codeQuery = query(collection(db, 'referrals'), where('code', '==', cleanCode));
+           const codeSnap = await getDocs(codeQuery);
+           if (!codeSnap.empty) {
+               validReferrerCodeDoc = codeSnap.docs[0];
+           } else {
+               throw new Error('Invalid referral code. Please check or leave empty.');
+           }
+        }
+        
+        // Prevent abuse: Check basic device footprint
+        const deviceId = localStorage.getItem('joescan-device-id') || crypto.randomUUID();
+        localStorage.setItem('joescan-device-id', deviceId);
         
         // Create account
         const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -117,6 +136,25 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           username: username,
           email: email.toLowerCase(),
         }, { merge: true });
+
+        // Process Referral
+        if (validReferrerCodeDoc) {
+             const referrerUid = validReferrerCodeDoc.id;
+             const hasReferredBefore = localStorage.getItem(`joescan-referred-${referrerUid}`);
+             
+             if (!hasReferredBefore) {
+                 await setDoc(doc(db, 'referralSignups', cred.user.uid), {
+                    newUid: cred.user.uid,
+                    referrerUid: referrerUid,
+                    email: email.toLowerCase(),
+                    createdAt: new Date().toISOString()
+                 });
+                 await updateDoc(doc(db, 'referrals', referrerUid), {
+                    referralCount: increment(1)
+                 });
+                 localStorage.setItem(`joescan-referred-${referrerUid}`, 'true');
+             }
+        }
         
       } else if (mode === 'login') {
         // Resolve username or email
@@ -157,8 +195,40 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleGoogleAuth = async () => {
     setLoading(true);
     try {
+      // Validate Referral Code if provided (even for Google)
+      let validReferrerCodeDoc = null;
+      if (mode === 'signup' && referralCode.trim()) {
+         const cleanCode = referralCode.trim().toUpperCase();
+         const codeQuery = query(collection(db, 'referrals'), where('code', '==', cleanCode));
+         const codeSnap = await getDocs(codeQuery);
+         if (!codeSnap.empty) {
+             validReferrerCodeDoc = codeSnap.docs[0];
+         } else {
+             throw new Error('Invalid referral code. Please check or leave empty.');
+         }
+      }
+
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const cred = await signInWithPopup(auth, provider);
+      
+      const additionalInfo = getAdditionalUserInfo(cred);
+      if (additionalInfo?.isNewUser && validReferrerCodeDoc) {
+            const referrerUid = validReferrerCodeDoc.id;
+            const hasReferredBefore = localStorage.getItem(`joescan-referred-${referrerUid}`);
+            
+            if (!hasReferredBefore) {
+                await setDoc(doc(db, 'referralSignups', cred.user.uid), {
+                  newUid: cred.user.uid,
+                  referrerUid: referrerUid,
+                  email: cred.user.email?.toLowerCase() || '',
+                  createdAt: new Date().toISOString()
+                });
+                await updateDoc(doc(db, 'referrals', referrerUid), {
+                  referralCount: increment(1)
+                });
+                localStorage.setItem(`joescan-referred-${referrerUid}`, 'true');
+            }
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message || 'Google Auth failed');
@@ -296,6 +366,26 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                      className="w-full bg-bg-base border border-border-subtle rounded-lg pl-10 pr-4 py-3 text-sm focus:border-accent outline-none font-mono"
                      placeholder="••••••••"
+                     dir="ltr"
+                   />
+                 </div>
+               </div>
+             )}
+
+             {/* Referral Code Field (Optional) */}
+             {mode === 'signup' && (
+               <div className="space-y-1 relative mt-2">
+                 <div className="flex justify-between items-end">
+                   <label className="text-[10px] font-mono tracking-widest text-text-dim uppercase">{lang === 'ar' ? 'كود الإحالة (اختياري)' : 'Referral Code (Optional)'}</label>
+                 </div>
+                 <div className="relative">
+                   <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent/50" />
+                   <input 
+                     type="text" 
+                     value={referralCode}
+                     onChange={e => setReferralCode(e.target.value)}
+                     className="w-full bg-bg-base border border-border-subtle rounded-lg pl-10 pr-4 py-3 text-sm focus:border-accent outline-none font-mono uppercase"
+                     placeholder="e.g. VIP-123"
                      dir="ltr"
                    />
                  </div>
