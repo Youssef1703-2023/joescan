@@ -30,13 +30,19 @@ export default function Blog() {
   const [selectedNews, setSelectedNews] = useState<DailyNewsItem | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
 
+  const scrollToTop = () => {
+    const main = document.querySelector('main');
+    if (main) main.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const openArticle = (article: Article | null) => {
     setSelectedArticle(article);
-    if (article) window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (article) setTimeout(scrollToTop, 50);
   };
   const openNews = (news: DailyNewsItem | null) => {
     setSelectedNews(news);
-    if (news) window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (news) setTimeout(scrollToTop, 50);
   };
   const [searchQuery, setSearchQuery] = useState('');
 
