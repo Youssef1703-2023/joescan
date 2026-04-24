@@ -6,6 +6,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, L
 import { Shield, Mail, KeyRound, Smartphone, Link as LinkIcon, UserSearch, MessageSquareWarning, Wifi, Activity, ChevronRight, AlertTriangle, ShieldCheck, Trophy, Globe, Fingerprint, TrendingUp, Target, Hexagon, Monitor } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { computeTier } from './BadgeSystem';
+import SocTrialBanner from './SocTrialBanner';
 
 type TabId = 'email' | 'password' | 'phone' | 'url' | 'username' | 'social' | 'message' | 'ip' | 'domain' | 'fingerprint' | 'history' | 'device_security';
 
@@ -261,6 +262,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
 
   return (
     <div className="w-full flex flex-col gap-6 relative" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <SocTrialBanner />
       <div className="cyber-scanner-overlay" />
       <motion.div
         initial={{ opacity: 0, y: 10 }}
