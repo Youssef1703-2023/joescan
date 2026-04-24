@@ -33,7 +33,6 @@ const ThreatMap = lazy(() => import('./components/ThreatMap'));
 const SiemWebhooks = lazy(() => import('./components/SiemWebhooks'));
 const TeamManagement = lazy(() => import('./components/TeamManagement'));
 const ThreatMap3D = lazy(() => import('./components/ThreatMap3D'));
-const CyberAcademy = lazy(() => import('./components/CyberAcademy'));
 const ReferralSystem = lazy(() => import('./components/ReferralSystem'));
 const Blog = lazy(() => import('./components/Blog'));
 import LoadingSkeleton from './components/LoadingSkeleton';
@@ -410,7 +409,6 @@ function AppContent() {
             { activeTab === 'team' && (userTier === 'enterprise' || auth.currentUser?.email === ADMIN_EMAIL) && <TeamManagement /> }
             { activeTab === 'threat_3d' && (userTier === 'enterprise' || auth.currentUser?.email === ADMIN_EMAIL) && <ThreatMap3D /> }
             { activeTab === 'admin' && auth.currentUser?.email === ADMIN_EMAIL && <AdminDashboard /> }
-            { activeTab === 'academy' && <CyberAcademy /> }
             { activeTab === 'referral' && <ReferralSystem /> }
             { activeTab === 'blog' && <Blog /> }
             </Suspense>

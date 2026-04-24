@@ -481,6 +481,27 @@ export const translations = {
   sidebar_team: { en: "Team Management", ar: "إدارة الفريق", fr: "Gestion d'équipe", de: "Teamverwaltung", es: "Gestión de equipo", tr: "Takım yönetimi", ru: "Управление командой" },
   sidebar_threat_3d: { en: "3D Threat Globe", ar: "خريطة 3D", fr: "Globe de menaces 3D", de: "3D-Bedrohungsglobus", es: "Globo de amenazas 3D", tr: "3D Tehdit Küresi", ru: "3D-глобус угроз" },
 
+  // ─── Cyber Academy ───
+  nav_academy: { en: "Cyber Academy", ar: "أكاديمية الأمن", fr: "Cyber Académie", de: "Cyber-Akademie", es: "Ciberacademia", tr: "Siber Akademi", ru: "Киберакадемия" },
+  academy_title: { en: "JoeScan Cyber Academy", ar: "أكاديمية جو-سكان للأمن السيبراني", fr: "JoeScan Cyber Académie", de: "JoeScan Cyber-Akademie", es: "JoeScan Ciberacademia", tr: "JoeScan Siber Akademi", ru: "Киберакадемия JoeScan" },
+  academy_subtitle: { en: "Enhance your digital awareness with our free cybersecurity courses.", ar: "عزز وعيك الرقمي مع دوراتنا المجانية في الأمن السيبراني.", fr: "Améliorez votre conscience numérique avec nos cours gratuits.", de: "Erweitern Sie Ihr digitales Bewusstsein mit kostenlosen Kursen.", es: "Mejora tu conciencia digital con nuestros cursos gratuitos.", tr: "Ücretsiz kurslarımızla dijital farkındalığınızı artırın.", ru: "Повысьте цифровую осведомленность с помощью бесплатных курсов." },
+  academy_search: { en: "Search lessons...", ar: "ابحث عن درس...", fr: "Rechercher des leçons...", de: "Lektionen suchen...", es: "Buscar lecciones...", tr: "Ders ara...", ru: "Поиск уроков..." },
+  academy_all: { en: "All Categories", ar: "الكل", fr: "Tout", de: "Alle Kategorien", es: "Todas", tr: "Tümü", ru: "Все категории" },
+  academy_email: { en: "Email Security", ar: "حماية الإيميل", fr: "Sécurité E-mail", de: "E-Mail-Sicherheit", es: "Seguridad de correo", tr: "E-posta Güvenliği", ru: "Безопасность Email" },
+  academy_passwords: { en: "Passwords", ar: "كلمات المرور", fr: "Mots de passe", de: "Passwörter", es: "Contraseñas", tr: "Şifreler", ru: "Пароли" },
+  academy_phishing: { en: "Phishing", ar: "التصيد الاحتيالي", fr: "Hameçonnage", de: "Phishing", es: "Phishing", tr: "Oltalama", ru: "Фишинг" },
+  academy_network: { en: "Network Config", ar: "الشبكات", fr: "Réseau", de: "Netzwerk", es: "Red", tr: "Ağ", ru: "Сеть" },
+  academy_privacy: { en: "Privacy", ar: "الخصوصية", fr: "Confidentialité", de: "Datenschutz", es: "Privacidad", tr: "Gizlilik", ru: "Конфиденциальность" },
+  academy_mobile: { en: "Mobile Security", ar: "أمان الموبايل", fr: "Sécurité Mobile", de: "Mobile Sicherheit", es: "Seguridad Móvil", tr: "Mobil Güvenliği", ru: "Безопасность Мобильных" },
+  academy_beginner: { en: "Beginner", ar: "مبتدئ", fr: "Débutant", de: "Anfänger", es: "Principiante", tr: "Başlangıç", ru: "Новичок" },
+  academy_intermediate: { en: "Intermediate", ar: "متوسط", fr: "Intermédiaire", de: "Mittel", es: "Intermedio", tr: "Orta", ru: "Средний" },
+  academy_advanced: { en: "Advanced", ar: "متقدم", fr: "Avancé", de: "Fortgeschritten", es: "Avanzado", tr: "İleri düzey", ru: "Продвинутый" },
+  academy_mark_completed: { en: "Mark as Completed", ar: "تحديد كـ مكتمل", fr: "Marquer comme terminé", de: "Als erledigt markieren", es: "Marcar como completado", tr: "Tamamlandı olarak işaretle", ru: "Отметить завершенным" },
+  academy_completed: { en: "Completed", ar: "مكتمل", fr: "Terminé", de: "Erledigt", es: "Completado", tr: "Tamamlandı", ru: "Завершено" },
+  academy_progress: { en: "Your Progress", ar: "نسبة إنجازك", fr: "Votre progression", de: "Ihr Fortschritt", es: "Tu progreso", tr: "İlerlemeniz", ru: "Ваш прогресс" },
+  academy_lessons_completed: { en: "lessons completed", ar: "دروس مكتملة", fr: "leçons terminées", de: "Lektionen abgeschlossen", es: "lecciones completadas", tr: "Dersler tamamlandı", ru: "уроков завершено" },
+  academy_no_results: { en: "No lessons found matching your search.", ar: "لم يتم العثور على دروس تطابق بحثك.", fr: "Aucune leçon trouvée.", de: "Keine Lektionen gefunden.", es: "No se encontraron lecciones.", tr: "Ders bulunamadı.", ru: "Уроки не найдены." },
+
   // ─── Loading / Init Screen ───
   init_loading: { en: "Initializing Security Modules", ar: "جاري تهيئة وحدات الأمان", fr: "Initialisation des modules de sécurité", de: "Sicherheitsmodule werden initialisiert", es: "Inicializando módulos de seguridad", tr: "Güvenlik modülleri başlatılıyor", ru: "Инициализация модулей безопасности" },
   init_connection: { en: "Establishing Secure Connection", ar: "جاري إنشاء اتصال آمن", fr: "Établissement d'une connexion sécurisée", de: "Sichere Verbindung wird hergestellt", es: "Estableciendo conexión segura", tr: "Güvenli bağlantı kuruluyor", ru: "Установка безопасного соединения" },

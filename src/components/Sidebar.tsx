@@ -12,7 +12,7 @@ import { auth, getUserTier, SubscriptionTier, ADMIN_EMAIL } from '../lib/firebas
 import { Sparkles, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'phone' | 'url' | 'username' | 'message' | 'ip' | 'social' | 'domain' | 'fingerprint' | 'device_security' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'siem' | 'team' | 'threat_3d' | 'academy' | 'referral' | 'blog';
+export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'phone' | 'url' | 'username' | 'message' | 'ip' | 'social' | 'domain' | 'fingerprint' | 'device_security' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'siem' | 'team' | 'threat_3d' | 'referral' | 'blog';
 
 // URL path <-> TabId mapping
 export const TAB_TO_PATH: Record<TabId, string> = {
@@ -38,7 +38,6 @@ export const TAB_TO_PATH: Record<TabId, string> = {
   siem: '/siem-webhooks',
   team: '/team',
   threat_3d: '/threat-3d',
-  academy: '/academy',
   referral: '/referral',
   blog: '/blog',
 };
@@ -108,7 +107,6 @@ export default function Sidebar({ activeTab, setActiveTab, isCollapsed, setIsCol
     {
       title: lang === 'ar' ? 'المجتمع' : 'COMMUNITY',
       items: [
-        { id: 'academy', icon: GraduationCap, label: lang === 'ar' ? 'أكاديمية الأمن' : 'Cyber Academy' },
         { id: 'blog', icon: BookOpen, label: lang === 'ar' ? 'المدوّنة' : 'Blog' },
         { id: 'referral', icon: Gift, label: lang === 'ar' ? 'ادعِ أصحابك' : 'Refer Friends' },
       ]

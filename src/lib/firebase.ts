@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { getFirestore, getDocFromServer, getDocs, doc, setDoc, addDoc, collection, query, where } from "firebase/firestore";
+import { getFirestore, getDocFromServer, getDocs, doc, setDoc, addDoc, collection, query, where, arrayUnion, arrayRemove } from "firebase/firestore";
 import { getFunctions } from "firebase/functions";
 import firebaseConfig from "../../firebase-applet-config.json";
 
@@ -60,6 +60,7 @@ export interface UserProfileDocument {
   avatarURL?: string | null;
   tier: SubscriptionTier;
   subscriptionExpiry?: Date | null;
+  completedLessons?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -102,6 +103,7 @@ export async function ensureUserProfile(uid: string, email: string | null, displ
     email: email || '',
     name: displayName || '',
     tier: 'free',
+    completedLessons: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
@@ -187,4 +189,17 @@ export async function banUser(uid: string, reason: string) {
 export async function unbanUser(uid: string) {
   await setDoc(doc(db, 'bannedUsers', uid), { active: false }, { merge: true });
   await logActivity('unban', `Unbanned user`, uid);
+}
+
+// ─── Cyber Academy Progress ───
+export async function updateLessonProgress(uid: string, lessonId: string, completed: boolean) {
+  try {
+    await setDoc(doc(db, 'users', uid), {
+      completedLessons: completed ? arrayUnion(lessonId) : arrayRemove(lessonId),
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
+  } catch (err) {
+    console.error("Failed to update lesson progress", err);
+    throw err;
+  }
 }
