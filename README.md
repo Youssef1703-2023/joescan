@@ -1,81 +1,79 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/Youssef1703-2023/joescan/main/public/logo.png" alt="JoeScan Logo" width="120" style="margin-bottom: 20px;" onerror="this.style.display='none'">
+  <h1>🛡️ JoeScan — Advanced Cybersecurity & OSINT Intelligence Platform</h1>
 
-  # 🛡️ JoeScan — AI Cybersecurity & OSINT Intelligence Platform
+  <p><strong>Proprietary enterprise-grade cybersecurity platform featuring deep OSINT tools, real-time vulnerability scanning, and a fully automated daily news pipeline.</strong></p>
 
-  **Advanced threat detection, Open Source Intelligence (OSINT), and daily automated cyber news—built with a cinematic luxury UI.**
-
-  [![Live Site](https://img.shields.io/badge/Live_Site-joescan.me-00f7b1?style=for-the-badge&logoUrl=https://cdn-icons-png.flaticon.com/512/3222/3222791.png)](https://joescan.me)
-  [![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
-  [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactjs.org/)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-  [![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
+  <a href="https://joescan.me"><img src="https://img.shields.io/badge/Live_Deployment-joescan.me-00f7b1?style=for-the-badge&logoUrl=https://cdn-icons-png.flaticon.com/512/3222/3222791.png" alt="Live Site"></a>
+  <img src="https://img.shields.io/badge/Status-Proprietary_Closed_Source-ff3b3b?style=for-the-badge" alt="Closed Source">
   
 </div>
 
 ---
 
-## 🌟 Overview
-**JoeScan** is an all-in-one, AI-driven cybersecurity and OSINT (Open Source Intelligence) platform designed for both security analysts and regular users. The platform provides a suite of deeply integrated tools to investigate digital footprints, analyze threats, and stay updated on the ever-evolving cyber landscape. 
+## 🔒 Platform Status & Licensing
+**Notice:** JoeScan is a **proprietary, closed-source platform**. This repository serves exclusively as a visual showcase and a backend deployment pipeline for the production environment at `joescan.me`. 
 
-The application is built with a premium **"English-First"** approach, backed by a breathtaking dark-mode layout focusing on glassmorphism and smooth, hardware-accelerated animations.
+The source code, operational logic, and specific digital assets within this repository are proprietary. **They are strictly not permitted for cloning, local installation, redistribution, or modification by any third party.** 
 
-## 🚀 Key Features
+*Note: There are no "Run Locally" or installation instructions provided as this platform is operated solely by the original author to protect its intellectual property and operational security.*
 
-### 🔍 Advanced OSINT Capabilities
-*   **Email Audit & Breach Scanner:** Deep scanning of email addresses across known databases to expose leaked passwords and breached accounts.
-*   **Phone Number Analysis:** Carrier lookup and vulnerability tracking for global cell formats.
-*   **Username Reconnaissance:** Tracking specific handles and digital footprints across social and deep-web platforms.
+---
 
-### 🛡️ Core Cybersecurity Utilities
-*   **Password Vault Integrator:** Advanced local entropy calculations to test password strength and breach velocity without sending user keystrokes over the network.
-*   **Suspicious Link/URL Scanner:** Deep inspection of URLs for phishing and malware signatures using integrated threat intelligence APIs.
-*   **Domain WHOIS & IP Scanners:** Real-time lookup of infrastructure points, reverse IP, and domain registration anomalies.
+## 🌟 Platform Showcase
+JoeScan is engineered with a premium, cinematic dark-mode aesthetic (Glassmorphism) combined with military-grade investigative tools. Below is an exhaustive look at the platform's core operational features.
 
-### 📰 Automated Auto-Fetching Cyber Blog
-*   **Zero-Touch Content Pipeline:** A 100% automated GitHub Actions workflow runs every day at 05:00 UTC (8:00 AM Egypt Summer Time) to scrape, normalize, and publish the latest news from top-tier security sources.
-*   **Dynamic Data Culling:** Automatically purges out-of-date news (older than 14 days) to keep the feed fresh, preventing database bloat.
-*   **Seamless Reading UX:** Integrated custom Markdown parser and clever scroll-to-top architecture keeps the user engaged within an immersive, single-page reading experience.
+### 1. The Command Center (Dashboard)
+The nerve center of JoeScan. It provides instant access to global OSINT operations, network scans, and analytical history in a cohesive, distraction-free environment.
+<br>
+<div align="center">
+  <img src="docs/assets/landing.png" alt="JoeScan Landing Dashboard" width="900" style="border-radius:12px; border: 1px solid #333;">
+</div>
 
-### 🧠 Gemini AI Integration
-Cutting-edge AI integration to analyze raw vulnerability outputs and translate them into actionable, human-readable insights directly on the dashboard.
+<br>
 
-## 🛠️ Tech Stack & Architecture
-*   **Frontend:** React 18, Vite, TypeScript
-*   **Styling:** TailwindCSS (Hyper-customized with specific hex gradients and blur utilities)
-*   **State Management & Logic:** Custom React Contexts (Language, Theme, Auth)
-*   **Backend & DB:** Firebase Auth & Database architectures
-*   **CI/CD Pipeline:** Fully automated via GitHub Actions (building, fetching news updates, and pushing to GitHub Pages)
+### 2. Deep Email Audit & Breach Reconnaissance
+Advanced email footprint tracking. Users can initiate deep scans to uncover associated password breaches, leaked datasets, and compromised accounts linked to any target email across known darker networks.
+<br>
+<div align="center">
+  <img src="docs/assets/email_audit.png" alt="Email Audit Results" width="900" style="border-radius:12px; border: 1px solid #333;">
+</div>
 
-## 💻 Run Locally
+<br>
 
-To get a local instance of JoeScan running smoothly:
+### 3. Dedicated Cybersecurity Blog
+A fully featured, English-first technical blog built directly into the platform. Complete with dynamic article tracking and specialized categorization to keep users incredibly informed while exploring the site.
+<br>
+<div align="center">
+  <img src="docs/assets/blog_main.png" alt="Cybersecurity Blog Main" width="900" style="border-radius:12px; border: 1px solid #333;">
+</div>
 
-**Prerequisites:** Ensure you have [Node.js](https://nodejs.org/) installed.
+<br>
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/Youssef1703-2023/joescan.git
-   cd joescan
-   ```
-2. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-3. **Set up Environment Variables:**
-   Create a `.env.local` file in the root directory and add your API keys:
-   ```env
-   VITE_GEMINI_API_KEY=your_gemini_api_key_here
-   ```
-4. **Boot the development server:**
-   ```bash
-   npm run dev
-   ```
+### 4. Zero-Touch Automated News Pipeline
+JoeScan features a background GitHub Actions pipeline that automatically scrapes, formats, and publishes the latest global cybersecurity news every single day at 8:00 AM (Egypt Time). It intrinsically filters out obsolete news (older than 14 days) and sorts chronologically to ensure ultimate freshness.
+<br>
+<div align="center">
+  <img src="docs/assets/blog_news.png" alt="Automated Daily News" width="900" style="border-radius:12px; border: 1px solid #333;">
+</div>
 
-## 📜 License
-This project is proprietary. All digital assets, source code, and design architecture belonging to the JoeTech/JoeScan label are strictly private unless explicitly open-sourced.
+<br>
+
+### 5. Seamless In-App Reading Engine
+Articles and news are parsed locally via a custom Markdown engine. Our integrated Scroll-to-Top physics ensure that readers get a premium, distraction-free reading experience without ever navigating away from the platform's ecosystem.
+<br>
+<div align="center">
+  <img src="docs/assets/blog_article.png" alt="Opened Article View" width="900" style="border-radius:12px; border: 1px solid #333;">
+</div>
+
+---
+
+## 🛠️ The Tech Stack Arsenal
+* **Frontend Architecture:** React 18 / Vite / TypeScript
+* **Styling & UX:** TailwindCSS (Hyper-customized with specific hex gradients and blur utilities for cinematic glassmorphism)
+* **Automation Engineering:** Fully automated CI/CD via GitHub Actions for daily news fetching and instantaneous static builds.
+* **Database & Auth:** Firebase architecture for secure user state management and real-time database queries.
 
 ---
 <div align="center">
-  <sub>Built with passion for Cybersecurity & OSINT</sub>
+  <sub>© 2026 JoeScan. All rights reserved. Built with passion for Cybersecurity & OSINT.</sub>
 </div>
