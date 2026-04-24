@@ -41,8 +41,7 @@ service cloud.firestore {
     function isValidScan() {
       let data = request.resource.data;
       return hasRequiredFields(['userId']) &&
-        data.userId == request.auth.uid && 
-        request.auth.token.email_verified == true;
+        data.userId == request.auth.uid;
     }
 
     // ─── Users ───
@@ -112,7 +111,7 @@ service cloud.firestore {
     // ─── API Keys ───
     match /apiKeys/{keyId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && request.auth.token.email_verified == true && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow list: if isAuthenticated();
     }
