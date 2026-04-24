@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Gift, Copy, Check, Users, Share2, MessageCircle, Trophy, Sparkles, Loader2, Star } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { auth, db } from '../lib/firebase';
-import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc } from 'firebase/firestore';
 
 const REFERRAL_GOAL = 5;
 
@@ -15,7 +15,7 @@ function generateCode(): string {
 }
 
 export default function ReferralSystem() {
-  const { lang } = useLanguage();
+  const { lang, t, dir } = useLanguage();
   const [referralCode, setReferralCode] = useState('');
   const [referralCount, setReferralCount] = useState(0);
   const [rewardClaimed, setRewardClaimed] = useState(false);
@@ -56,7 +56,7 @@ export default function ReferralSystem() {
       const signupsQuery = query(collection(db, 'referralSignups'), where('referrerUid', '==', uid));
       const signupsSnap = await getDocs(signupsQuery);
       const users = signupsSnap.docs.map(d => ({
-        email: d.data().email || 'مستخدم مجهول',
+        email: d.data().email || t('referral_default_email'),
         date: d.data().createdAt || '',
       }));
       setReferredUsers(users);
@@ -68,14 +68,14 @@ export default function ReferralSystem() {
   };
 
   const handleCopy = () => {
-    const text = `🛡️ جرب JoeScan — منصة الأمن السيبراني بالذكاء الاصطناعي!\n\nسجل مجاناً باستخدام كود الدعوة: ${referralCode}\n\nhttps://joescan.me`;
+    const text = t('referral_wa_msg') + `${referralCode}\n\nhttps://joescan.me`;
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleShareWhatsApp = () => {
-    const text = `🛡️ جرب JoeScan — منصة الأمن السيبراني بالذكاء الاصطناعي!\n\nافحص إيميلك، كلمات المرور، ورقم الموبايل لو تسربوا على الدارك ويب.\n\nسجل مجاناً بالكود: ${referralCode}\n\nhttps://joescan.me`;
+    const text = t('referral_wa_msg') + `${referralCode}\n\nhttps://joescan.me`;
     window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
   };
 
@@ -111,15 +111,15 @@ export default function ReferralSystem() {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto space-y-6" dir="rtl">
+    <div className="w-full max-w-3xl mx-auto space-y-6" dir={dir}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center">
           <Gift className="w-5 h-5 text-accent" />
         </div>
         <div>
-          <h1 className="text-xl font-black uppercase tracking-widest text-text-main">نظام الإحالة</h1>
-          <p className="text-xs text-text-dim font-mono">ادعِ أصحابك واحصل على شهر Pro مجاني</p>
+          <h1 className="text-xl font-black uppercase tracking-widest text-text-main">{t('referral_title')}</h1>
+          <p className="text-xs text-text-dim font-mono">{t('referral_subtitle')}</p>
         </div>
       </div>
 
@@ -136,18 +136,18 @@ export default function ReferralSystem() {
           <div className="w-16 h-16 bg-accent/20 border-2 border-accent/30 rounded-full flex items-center justify-center mx-auto">
             <Trophy className="w-8 h-8 text-accent" />
           </div>
-          <h2 className="text-lg font-bold text-text-main">ادعِ 5 أصحاب واحصل على شهر PRO مجاني! 🎉</h2>
+          <h2 className="text-lg font-bold text-text-main">{t('referral_hero_title')}</h2>
           <p className="text-sm text-text-dim max-w-md mx-auto">
-            شارك كود الدعوة مع أصحابك. لما 5 أشخاص يسجلوا بالكود بتاعك، هتحصل على شهر كامل من باقة Pro مجاناً.
+            {t('referral_hero_desc')}
           </p>
         </div>
       </motion.div>
 
       {/* Referral Code */}
       <div className="bg-bg-surface border border-border-subtle rounded-2xl p-5 space-y-4">
-        <p className="text-xs font-mono uppercase tracking-widest text-text-dim">كود الدعوة الخاص بك</p>
-        <div className="flex items-center gap-3">
-          <div className="flex-1 bg-bg-base border-2 border-dashed border-accent/40 rounded-xl px-5 py-4 text-center">
+        <p className="text-xs font-mono uppercase tracking-widest text-text-dim">{t('referral_code_label')}</p>
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          <div className="flex-1 w-full sm:w-auto bg-bg-base border-2 border-dashed border-accent/40 rounded-xl px-5 py-4 text-center">
             <span className="text-2xl font-black tracking-[0.3em] text-accent font-mono">{referralCode}</span>
           </div>
           <button
@@ -163,20 +163,20 @@ export default function ReferralSystem() {
         </div>
 
         {/* Share Buttons */}
-        <div className="flex gap-3">
+        <div className="flex gap-3 flex-wrap sm:flex-nowrap">
           <button
             onClick={handleShareWhatsApp}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold rounded-xl transition-all hover:scale-[1.02] text-sm"
+            className="flex-1 w-full sm:w-auto flex items-center justify-center gap-2 py-3 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold rounded-xl transition-all hover:scale-[1.02] text-sm"
           >
             <MessageCircle className="w-4 h-4" />
-            شارك على واتساب
+            {t('share_whatsapp')}
           </button>
           <button
             onClick={handleCopy}
-            className="flex-1 flex items-center justify-center gap-2 py-3 bg-bg-elevated border border-border-subtle text-text-main font-bold rounded-xl transition-all hover:border-accent/30 text-sm"
+            className="flex-1 w-full sm:w-auto flex items-center justify-center gap-2 py-3 bg-bg-elevated border border-border-subtle text-text-main font-bold rounded-xl transition-all hover:border-accent/30 text-sm"
           >
             <Share2 className="w-4 h-4" />
-            نسخ الرابط
+            {t('copy_link')}
           </button>
         </div>
       </div>
@@ -184,7 +184,7 @@ export default function ReferralSystem() {
       {/* Progress */}
       <div className="bg-bg-surface border border-border-subtle rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-mono uppercase tracking-widest text-text-dim">تقدمك</p>
+          <p className="text-xs font-mono uppercase tracking-widest text-text-dim">{t('your_progress')}</p>
           <span className="text-sm font-bold text-accent">{referralCount}/{REFERRAL_GOAL}</span>
         </div>
 
@@ -194,7 +194,7 @@ export default function ReferralSystem() {
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 1, ease: 'easeOut' }}
-            className="h-full bg-gradient-to-r from-accent to-green-400 rounded-full relative"
+            className={`h-full bg-gradient-to-r ${dir === 'rtl' ? 'from-green-400 to-accent' : 'from-accent to-green-400'} rounded-full relative`}
           >
             {progress > 10 && (
               <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
@@ -203,9 +203,9 @@ export default function ReferralSystem() {
         </div>
 
         {/* Steps */}
-        <div className="flex justify-between">
+        <div className="flex justify-between flex-wrap sm:flex-nowrap gap-2">
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="flex flex-col items-center gap-1.5">
+            <div key={i} className="flex flex-col items-center gap-1.5 w-1/5 sm:w-auto">
               <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all ${
                 i <= referralCount
                   ? 'bg-accent/20 border-accent text-accent'
@@ -213,7 +213,7 @@ export default function ReferralSystem() {
               }`}>
                 {i <= referralCount ? <Check className="w-4 h-4" /> : i}
               </div>
-              <span className="text-[9px] font-mono text-text-dim">صديق {i}</span>
+              <span className="text-[9px] sm:text-xs font-mono text-text-dim whitespace-nowrap">{t('friend_count')} {i}</span>
             </div>
           ))}
         </div>
@@ -227,7 +227,7 @@ export default function ReferralSystem() {
             className="w-full py-4 bg-gradient-to-r from-accent to-green-400 text-accent-fg font-black uppercase tracking-widest rounded-xl text-sm hover:scale-[1.02] transition-transform flex items-center justify-center gap-2"
           >
             <Sparkles className="w-5 h-5" />
-            احصل على شهر Pro مجاناً!
+            {t('claim_reward')}
           </motion.button>
         )}
 
@@ -235,7 +235,7 @@ export default function ReferralSystem() {
           <div className="text-center py-3 bg-accent/10 border border-accent/30 rounded-xl">
             <p className="text-accent font-bold text-sm flex items-center justify-center gap-2">
               <Star className="w-4 h-4" fill="currentColor" />
-              تم تفعيل الشهر المجاني! مبروك 🎉
+              {t('reward_claimed_msg')}
             </p>
           </div>
         )}
@@ -246,19 +246,23 @@ export default function ReferralSystem() {
         <div className="bg-bg-surface border border-border-subtle rounded-2xl p-5 space-y-3">
           <p className="text-xs font-mono uppercase tracking-widest text-text-dim flex items-center gap-2">
             <Users className="w-4 h-4" />
-            أصحابك اللي سجلوا ({referredUsers.length})
+            {t('referred_friends')} ({referredUsers.length})
           </p>
           <div className="space-y-2">
             {referredUsers.map((user, i) => (
-              <div key={i} className="flex items-center gap-3 bg-bg-base border border-border-subtle rounded-xl p-3">
-                <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center">
+              <div key={i} className="flex items-center gap-3 bg-bg-base border border-border-subtle rounded-xl p-3 flex-wrap sm:flex-nowrap">
+                <div className="w-8 h-8 bg-accent/10 rounded-full flex items-center justify-center shrink-0">
                   <span className="text-accent font-bold text-xs">{i + 1}</span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm text-text-main font-mono">{user.email.replace(/(.{3}).+(@.+)/, '$1***$2')}</p>
-                  <p className="text-[10px] text-text-dim">{user.date ? new Date(user.date).toLocaleDateString('ar-EG') : ''}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-text-main font-mono truncate">
+                    {user.email.replace(/(.{3}).+(@.+)/, '$1***$2')}
+                  </p>
+                  <p className="text-[10px] sm:text-xs text-text-dim">
+                    {user.date ? new Date(user.date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US') : ''}
+                  </p>
                 </div>
-                <Check className="w-4 h-4 text-accent" />
+                <Check className="w-4 h-4 text-accent shrink-0" />
               </div>
             ))}
           </div>

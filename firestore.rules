@@ -151,5 +151,15 @@ service cloud.firestore {
     match /notifPrefs/{userId} {
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
     }
+
+    // ─── Referrals ───
+    match /referrals/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ─── Referral Signups ───
+    match /referralSignups/{signupId} {
+      allow read: if isAuthenticated() && resource.data.referrerUid == request.auth.uid;
+    }
   }
 }
