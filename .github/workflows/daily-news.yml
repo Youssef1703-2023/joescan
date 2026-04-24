@@ -29,6 +29,9 @@ jobs:
       - name: Fetch latest cybersecurity news
         run: node scripts/fetch-news.mjs
 
+      - name: Auto-translate articles to all languages
+        run: node scripts/translate-news.mjs
+
       - name: Check for changes
         id: changes
         run: |
@@ -40,7 +43,7 @@ jobs:
           git config user.name "JoeScan Bot"
           git config user.email "bot@joescan.me"
           git add src/data/dailyNews.json
-          git commit -m "🤖 auto: daily cybersecurity news update"
+          git commit -m "🤖 auto: daily cybersecurity news + 6-lang translation"
           git push
 
       - name: Install dependencies

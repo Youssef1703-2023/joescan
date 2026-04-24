@@ -5,12 +5,20 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { ARTICLES, CATEGORIES, CATEGORIES_AR, type Article } from '../data/blogArticles';
 import dailyNewsData from '../data/dailyNews.json';
 
+interface DailyNewsTranslation {
+  title: string;
+  summary: string;
+  content: string;
+}
+
 interface DailyNewsItem {
   title: string;
   link: string;
   date: string;
   source: string;
   summary: string;
+  content?: string;
+  translations?: Record<string, DailyNewsTranslation>;
 }
 
 const CATEGORY_ICONS: Record<string, any> = {
@@ -24,37 +32,63 @@ const CATEGORY_ICONS: Record<string, any> = {
   'Tips': Smartphone,
 };
 
-// Blog UI translations
+// Blog UI translations — all 7 languages
 const blogT: Record<string, Record<string, string>> = {
-  header: { en: 'Cybersecurity Blog', ar: 'مدونة الأمن السيبراني' },
-  subtitle: { en: 'Articles & news to protect your digital life', ar: 'مقالات وأخبار لحماية حياتك الرقمية' },
-  autoDaily: { en: 'Auto Daily Updates', ar: 'تحديت يومي تلقائي' },
-  articles: { en: 'Articles', ar: 'مقالات' },
-  automatedNews: { en: '📡 Automated Daily News', ar: '📡 أخبار يومية آلية' },
-  newsDesc: { en: 'News is automatically updated every day at 8 AM from trusted cybersecurity sources', ar: 'الأخبار تتحدّث تلقائياً كل يوم الساعة 8 صباحاً من مصادر أمن سيبراني موثوقة' },
-  lastUpdated: { en: 'Last Updated', ar: 'آخر تحديث' },
-  backToArticles: { en: 'Back to Articles', ar: 'العودة للمقالات' },
-  dailyNews: { en: 'Daily News', ar: 'أخبار يومية' },
-  minRead: { en: 'min read', ar: 'دقائق قراءة' },
-  read: { en: 'Read', ar: 'اقرأ' },
-  readMore: { en: 'Read More', ar: 'اقرأ المزيد' },
-  readArticle: { en: 'Read Article', ar: 'اقرأ المقال' },
-  latestNews: { en: 'Latest News — Auto Updated', ar: 'آخر الأخبار — تحديث تلقائي' },
-  breakingNews: { en: 'Breaking News', ar: 'أخبار عاجلة' },
-  breaking: { en: 'BREAKING', ar: 'عاجل' },
-  searchArticles: { en: 'Search articles...', ar: 'ابحث في المقالات...' },
-  featured: { en: 'Featured', ar: 'مميّز' },
-  noResults: { en: 'No articles match your search', ar: 'لا توجد مقالات تطابق بحثك' },
-  published: { en: 'Published', ar: 'منشور' },
-  categories: { en: 'Categories', ar: 'تصنيفات' },
-  cybersecurity: { en: 'Cybersecurity', ar: 'أمن سيبراني' },
+  header: { en: 'Cybersecurity Blog', ar: 'مدونة الأمن السيبراني', fr: 'Blog Cybersécurité', de: 'Cybersicherheitsblog', es: 'Blog de Ciberseguridad', tr: 'Siber Güvenlik Blogu', ru: 'Блог кибербезопасности' },
+  subtitle: { en: 'Articles & news to protect your digital life', ar: 'مقالات وأخبار لحماية حياتك الرقمية', fr: 'Articles et actualités pour protéger votre vie numérique', de: 'Artikel und Nachrichten zum Schutz Ihres digitalen Lebens', es: 'Artículos y noticias para proteger tu vida digital', tr: 'Dijital hayatınızı korumak için makaleler ve haberler', ru: 'Статьи и новости для защиты вашей цифровой жизни' },
+  autoDaily: { en: 'Auto Daily Updates', ar: 'تحديت يومي تلقائي', fr: 'Mise à jour auto quotidienne', de: 'Tägliches Auto-Update', es: 'Actualización diaria automática', tr: 'Otomatik günlük güncelleme', ru: 'Автоматическое ежедневное обновление' },
+  articles: { en: 'Articles', ar: 'مقالات', fr: 'Articles', de: 'Artikel', es: 'Artículos', tr: 'Makaleler', ru: 'Статьи' },
+  automatedNews: { en: '📡 Automated Daily News', ar: '📡 أخبار يومية آلية', fr: '📡 Actualités quotidiennes automatiques', de: '📡 Automatische tägliche Nachrichten', es: '📡 Noticias diarias automatizadas', tr: '📡 Otomatik günlük haberler', ru: '📡 Автоматические ежедневные новости' },
+  newsDesc: { en: 'News is automatically updated every day at 8 AM from trusted cybersecurity sources', ar: 'الأخبار تتحدّث تلقائياً كل يوم الساعة 8 صباحاً من مصادر أمن سيبراني موثوقة', fr: 'Actualités mises à jour automatiquement chaque jour à 8h depuis des sources fiables', de: 'Nachrichten werden täglich um 8 Uhr automatisch aktualisiert', es: 'Noticias actualizadas automáticamente cada día a las 8 AM', tr: 'Haberler güvenilir kaynaklardan her gün saat 8\'de otomatik güncellenir', ru: 'Новости обновляются ежедневно в 8:00 из надёжных источников' },
+  lastUpdated: { en: 'Last Updated', ar: 'آخر تحديث', fr: 'Dernière mise à jour', de: 'Zuletzt aktualisiert', es: 'Última actualización', tr: 'Son güncelleme', ru: 'Последнее обновление' },
+  backToArticles: { en: 'Back to Articles', ar: 'العودة للمقالات', fr: 'Retour aux articles', de: 'Zurück zu den Artikeln', es: 'Volver a los artículos', tr: 'Makalelere dön', ru: 'Назад к статьям' },
+  dailyNews: { en: 'Daily News', ar: 'أخبار يومية', fr: 'Actualités', de: 'Tägliche Nachrichten', es: 'Noticias diarias', tr: 'Günlük haberler', ru: 'Ежедневные новости' },
+  minRead: { en: 'min read', ar: 'دقائق قراءة', fr: 'min de lecture', de: 'Min. Lesezeit', es: 'min de lectura', tr: 'dk okuma', ru: 'мин чтения' },
+  read: { en: 'Read', ar: 'اقرأ', fr: 'Lire', de: 'Lesen', es: 'Leer', tr: 'Oku', ru: 'Читать' },
+  readMore: { en: 'Read More', ar: 'اقرأ المزيد', fr: 'Lire la suite', de: 'Weiterlesen', es: 'Leer más', tr: 'Devamını oku', ru: 'Читать далее' },
+  readArticle: { en: 'Read Article', ar: 'اقرأ المقال', fr: 'Lire l\'article', de: 'Artikel lesen', es: 'Leer artículo', tr: 'Makaleyi oku', ru: 'Читать статью' },
+  latestNews: { en: 'Latest News — Auto Updated', ar: 'آخر الأخبار — تحديث تلقائي', fr: 'Dernières nouvelles — Mise à jour auto', de: 'Neueste Nachrichten — Auto-Update', es: 'Últimas noticias — Actualización automática', tr: 'Son haberler — Otomatik güncelleme', ru: 'Последние новости — Автообновление' },
+  breakingNews: { en: 'Breaking News', ar: 'أخبار عاجلة', fr: 'Dernière minute', de: 'Eilmeldung', es: 'Noticias de última hora', tr: 'Son dakika', ru: 'Срочные новости' },
+  breaking: { en: 'BREAKING', ar: 'عاجل', fr: 'URGENT', de: 'EILMELDUNG', es: 'URGENTE', tr: 'SON DAKİKA', ru: 'СРОЧНО' },
+  searchArticles: { en: 'Search articles...', ar: 'ابحث في المقالات...', fr: 'Rechercher des articles...', de: 'Artikel suchen...', es: 'Buscar artículos...', tr: 'Makale ara...', ru: 'Поиск статей...' },
+  featured: { en: 'Featured', ar: 'مميّز', fr: 'En vedette', de: 'Empfohlen', es: 'Destacado', tr: 'Öne çıkan', ru: 'Рекомендуемое' },
+  noResults: { en: 'No articles match your search', ar: 'لا توجد مقالات تطابق بحثك', fr: 'Aucun article ne correspond', de: 'Keine passenden Artikel', es: 'No hay artículos que coincidan', tr: 'Aramanızla eşleşen makale yok', ru: 'Статьи не найдены' },
+  published: { en: 'Published', ar: 'منشور', fr: 'Publié', de: 'Veröffentlicht', es: 'Publicado', tr: 'Yayınlandı', ru: 'Опубликовано' },
+  categories: { en: 'Categories', ar: 'تصنيفات', fr: 'Catégories', de: 'Kategorien', es: 'Categorías', tr: 'Kategoriler', ru: 'Категории' },
+  cybersecurity: { en: 'Cybersecurity', ar: 'أمن سيبراني', fr: 'Cybersécurité', de: 'Cybersicherheit', es: 'Ciberseguridad', tr: 'Siber güvenlik', ru: 'Кибербезопасность' },
 };
 
 const t = (key: string, lang: string) => blogT[key]?.[lang] || blogT[key]?.en || key;
 
+// RTL languages
+const RTL_LANGS = new Set(['ar']);
+
+// Helper: get translated news field with fallback to English
+function getNewsField(news: any, field: 'title' | 'summary' | 'content', lang: string): string {
+  if (lang === 'en') return news[field] || '';
+  if (news.translations && news.translations[lang] && news.translations[lang][field]) {
+    return news.translations[lang][field];
+  }
+  return news[field] || '';
+}
+
 export default function Blog() {
   const { lang } = useLanguage();
   const isAr = lang === 'ar';
+  const isRtl = RTL_LANGS.has(lang);
+  // Determine if news content should be shown as LTR (i.e. no translation available, or language is LTR)
+  const newsContentDir = (news: any) => {
+    if (lang === 'en') return 'ltr';
+    // If we have a translation for this language, use its direction
+    if (news.translations && news.translations[lang] && news.translations[lang].title) {
+      return isRtl ? 'rtl' : 'ltr';
+    }
+    return 'ltr'; // Fallback: English content = LTR
+  };
+  const newsTextAlign = (news: any) => {
+    const dir = newsContentDir(news);
+    return dir === 'rtl' ? 'text-right' : 'text-left';
+  };
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [selectedNews, setSelectedNews] = useState<DailyNewsItem | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
@@ -83,7 +117,7 @@ export default function Blog() {
   const getReadTime = (a: Article) => isAr ? a.readTimeAr : a.readTime;
   const getTags = (a: Article) => isAr ? a.tagsAr : a.tags;
   const getCategoryLabel = (idx: number) => isAr ? CATEGORIES_AR[idx] : CATEGORIES[idx];
-  const dateLocale = isAr ? 'ar-EG' : 'en-US';
+  const dateLocale = { en: 'en-US', ar: 'ar-EG', fr: 'fr-FR', de: 'de-DE', es: 'es-ES', tr: 'tr-TR', ru: 'ru-RU' }[lang] || 'en-US';
 
   const filteredArticles = useMemo(() => {
     let articles = ARTICLES;
@@ -196,12 +230,12 @@ export default function Blog() {
                     {Math.max(2, Math.ceil(((selectedNews as any).content || '').length / 500))} {t('minRead', lang)}
                   </span>
                 </div>
-                <h1 dir="ltr" className="text-2xl font-black text-text-main leading-relaxed">{selectedNews.title.replace(/ - .*$/, '')}</h1>
+                <h1 dir={newsContentDir(selectedNews)} className={`text-2xl font-black text-text-main leading-relaxed ${newsTextAlign(selectedNews)}`}>{getNewsField(selectedNews, 'title', lang).replace(/ - .*$/, '')}</h1>
               </div>
 
-              {/* Full Article Content — always LTR since RSS is English */}
-              <div dir="ltr" className="prose prose-invert max-w-none text-left">
-                {((selectedNews as any).content || selectedNews.title.replace(/ - .*$/, '')).split('\n').map((line: string, i: number) => {
+              {/* Full Article Content — direction depends on translation availability */}
+              <div dir={newsContentDir(selectedNews)} className={`prose prose-invert max-w-none ${newsTextAlign(selectedNews)}`}>
+                {(getNewsField(selectedNews, 'content', lang) || getNewsField(selectedNews, 'title', lang).replace(/ - .*$/, '')).split('\n').map((line: string, i: number) => {
                   if (line.startsWith('## ')) return <h2 key={i} className="text-xl font-bold text-text-main mt-8 mb-4 border-b border-border-subtle pb-2">{line.replace('## ', '')}</h2>;
                   if (line.startsWith('### ')) return <h3 key={i} className="text-lg font-bold text-accent mt-6 mb-3">{line.replace('### ', '')}</h3>;
                   if (line.startsWith('- ')) return <li key={i} className="text-sm text-text-dim ml-4 mb-1 list-disc leading-relaxed">{line.replace('- ', '')}</li>;
@@ -333,8 +367,8 @@ export default function Blog() {
                       className="flex items-start gap-3 p-3 bg-bg-surface/50 border border-border-subtle rounded-xl cursor-pointer hover:border-cyan-500/30 transition-all group"
                     >
                       <div className="w-2 h-2 bg-cyan-400 rounded-full mt-1.5 shrink-0" />
-                      <div className="flex-1 min-w-0" dir="ltr">
-                        <h4 className="text-xs font-bold text-text-main leading-relaxed line-clamp-2 group-hover:text-cyan-400 transition-colors text-left">{news.title}</h4>
+                      <div className="flex-1 min-w-0" dir={newsContentDir(news)}>
+                        <h4 className={`text-xs font-bold text-text-main leading-relaxed line-clamp-2 group-hover:text-cyan-400 transition-colors ${newsTextAlign(news)}`}>{getNewsField(news, 'title', lang)}</h4>
                         <div className="flex items-center gap-2 mt-1">
                           <span className="text-[10px] text-cyan-400/80 font-mono">{news.source}</span>
                           <span className="text-[10px] text-text-dim font-mono">• {new Date(news.date).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' })}</span>
