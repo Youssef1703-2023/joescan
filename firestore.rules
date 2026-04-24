@@ -11,7 +11,7 @@ service cloud.firestore {
     }
     
     function isAdmin() {
-       return isAuthenticated() && request.auth.token.email == 'operator@joescan.cloud';
+       return isAuthenticated() && request.auth.token.email == 'operator@joescan.me';
     }
     
     function hasRequiredFields(fields) {

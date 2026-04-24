@@ -65,7 +65,7 @@ export interface UserProfileDocument {
   updatedAt?: string;
 }
 
-export const ADMIN_EMAIL = 'operator@joescan.cloud';
+export const ADMIN_EMAIL = 'operator@joescan.me';
 
 // ─── Profile Sync (Firestore-based, cross-device) ───
 
