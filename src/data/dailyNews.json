@@ -1,20 +1,20 @@
 {
-  "lastUpdated": "2026-04-24T04:13:58.372Z",
+  "lastUpdated": "2026-04-24T04:17:54.343Z",
   "articles": [
     {
-      "title": "OpenAI تطلق &#8220;ChatGPT للأطباء&#8221;.. مساعد طبي متكامل",
+      "title": "OpenAI تطلق “ChatGPT للأطباء”.. مساعد طبي متكامل",
       "date": "2026-04-23",
       "source": "aitnews.com",
-      "summary": "أعلنت شركة OpenAI إطلاق إصدار جديد من مساعدها الذكي للأطباء والعاملين في القطاع الصحي باسم &#8220;ChatGPT for Clinicians&#8220;، وذلك بالتزامن مع تضاعف إقبال الأطباء على تقنيات الذكاء الاصطناعي. وأكدت",
-      "content": "أعلنت شركة OpenAI إطلاق إصدار جديد من مساعدها الذكي للأطباء والعاملين في القطاع الصحي باسم &#8220;ChatGPT for Clinicians&#8220;، وذلك بالتزامن مع تضاعف إقبال الأطباء على تقنيات الذكاء الاصطناعي. وأكدت الشركة أن ملايين المتخصصين في الرعاية الصحية يعتمدون بالفعل على ChatGPT في مهامهم اليومية، مما دفعها إلى تطوير نسخة تدعم العمل السريري &#8220;الإكلينيكي&#8221; بنحو مباشر، عبر &#8230;",
+      "summary": "أعلنت شركة OpenAI إطلاق إصدار جديد من مساعدها الذكي للأطباء والعاملين في القطاع الصحي باسم “ChatGPT for Clinicians“، وذلك بالتزامن مع تضاعف إقبال الأطباء على تقنيات الذكاء الاصطناعي. وأكدت الشركة أن م",
+      "content": "أعلنت شركة OpenAI إطلاق إصدار جديد من مساعدها الذكي للأطباء والعاملين في القطاع الصحي باسم “ChatGPT for Clinicians“، وذلك بالتزامن مع تضاعف إقبال الأطباء على تقنيات الذكاء الاصطناعي. وأكدت الشركة أن ملايين المتخصصين في الرعاية الصحية يعتمدون بالفعل على ChatGPT في مهامهم اليومية، مما دفعها إلى تطوير نسخة تدعم العمل السريري “الإكلينيكي” بنحو مباشر، عبر …",
       "hasFullContent": true
     },
     {
-      "title": "سام ألتمان ينتقد نموذج أنثروبيك &#8220;Claude Mythos&#8221; ويشكك في قدراته",
+      "title": "سام ألتمان ينتقد نموذج أنثروبيك “Claude Mythos” ويشكك في قدراته",
       "date": "2026-04-23",
       "source": "aitnews.com",
-      "summary": "صعّد سام ألتمان، الرئيس التنفيذي لشركة OpenAI مطوّرة ChatGPT، انتقاداته لنموذج &#8220;Claude Mythos&#8221; الذي تطوّره شركة أنثروبيك المنافسة، وعدّ أن الترويج له يعتمد على &#8220;تسويق قائم على الخوف&",
-      "content": "صعّد سام ألتمان، الرئيس التنفيذي لشركة OpenAI مطوّرة ChatGPT، انتقاداته لنموذج &#8220;Claude Mythos&#8221; الذي تطوّره شركة أنثروبيك المنافسة، وعدّ أن الترويج له يعتمد على &#8220;تسويق قائم على الخوف&#8221; أكثر من كونه تقدمًا تقنيًا يمكن التحقق منه. وجاءت تصريحات ألتمان خلال ظهوره في بودكاست &#8220;Core Memory&#8221;، إذ شكّك في الادعاءات التي تشير إلى قدرة النموذج على &#8230;",
+      "summary": "صعّد سام ألتمان، الرئيس التنفيذي لشركة OpenAI مطوّرة ChatGPT، انتقاداته لنموذج “Claude Mythos” الذي تطوّره شركة أنثروبيك المنافسة، وعدّ أن الترويج له يعتمد على “تسويق قائم على الخوف” أكثر من كونه تقدم",
+      "content": "صعّد سام ألتمان، الرئيس التنفيذي لشركة OpenAI مطوّرة ChatGPT، انتقاداته لنموذج “Claude Mythos” الذي تطوّره شركة أنثروبيك المنافسة، وعدّ أن الترويج له يعتمد على “تسويق قائم على الخوف” أكثر من كونه تقدمًا تقنيًا يمكن التحقق منه. وجاءت تصريحات ألتمان خلال ظهوره في بودكاست “Core Memory”، إذ شكّك في الادعاءات التي تشير إلى قدرة النموذج على …",
       "hasFullContent": true
     },
     {
@@ -22,8 +22,32 @@
       "date": "2026-04-23",
       "source": "aitnews.com",
       "summary": "كشفت الاستخبارات البريطانية أن أكثر من نصف حكومات العالم باتت تمتلك أدوات تجسس تجارية قادرة على اختراق الهواتف والحواسيب وسرقة بيانات حساسة، في مؤشر على اتساع نطاق التهديدات السيبرانية عالميًا. ويعتزم",
-      "content": "كشفت الاستخبارات البريطانية أن أكثر من نصف حكومات العالم باتت تمتلك أدوات تجسس تجارية قادرة على اختراق الهواتف والحواسيب وسرقة بيانات حساسة، في مؤشر على اتساع نطاق التهديدات السيبرانية عالميًا. ويعتزم المركز الوطني للأمن السيبراني البريطاني نشر نتائج تقريره الذي اطلعت عليه صحيفة بوليتيكو، إذ يشير إلى تراجع الحواجز التقنية التي كانت تحدّ الوصول إلى &#8230;",
+      "content": "كشفت الاستخبارات البريطانية أن أكثر من نصف حكومات العالم باتت تمتلك أدوات تجسس تجارية قادرة على اختراق الهواتف والحواسيب وسرقة بيانات حساسة، في مؤشر على اتساع نطاق التهديدات السيبرانية عالميًا. ويعتزم المركز الوطني للأمن السيبراني البريطاني نشر نتائج تقريره الذي اطلعت عليه صحيفة بوليتيكو، إذ يشير إلى تراجع الحواجز التقنية التي كانت تحدّ الوصول إلى …",
       "hasFullContent": true
+    },
+    {
+      "title": "أستراليا تتعاون مع «أنثروبيك» لمراجعة ثغرات أمنية محتملة في أنظمة الأمن السيبراني - Fintechgate",
+      "date": "2026-04-23",
+      "source": "Fintechgate",
+      "summary": "أستراليا تتعاون مع «أنثروبيك» لمراجعة ثغرات أمنية محتملة في أنظمة الأمن السيبراني",
+      "content": "أستراليا تتعاون مع «أنثروبيك» لمراجعة ثغرات أمنية محتملة في أنظمة الأمن السيبراني\n\nفي تطور جديد يعكس التحديات المتزايدة في عالم الأمن السيبراني، تبرز أهمية هذا الخبر كجزء من المشهد الأمني المتسارع الذي يشهده العالم العربي والعالم أجمع.\n\n## تفاصيل الخبر\n\nأستراليا تتعاون مع «أنثروبيك» لمراجعة ثغرات أمنية محتملة في أنظمة الأمن السيبراني. هذا التطور يأتي في وقت تتزايد فيه التهديدات السيبرانية بشكل ملحوظ، مما يستدعي من المستخدمين والمؤسسات اتخاذ إجراءات وقائية أكثر صرامة.\n\nيشير الخبراء إلى أن مثل هذه الأحداث تؤكد الحاجة الماسة إلى تعزيز الوعي الأمني الرقمي لدى المستخدمين العرب، خاصة مع التوسع المتسارع في استخدام التكنولوجيا الرقمية في جميع مناحي الحياة.\n\n## الأثر والتداعيات\n\nتُظهر الإحصائيات الأخيرة ارتفاعاً ملحوظاً في عدد الهجمات السيبرانية التي تستهدف المنطقة العربية، مما يجعل متابعة مثل هذه الأخبار أمراً حيوياً لكل مستخدم يسعى لحماية بياناته وأجهزته.\n\nمن المهم أن يبقى المستخدمون على اطلاع دائم بأحدث التطورات الأمنية، وأن يتبعوا أفضل الممارسات في حماية حساباتهم وأجهزتهم من التهديدات المتنوعة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل فور صدور التحديثات الأمنية\n- استخدم كلمات مرور قوية وفريدة لكل حساب، ويفضل استخدام مدير كلمات المرور\n- فعّل المصادقة الثنائية (2FA) على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة في البريد الإلكتروني والرسائل\n- استخدم برامج حماية موثوقة وحافظ على تحديثها بشكل دوري\n- قم بعمل نسخ احتياطية منتظمة لبياناتك المهمة",
+      "hasFullContent": false
+    },
+    {
+      "title": "الكشف عن ثغرة أمنية في شرائح كوالكوم تعرض الأجهزة للاختراق وتسبب فقدان البيانات - فيتو",
+      "date": "2026-04-23",
+      "source": "فيتو",
+      "summary": "الكشف عن ثغرة أمنية في شرائح كوالكوم تعرض الأجهزة للاختراق وتسبب فقدان البيانات",
+      "content": "الكشف عن ثغرة أمنية في شرائح كوالكوم تعرض الأجهزة للاختراق وتسبب فقدان البيانات\n\nفي تطور جديد يعكس التحديات المتزايدة في عالم الأمن السيبراني، تبرز أهمية هذا الخبر كجزء من المشهد الأمني المتسارع الذي يشهده العالم العربي والعالم أجمع.\n\n## تفاصيل الخبر\n\nالكشف عن ثغرة أمنية في شرائح كوالكوم تعرض الأجهزة للاختراق وتسبب فقدان البيانات. هذا التطور يأتي في وقت تتزايد فيه التهديدات السيبرانية بشكل ملحوظ، مما يستدعي من المستخدمين والمؤسسات اتخاذ إجراءات وقائية أكثر صرامة.\n\nيشير الخبراء إلى أن مثل هذه الأحداث تؤكد الحاجة الماسة إلى تعزيز الوعي الأمني الرقمي لدى المستخدمين العرب، خاصة مع التوسع المتسارع في استخدام التكنولوجيا الرقمية في جميع مناحي الحياة.\n\n## الأثر والتداعيات\n\nتُظهر الإحصائيات الأخيرة ارتفاعاً ملحوظاً في عدد الهجمات السيبرانية التي تستهدف المنطقة العربية، مما يجعل متابعة مثل هذه الأخبار أمراً حيوياً لكل مستخدم يسعى لحماية بياناته وأجهزته.\n\nمن المهم أن يبقى المستخدمون على اطلاع دائم بأحدث التطورات الأمنية، وأن يتبعوا أفضل الممارسات في حماية حساباتهم وأجهزتهم من التهديدات المتنوعة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل فور صدور التحديثات الأمنية\n- استخدم كلمات مرور قوية وفريدة لكل حساب، ويفضل استخدام مدير كلمات المرور\n- فعّل المصادقة الثنائية (2FA) على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة في البريد الإلكتروني والرسائل\n- استخدم برامج حماية موثوقة وحافظ على تحديثها بشكل دوري\n- قم بعمل نسخ احتياطية منتظمة لبياناتك المهمة",
+      "hasFullContent": false
+    },
+    {
+      "title": "آبل تُغلق ثغرة تستعيد رسائل سيغنال المحذوفة وموزيلا توظّف الذكاء الاصطناعي لاكتشاف مئات الثغرات في فايرفوكس - مونت كارلو الدولية",
+      "date": "2026-04-23",
+      "source": "مونت كارلو الدولية",
+      "summary": "آبل تُغلق ثغرة تستعيد رسائل سيغنال المحذوفة وموزيلا توظّف الذكاء الاصطناعي لاكتشاف مئات الثغرات في فايرفوكس",
+      "content": "آبل تُغلق ثغرة تستعيد رسائل سيغنال المحذوفة وموزيلا توظّف الذكاء الاصطناعي لاكتشاف مئات الثغرات في فايرفوكس\n\nفي تطور جديد يعكس التحديات المتزايدة في عالم الأمن السيبراني، تبرز أهمية هذا الخبر كجزء من المشهد الأمني المتسارع الذي يشهده العالم العربي والعالم أجمع.\n\n## تفاصيل الخبر\n\nآبل تُغلق ثغرة تستعيد رسائل سيغنال المحذوفة وموزيلا توظّف الذكاء الاصطناعي لاكتشاف مئات الثغرات في فايرفوكس. هذا التطور يأتي في وقت تتزايد فيه التهديدات السيبرانية بشكل ملحوظ، مما يستدعي من المستخدمين والمؤسسات اتخاذ إجراءات وقائية أكثر صرامة.\n\nيشير الخبراء إلى أن مثل هذه الأحداث تؤكد الحاجة الماسة إلى تعزيز الوعي الأمني الرقمي لدى المستخدمين العرب، خاصة مع التوسع المتسارع في استخدام التكنولوجيا الرقمية في جميع مناحي الحياة.\n\n## الأثر والتداعيات\n\nتُظهر الإحصائيات الأخيرة ارتفاعاً ملحوظاً في عدد الهجمات السيبرانية التي تستهدف المنطقة العربية، مما يجعل متابعة مثل هذه الأخبار أمراً حيوياً لكل مستخدم يسعى لحماية بياناته وأجهزته.\n\nمن المهم أن يبقى المستخدمون على اطلاع دائم بأحدث التطورات الأمنية، وأن يتبعوا أفضل الممارسات في حماية حساباتهم وأجهزتهم من التهديدات المتنوعة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل فور صدور التحديثات الأمنية\n- استخدم كلمات مرور قوية وفريدة لكل حساب، ويفضل استخدام مدير كلمات المرور\n- فعّل المصادقة الثنائية (2FA) على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة في البريد الإلكتروني والرسائل\n- استخدم برامج حماية موثوقة وحافظ على تحديثها بشكل دوري\n- قم بعمل نسخ احتياطية منتظمة لبياناتك المهمة",
+      "hasFullContent": false
     },
     {
       "title": "اختراق ضخم يضرب وكالة الهوية في فرنسا ويثير مخاوف من تسريب بيانات ملايين المواطنين - Fintechgate",
@@ -50,188 +74,12 @@
       "hasFullContent": false
     },
     {
-      "title": "أستراليا تتعاون مع «أنثروبيك» لمراجعة ثغرات أمنية محتملة في أنظمة الأمن السيبراني - Fintechgate",
-      "date": "2026-04-23",
-      "source": "Fintechgate",
-      "summary": "أستراليا تتعاون مع «أنثروبيك» لمراجعة ثغرات أمنية محتملة في أنظمة الأمن السيبراني",
-      "content": "أستراليا تتعاون مع «أنثروبيك» لمراجعة ثغرات أمنية محتملة في أنظمة الأمن السيبراني\n\nفي تطور جديد يعكس التحديات المتزايدة في عالم الأمن السيبراني، تبرز أهمية هذا الخبر كجزء من المشهد الأمني المتسارع الذي يشهده العالم العربي والعالم أجمع.\n\n## تفاصيل الخبر\n\nأستراليا تتعاون مع «أنثروبيك» لمراجعة ثغرات أمنية محتملة في أنظمة الأمن السيبراني. هذا التطور يأتي في وقت تتزايد فيه التهديدات السيبرانية بشكل ملحوظ، مما يستدعي من المستخدمين والمؤسسات اتخاذ إجراءات وقائية أكثر صرامة.\n\nيشير الخبراء إلى أن مثل هذه الأحداث تؤكد الحاجة الماسة إلى تعزيز الوعي الأمني الرقمي لدى المستخدمين العرب، خاصة مع التوسع المتسارع في استخدام التكنولوجيا الرقمية في جميع مناحي الحياة.\n\n## الأثر والتداعيات\n\nتُظهر الإحصائيات الأخيرة ارتفاعاً ملحوظاً في عدد الهجمات السيبرانية التي تستهدف المنطقة العربية، مما يجعل متابعة مثل هذه الأخبار أمراً حيوياً لكل مستخدم يسعى لحماية بياناته وأجهزته.\n\nمن المهم أن يبقى المستخدمون على اطلاع دائم بأحدث التطورات الأمنية، وأن يتبعوا أفضل الممارسات في حماية حساباتهم وأجهزتهم من التهديدات المتنوعة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل فور صدور التحديثات الأمنية\n- استخدم كلمات مرور قوية وفريدة لكل حساب، ويفضل استخدام مدير كلمات المرور\n- فعّل المصادقة الثنائية (2FA) على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة في البريد الإلكتروني والرسائل\n- استخدم برامج حماية موثوقة وحافظ على تحديثها بشكل دوري\n- قم بعمل نسخ احتياطية منتظمة لبياناتك المهمة",
-      "hasFullContent": false
-    },
-    {
-      "title": "الكشف عن ثغرة أمنية في شرائح كوالكوم تعرض الأجهزة للاختراق وتسبب فقدان البيانات - فيتو",
-      "date": "2026-04-23",
-      "source": "فيتو",
-      "summary": "الكشف عن ثغرة أمنية في شرائح كوالكوم تعرض الأجهزة للاختراق وتسبب فقدان البيانات",
-      "content": "الكشف عن ثغرة أمنية في شرائح كوالكوم تعرض الأجهزة للاختراق وتسبب فقدان البيانات\n\nفي تطور جديد يعكس التحديات المتزايدة في عالم الأمن السيبراني، تبرز أهمية هذا الخبر كجزء من المشهد الأمني المتسارع الذي يشهده العالم العربي والعالم أجمع.\n\n## تفاصيل الخبر\n\nالكشف عن ثغرة أمنية في شرائح كوالكوم تعرض الأجهزة للاختراق وتسبب فقدان البيانات. هذا التطور يأتي في وقت تتزايد فيه التهديدات السيبرانية بشكل ملحوظ، مما يستدعي من المستخدمين والمؤسسات اتخاذ إجراءات وقائية أكثر صرامة.\n\nيشير الخبراء إلى أن مثل هذه الأحداث تؤكد الحاجة الماسة إلى تعزيز الوعي الأمني الرقمي لدى المستخدمين العرب، خاصة مع التوسع المتسارع في استخدام التكنولوجيا الرقمية في جميع مناحي الحياة.\n\n## الأثر والتداعيات\n\nتُظهر الإحصائيات الأخيرة ارتفاعاً ملحوظاً في عدد الهجمات السيبرانية التي تستهدف المنطقة العربية، مما يجعل متابعة مثل هذه الأخبار أمراً حيوياً لكل مستخدم يسعى لحماية بياناته وأجهزته.\n\nمن المهم أن يبقى المستخدمون على اطلاع دائم بأحدث التطورات الأمنية، وأن يتبعوا أفضل الممارسات في حماية حساباتهم وأجهزتهم من التهديدات المتنوعة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل فور صدور التحديثات الأمنية\n- استخدم كلمات مرور قوية وفريدة لكل حساب، ويفضل استخدام مدير كلمات المرور\n- فعّل المصادقة الثنائية (2FA) على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة في البريد الإلكتروني والرسائل\n- استخدم برامج حماية موثوقة وحافظ على تحديثها بشكل دوري\n- قم بعمل نسخ احتياطية منتظمة لبياناتك المهمة",
-      "hasFullContent": false
-    },
-    {
       "title": "آبل تُصلح ثغرة تكشف الرسائل المحذوفة في هواتف آيفون",
       "date": "2026-04-22",
       "source": "aitnews.com",
       "summary": "أطلقت شركة آبل تحديثًا برمجيًا جديدًا لهواتف آيفون وأجهزة آيباد، وهو تحديث فرعي يعالج خللًا أمنيًا أتاح لجهات إنفاذ القانون استخراج محتوى رسائل حُذفت أو ضُبِطت لتختفي تلقائيًا داخل تطبيقات المراسلة. و",
-      "content": "أطلقت شركة آبل تحديثًا برمجيًا جديدًا لهواتف آيفون وأجهزة آيباد، وهو تحديث فرعي يعالج خللًا أمنيًا أتاح لجهات إنفاذ القانون استخراج محتوى رسائل حُذفت أو ضُبِطت لتختفي تلقائيًا داخل تطبيقات المراسلة. وأوضحت الشركة في مذكرة أمنية أن المشكلة تعود إلى احتفاظ النظام بنسخة من محتوى الإشعارات التي تعرض نص الرسائل، إذ تُخزّن هذه البيانات محليًا &#8230;",
+      "content": "أطلقت شركة آبل تحديثًا برمجيًا جديدًا لهواتف آيفون وأجهزة آيباد، وهو تحديث فرعي يعالج خللًا أمنيًا أتاح لجهات إنفاذ القانون استخراج محتوى رسائل حُذفت أو ضُبِطت لتختفي تلقائيًا داخل تطبيقات المراسلة. وأوضحت الشركة في مذكرة أمنية أن المشكلة تعود إلى احتفاظ النظام بنسخة من محتوى الإشعارات التي تعرض نص الرسائل، إذ تُخزّن هذه البيانات محليًا …",
       "hasFullContent": true
-    },
-    {
-      "title": "تم إصدار عقوبات صارمة بحق 35 متهماً بتهمة الاحتيال الإلكتروني المنظم. - Vietnam.vn",
-      "link": "https://news.google.com/rss/articles/CBMingFBVV95cUxNZFVJN3Q1ZWU0dWloM1lkcTVZemNjZGZGNW84QkwzRUpsNE5DSGFiMkJCLXhLbHhrZHM5OFlVU1EyMUpia0lKY3ExMFNSRTZQNTRKR2g2dUhwZGtFTVJrZndFSGRBUjkzcjdCVE1YNkJhLS1qV0s4b0tDaGNLZ2JCUFg3WlZxMDhJUzVhZXlZUmhxa1M2c2U4NWhEdlJ1dw?oc=5",
-      "date": "2026-04-24",
-      "source": "Vietnam.vn",
-      "content": "تم إصدار عقوبات صارمة بحق 35 متهماً بتهمة الاحتيال الإلكتروني المنظم.\n\nهذا الخبر تم نشره عبر Vietnam.vn. يُعد هذا التطور جزءاً من المشهد الأمني السيبراني المتغير باستمرار، والذي يتطلب من المستخدمين والمؤسسات البقاء على اطلاع دائم بأحدث التهديدات والتطورات الأمنية.\n\nنحرص في JoeScan على متابعة وتقديم أهم الأخبار الأمنية باللغة العربية لمساعدة المستخدم العربي في حماية بياناته وأجهزته من التهديدات المتزايدة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل بشكل دوري\n- استخدم كلمات مرور قوية وفريدة لكل حساب\n- فعّل المصادقة الثنائية على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة\n- تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات",
-      "summary": "تم إصدار عقوبات صارمة بحق 35 متهماً بتهمة الاحتيال الإلكتروني المنظم.",
-      "hasFullContent": false
-    },
-    {
-      "title": "الأمن السيبراني.. تمكين وأمن - جريدة الرياض",
-      "link": "https://news.google.com/rss/articles/CBMiR0FVX3lxTFBlQ01OWUJ1YXdYZGRJWDBmSEZBV0NJZXhCOWdGeDZVNUFmTGlNRVRYM19CZjd6aWFsUmcxWlRwLU5sV2VmOTBV?oc=5",
-      "date": "2026-04-24",
-      "source": "جريدة الرياض",
-      "content": "الأمن السيبراني.. تمكين وأمن\n\nهذا الخبر تم نشره عبر جريدة الرياض. يُعد هذا التطور جزءاً من المشهد الأمني السيبراني المتغير باستمرار، والذي يتطلب من المستخدمين والمؤسسات البقاء على اطلاع دائم بأحدث التهديدات والتطورات الأمنية.\n\nنحرص في JoeScan على متابعة وتقديم أهم الأخبار الأمنية باللغة العربية لمساعدة المستخدم العربي في حماية بياناته وأجهزته من التهديدات المتزايدة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل بشكل دوري\n- استخدم كلمات مرور قوية وفريدة لكل حساب\n- فعّل المصادقة الثنائية على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة\n- تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات",
-      "summary": "الأمن السيبراني.. تمكين وأمن",
-      "hasFullContent": false
-    },
-    {
-      "title": "مع تزايد محاولات الاحتيال الإلكتروني عبر تطبيق واتساب.. تحذير من قوى الأمن! - صوت بيروت إنترناشونال",
-      "link": "https://news.google.com/rss/articles/CBMi2AJBVV95cUxQWEtwYkgzMjRaenI5OTFTbUN3V1JKM1ZMSGdmeTJUM0lEQTNYWG1aTG84cGVrMGxsdmltUVJIckl1S2xuZGZXeWJRSE9RZW1pcm16SlFtdWFHdWJYMk1KMmtmMDk2V3dXTlhxLWZKTE5BcFNoUWxQRGVzbWlRUG9IRkJUS194LTN0X1o3VDhVRXlzbXQ1enpSVENnNFhjQW52SjYwRE9tbFBfQ0RuT2JGTXVZMmFUUUtsbFlyMzZtRFpHeEZFTHduLXVJMmVDNTVFZDJxMWVYRlJOOUJJNUpoanM3ZWttNFBsOVRLUmZqVU90dTYwSDZvYy1TVkxSa2xSa1hsdWM2YzdLRmhzY3pVZWY4SllJR3JaOXBFRVh2WXFPMEdfcVdZdzVid0swNTlFUW01R0d5TThNZF9jb1ptM2ZuSXd4TXdMTExRRDNnZFNrMlRRVDlCbg?oc=5",
-      "date": "2026-04-23",
-      "source": "صوت بيروت إنترناشونال",
-      "content": "مع تزايد محاولات الاحتيال الإلكتروني عبر تطبيق واتساب.. تحذير من قوى الأمن!\n\nهذا الخبر تم نشره عبر صوت بيروت إنترناشونال. يُعد هذا التطور جزءاً من المشهد الأمني السيبراني المتغير باستمرار، والذي يتطلب من المستخدمين والمؤسسات البقاء على اطلاع دائم بأحدث التهديدات والتطورات الأمنية.\n\nنحرص في JoeScan على متابعة وتقديم أهم الأخبار الأمنية باللغة العربية لمساعدة المستخدم العربي في حماية بياناته وأجهزته من التهديدات المتزايدة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل بشكل دوري\n- استخدم كلمات مرور قوية وفريدة لكل حساب\n- فعّل المصادقة الثنائية على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة\n- تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات",
-      "summary": "مع تزايد محاولات الاحتيال الإلكتروني عبر تطبيق واتساب.. تحذير من قوى الأمن!",
-      "hasFullContent": false
-    },
-    {
-      "title": "الدرك الوطني يطلق نداءً للضحايا في قضية ن��ب واحتيال إلكتروني - a5r5br.net",
-      "link": "https://news.google.com/rss/articles/CBMi9gNBVV95cUxNSzMzeUxRNVV3dTdqMVBSZmxUMkVFOXRUSzF1aWRVTmpZU05DMWdBUGMyeWUwdzBQM25TbC1jenJmaWJZRDZoQW11ekNHR24yVklEeHhvLXZ6ejJmQXJwdWlFdTNIb01fbl84ajhIdVZQa1U2VDJVN0lDTHlOR21SU0FmdmZLYjdlVTQ0YmdYSXo1bmVHUU1UTEpXYTV0VHZMS1BOblBUbVQ0OF9rN2NJN3JTWFFpcFUzZmhXRWQ5SFRSRDdFMFdRSDQ2clV0ZjNHaDYxM0ZTOUpWbXptRUZYVklKTHhJQU9YdVI0WUFndG5taWxXRVkwSHNieDFDdlVtb1hRTTE5WWJwTERKNzFVemRlS3ZGcDZBaVdxSElOYUVyZDB2NmNwRWlldmVDUlNRUWhnaUQ0eXdiQm5GZkVBX09FMnQtTDBnaHlKcER0VGV4dXYzc094ZU9FbjNzbFB5NHE3Q2dNcXRrZnR6UFFUU2dWQWZqTUZmMUhJQzF5TEdta2NTSnU0elA3ZnFSZTh3Sy0za0djcEptcm1aYzlMS0xzRHg4YnNIdWdMemRNODhTejRfVGE2Y01lRGRmMTZSbzRxMEc0aWZKSXdRNkp1Zkg5OE5hSHk2eUF2ekZMS1gwSjYtbktyZHNwZmhVSmtuRUlVYmJR?oc=5",
-      "date": "2026-04-23",
-      "source": "a5r5br.net",
-      "content": "الدرك الوطني يطلق نداءً للضحايا في قضية ن��ب واحتيال إلكتروني\n\nهذا الخبر تم نشره عبر a5r5br.net. يُعد هذا التطور جزءاً من المشهد الأمني السيبراني المتغير باستمرار، والذي يتطلب من المستخدمين والمؤسسات البقاء على اطلاع دائم بأحدث التهديدات والتطورات الأمنية.\n\nنحرص في JoeScan على متابعة وتقديم أهم الأخبار الأمنية باللغة العربية لمساعدة المستخدم العربي في حماية بياناته وأجهزته من التهديدات المتزايدة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل بشكل دوري\n- استخدم كلمات مرور قوية وفريدة لكل حساب\n- فعّل المصادقة الثنائية على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة\n- تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات",
-      "summary": "الدرك الوطني يطلق نداءً للضحايا في قضية ن��ب واحتيال إلكتروني",
-      "hasFullContent": false
-    },
-    {
-      "title": "تفكيك شبكة نصب واحتيال إلكتروني بسيدي بلعباس وتوقيف ثلاثة مشتبه فيهم - النهار أونلاين",
-      "link": "https://news.google.com/rss/articles/CBMizAJBVV95cUxNZndzRDhOYmRoV2pMeUFjRkxoMmt5b2ZCSlQybE02a1NXQ0NvcE5TWl85YnhMU0Y4TjRzR09TQlBmQ05vUDE3Zk9URGp1VWhDVFEtZVFGQUd6OWRLT3h0c091LUZTZTZmMEVNVWpQdXE0Y0NaWk1lTkFOTDdJMWdaWHQzalU5RkZVS2xmUGpqRzYzSmxqN1lCS0lfeUpMYmVqcjRBOERYMVVHbi1uVGt1ZDhGZ3BRS0hpSy1XaFk4NVlmTV9VLUgtM2d6Y3BoRnk0Q3FSSGpTNXM2UDltdFI3TnJQTnZYMFBSUllnUEY4eUVUa0lFSVZoSFRHd2JfYmtfQms3ZmgxR21rRUVJdjFLb0J6MmtIMlowNG1MZW5kQnNrWWFzQ1VrUGlMOXo4Q29lMjZoNEs4LUFMSVNNVVNBcnJCR3hKQkt3VnJ5Qw?oc=5",
-      "date": "2026-04-23",
-      "source": "النهار أونلاين",
-      "content": "تفكيك شبكة نصب واحتيال إلكتروني بسيدي بلعباس وتوقيف ثلاثة مشتبه فيهم\n\nهذا الخبر تم نشره عبر النهار أونلاين. يُعد هذا التطور جزءاً من المشهد الأمني السيبراني المتغير باستمرار، والذي يتطلب من المستخدمين والمؤسسات البقاء على اطلاع دائم بأحدث التهديدات والتطورات الأمنية.\n\nنحرص في JoeScan على متابعة وتقديم أهم الأخبار الأمنية باللغة العربية لمساعدة المستخدم العربي في حماية بياناته وأجهزته من التهديدات المتزايدة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل بشكل دوري\n- استخدم كلمات مرور قوية وفريدة لكل حساب\n- فعّل المصادقة الثنائية على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة\n- تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات",
-      "summary": "تفكيك شبكة نصب واحتيال إلكتروني بسيدي بلعباس وتوقيف ثلاثة مشتبه فيهم",
-      "hasFullContent": false
-    },
-    {
-      "title": "تركيا تحظر شبكات التواصل لمن هم دون 15 عاما - الخليج",
-      "link": "https://news.google.com/rss/articles/CBMi5gNBVV95cUxPSEhpMVpFUHVwSGtGZjFqTDRwbDBNNk9yeTJLMmFDbnl4Skdici1nQm5xTHlvd1d3bjVlbjVMS2ZZWnJxUnM3dTlKNDN2aUE2bG1OdnVMTXNVTGk1RUVRX2ZHejhtWnJKWlV2bUxSVGhXWUZWUjBtNmFuQ1FFbnBlMzBZZ2hLZUJyX2ZmVkdwVlJ5bW8yWjNrUHNILTVsR3FzUC1GVUFYZWg1dGZSMVFCWkxfV0RzdEkzelpVM2dMTDVxMXYtNG15dGlpbVlpMkwzOHRJTThrSFFILVZwZDJ5RHl1clpDUlVXRjNmUDl1ZjVrM1BDaEg0WmVUUUxMRDN2ZjlOYkU2Vy15Q0NIa3hOR2M5VFlMaVk4UldiN2ZfZzh0ZUdZb2dIcmxBU1ZCV2pqWlAzTVBIOHlMaHF4ekl6aG1mRERkMzRmeWRUTVJPZ1JpakNJOEN6b0NYazdqVzRTMXI4NmFCaFh3dlBnb2RaWXhrUDFXeTNvVzJwNHZRQ3JPdWoycnBxWGN4emFkTWtIR0QwV2xCVXdCVGdkYUpiXzViR3dZQjIxdGdiYk9JT1R1OHdnazFWUHJZbkxBcER2OF9HeUZwYzk5TmdhWnRQQXZySk1mWTdJY2t1RVU2Q2NUUjNSSlE?oc=5",
-      "date": "2026-04-23",
-      "source": "الخليج",
-      "content": "تركيا تحظر شبكات التواصل لمن هم دون 15 عاما\n\nهذا الخبر تم نشره عبر الخليج. يُعد هذا التطور جزءاً من المشهد الأمني السيبراني المتغير باستمرار، والذي يتطلب من المستخدمين والمؤسسات البقاء على اطلاع دائم بأحدث التهديدات والتطورات الأمنية.\n\nنحرص في JoeScan على متابعة وتقديم أهم الأخبار الأمنية باللغة العربية لمساعدة المستخدم العربي في حماية بياناته وأجهزته من التهديدات المتزايدة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل بشكل دوري\n- استخدم كلمات مرور قوية وفريدة لكل حساب\n- فعّل المصادقة الثنائية على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة\n- تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات",
-      "summary": "تركيا تحظر شبكات التواصل لمن هم دون 15 عاما",
-      "hasFullContent": false
-    },
-    {
-      "title": "أستراليا تتعاون مع أنثروبيك لرصد ثغرات أمن سيبرانى فى نموذج ذكاء اصطناعى جديد - اليوم السابع",
-      "link": "https://news.google.com/rss/articles/CBMi9gNBVV95cUxPRDZubnhTQWFweEl0aFBKX05Qb1JUWGtXR1h0YmdKVGFvdW5EWnpjTU12dTNIT09lY3FJdlJ1YW10OEgwb0ZJVjlpT3ZYR1A1NGRYR0VPeDIwS3FfODZXbVhUTFpUM01MTVhuSWZESTRlNHVia3BlQUxUdmtvdHRON052Q3NGT29uM1NMZWxPclRTcTVjS0tuRjZ0cTZNV1FYNnJMb3Utc1ozT2kzV1Q1bml5YmNBLWxqdjlfTk50QWRXcldTa0hTRkdtaTRBdk9TcFk3NnNYR3hqOGV2X3hlZDIwZWZfRzlCY2xHaGt6UDhLS1VoOTJzWHFQeHhBQnVNczJ5TWVSYUcwQVhpZHVtUXVXczdDWGRLeFowaGliNkZHNXRGX0x5bFh5eGtVeWNNNWhRQXFvWUdTN0VCU2prQm9wOU1hTlRMMFJEdTBQRmV4eTlmUGlFRDlmeDJ5cl9lZ2NCRXpWbzl2RTktOGpaMjh4T0x0NS1ESV9QLXFaOWpfNk80VWpZM25fYk1HNnMySWZMRkQ5SWt2cHM2elZkMjhrbW12d25OTnhaMXc1UlBDdHVEM2pSUTlWSjUzVGNKZWttSS1vTzNMbDhFaDd3a3RkdjR2S2R5WGEtZ1YzQWwxYVQwU0loeEd1cGtQeW9FNkNNQjhB?oc=5",
-      "date": "2026-04-23",
-      "source": "اليوم السابع",
-      "content": "أستراليا تتعاون مع أنثروبيك لرصد ثغرات أمن سيبرانى فى نموذج ذكاء اصطناعى جديد\n\nهذا الخبر تم نشره عبر اليوم السابع. يُعد هذا التطور جزءاً من المشهد الأمني السيبراني المتغير باستمرار، والذي يتطلب من المستخدمين والمؤسسات البقاء على اطلاع دائم بأحدث التهديدات والتطورات الأمنية.\n\nنحرص في JoeScan على متابعة وتقديم أهم الأخبار الأمنية باللغة العربية لمساعدة المستخدم العربي في حماية بياناته وأجهزته من التهديدات المتزايدة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل بشكل دوري\n- استخدم كلمات مرور قوية وفريدة لكل حساب\n- فعّل المصادقة الثنائية على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة\n- تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات",
-      "summary": "أستراليا تتعاون مع أنثروبيك لرصد ثغرات أمن سيبرانى فى نموذج ذكاء اصطناعى جديد",
-      "hasFullContent": false
-    },
-    {
-      "title": "\"أنثروبيك\" تحقق في وصول غير مصرّح به إلى نموذج \"ميثوس\" السيبراني - عرب 48",
-      "link": "https://news.google.com/rss/articles/CBMi1gVBVV95cUxOVUV1bFdqOWNsNGMyQ0NBTjF6N1NRUnVoc2tlQXUxVVYzc2NNWmt5TmJkalktZ2FUSG5nR2lJVDg0dXFSNUJTR3VrQXpxTFhWcGNhYWwwQ2ZqX0s4VUhnSktmMERLVkdtdGJyZ0ZuOWtuXzh5RFQ2MHQxSlpkN3VDazZqMFBHTVZ0UzNxdjhvTGQ1Q0lpekdTRTdvdmljZFlpRU1obXVhX2NLT3pLUWFjb0xqYnBwTzhGbEdJYWl0VHI4S0MwSkc5T0VEMmdQRXdqMmU3bDRCb1RTOEk3cUF6SFktUVludjJjdUVudU1IdUtBQ0VVaE84d3FrZDFXNzVjMTdCNzBSQmQ3ZGlUMjZhWWFzZ0ZYZ2k0NVhqR25oQ2t5QUltczNUam45amRvOWQ4VXVYaUNScUhIWXdPOW5nVlZhZUNJc1p1TGNGSWplNXI5NG41WmpzTl9GNWlmYi1DZXhDamdyT01yWS1WTC1JTHIxMHp4Rld0N2M0LTZEblBuTm41T0ZmeWxRY0RtbXVrbHRlUHo2VVE3OFdFcmFTUzZGTjNfcEpRc3lrakJOZW9RU2pnem9RQjVSV3Q2WnZnbFRKWENkczlmTXFnTHprUHBSWnROTmhQYUIyZWlDVVVoRGo1QXFRWUh5Y0RYRVJvYjFWVnpJcUpwUUJDZThOaDJEQmhoRGhvNk5uLWVTWUdSd25IazJ6TjlGZEw2M3pqalF2M3I1NzVwWGlEN2RaRWRXWnFwa0M5QUdVeFpXeUdKaEh3WDQ1aXdXV3RlZVdoQUw3WmtVSks2ZjdCcVRHMmRWTEgxdEYxR2Q5VEptQUh6d3liM1hDVWNycmw0enNnRXRKTVM4X0FIUVgyOS1jdkFYWFJmd2NXUkY0YTJLR2lRZ0dPSi1Bc2U4YnphWUhfeHhwM0dHV0ZmYnJRTW55WFI0emxwQjYta0dGaXZleFloYVY5SVE?oc=5",
-      "date": "2026-04-23",
-      "source": "عرب 48",
-      "content": "\"أنثروبيك\" تحقق في وصول غير مصرّح به إلى نموذج \"ميثوس\" السيبراني\n\nهذا الخبر تم نشره عبر عرب 48. يُعد هذا التطور جزءاً من المشهد الأمني السيبراني المتغير باستمرار، والذي يتطلب من المستخدمين والمؤسسات البقاء على اطلاع دائم بأحدث التهديدات والتطورات الأمنية.\n\nنحرص في JoeScan على متابعة وتقديم أهم الأخبار الأمنية باللغة العربية لمساعدة المستخدم العربي في حماية بياناته وأجهزته من التهديدات المتزايدة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل بشكل دوري\n- استخدم كلمات مرور قوية وفريدة لكل حساب\n- فعّل المصادقة الثنائية على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة\n- تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات",
-      "summary": "\"أنثروبيك\" تحقق في وصول غير مصرّح به إلى نموذج \"ميثوس\" السيبراني",
-      "hasFullContent": false
-    },
-    {
-      "title": "(وسائط متعددة) الصين تحث الاتحاد الأوروبي على أخذ شواغلها المتعلقة بمراجعة قانون الأمن السيبراني في الاعتبار - 新华网",
-      "link": "https://news.google.com/rss/articles/CBMie0FVX3lxTE9MbjdpX2RqZE13b1lMWUxXQ0FjOXVmUEQ2WWJFblJac2lPMkM4SVF2dFVoa3NsUUhmNW1sRWJCTUtJdWZGTzlwMERvZGpDLXFvSFZNM3RyWWZ6WGtid3VrWnItZ2lmbkFJNXdfd3hiOGktM0ZJQi1ia0FtTQ?oc=5",
-      "date": "2026-04-23",
-      "source": "新华网",
-      "content": "(وسائط متعددة) الصين تحث الاتحاد الأوروبي على أخذ شواغلها المتعلقة بمراجعة قانون الأمن السيبراني في الاعتبار\n\nهذا الخبر تم نشره عبر 新华网. يُعد هذا التطور جزءاً من المشهد الأمني السيبراني المتغير باستمرار، والذي يتطلب من المستخدمين والمؤسسات البقاء على اطلاع دائم بأحدث التهديدات والتطورات الأمنية.\n\nنحرص في JoeScan على متابعة وتقديم أهم الأخبار الأمنية باللغة العربية لمساعدة المستخدم العربي في حماية بياناته وأجهزته من التهديدات المتزايدة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل بشكل دوري\n- استخدم كلمات مرور قوية وفريدة لكل حساب\n- فعّل المصادقة الثنائية على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة\n- تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات",
-      "summary": "(وسائط متعددة) الصين تحث الاتحاد الأوروبي على أخذ شواغلها المتعلقة بمراجعة قانون الأمن السيبراني في الاعتبار",
-      "hasFullContent": false
-    },
-    {
-      "title": "دراسة تكشف تصاعد أهمية الوعي بالأمن السيبراني لدعم المرونة الرقمية - ZAWYA",
-      "link": "https://news.google.com/rss/articles/CBMi8wVBVV95cUxPdy1sWm9jWkZlRnEwencwWUhPZDB5Ry1udFYtYjQzWmpHbTBOTjJ2Ui0yMmc2bVhHcGNrUzM4Y2Y2TWhQdzVsa2ZxMEtGTUp2MnZjMUZvcmRwSG1hVmh2aWFLaHZZMGl2cU95TnlkQUxYTXZNcVVJV2ZVdG9ZbDhFZEdJZFktRkFtVE9JTU1pQkRTemotTTRiaHNDWUhRMWd4cmFQbzFqbU9ORGU3UjBxcU1uZzFhNXlYeWppa0NLeXBQd21YQktBZ3ByVkFnV3MwS0pzOUYzeVNlSHVIdURpdDhfM3FRcmpJZFpoRnVDVUxNcXRGb2hEZEZpMkVwSU9ReVo0LW9UUkRydXdtaXNNWmw2UTlZOXpsUnFramh6R2l0S05kcXlBSzg2U0xQYndIWEFqb1JCUFJfNGZwbldGODYxdzduVi1JNU8wWDd0NW1ZWVhUWG9IQkJxZTNORjQyZHVfU3RENzBNVmh4MjBjVlp2RXlxWG1VQlpHaHNHQ01SUW9qY1pfSHlhS1FCSGpUSVB0d1lWZ0Z2cG9sNlR4Rlo4UzFMUDA4dG1QQk9ncDJ3UWxiZUJjTnMxWElzZXNQODlxVHJ6dnhkS3c3Q2ZCT3hsNnlLNjRaMElpRVMwZkZUZVlPOUdXbklBeW9Hc25EUGxkTmVIOF80VjN2RlQ2N2tPMkl4cy1Kc2pUbElZWF9IUVpFam5kY016dUx6UlpadmJoUXpvbG5vVW5ldTBQOW5nSmFqMFVhekxBa2lRdFl3S04yaVRTWWRFMWZsdkcwM2NYcDNTYmFXR0s2bFVnYXRtYjRILU1TSV91aFJRZ0RyMWZTVjdCZVdnOUJoR3RUMVhpa0Q1NmN5dTdKbEQtRWx2YVpRLVpVMks0TTVpUnBodlhSSkwzWFpVenoxcnRRSGlLSjBKM0g1NmVSdFIyLVV4OHJJM2d1bjY0VjY2MFB4aVlSclp6UDllS1FHQlRwRDc2ZDNNMVl6Yy1LRVJqMmdCWQ?oc=5",
-      "date": "2026-04-23",
-      "source": "ZAWYA",
-      "content": "دراسة تكشف تصاعد أهمية الوعي بالأمن السيبراني لدعم المرونة الرقمية\n\nهذا الخبر تم نشره عبر ZAWYA. يُعد هذا التطور جزءاً من المشهد الأمني السيبراني المتغير باستمرار، والذي يتطلب من المستخدمين والمؤسسات البقاء على اطلاع دائم بأحدث التهديدات والتطورات الأمنية.\n\nنحرص في JoeScan على متابعة وتقديم أهم الأخبار الأمنية باللغة العربية لمساعدة المستخدم العربي في حماية بياناته وأجهزته من التهديدات المتزايدة.\n\n## نصائح للحماية\n\n- احرص على تحديث جميع البرامج وأنظمة التشغيل بشكل دوري\n- استخدم كلمات مرور قوية وفريدة لكل حساب\n- فعّل المصادقة الثنائية على جميع حساباتك المهمة\n- كن حذراً من الروابط والمرفقات المشبوهة\n- تابع آخر الأخبار الأمنية لتبقى على دراية بأحدث التهديدات",
-      "summary": "دراسة تكشف تصاعد أهمية الوعي بالأمن السيبراني لدعم المرونة الرقمية",
-      "hasFullContent": false
-    },
-    {
-      "title": "«موزيلا» تسد عشرات الثغرات في «فايرفوكس» بمساعدة Claude Mythos - جريدة المال",
-      "link": "https://news.google.com/rss/articles/CBMingNBVV95cUxOT011UHVSTUlIcUZMWHdmYW54V0VsdkI3bVFJTjJzMERTaUJJSlNxR1kzanpnSnpsWjdkdWQ4Q18wWG5JOFo3Q3daUExCU3ktUWpRQV9GdEtUNUpILWx1X1JpRVJHMGUtQXVGV2VVU1I5Rjdsa3VqZ1oyNVJzWmQteWNwYzNKblhCelZqNEg4MGlrQU90dk9FYjJHQ1R0QjRUM0Z1S3o2ems2Q0tCblZkUnJKVHV0YXozRXpLWnZoQlF6blhLa3dvSllYU2FfQlZONVk5aUxrNjZDOERDckZ0QlllSE5odGtuVWNUcnZrNHRxVENhT1BManhSMjNjSkRVUHZZQkxDWW9ycUkyLTN1QXIwMGdVYllhZ01DZmpKYmJGYTFYTklxREJGVFFWX1dJV25Ja3lCNnlXckUxd09YejR5Nm9FUm5WODhULUxIejV3YVlxdEF2eGtLX2NRLUwtYk1mMHVQSzVPd2laOTZlMjBsZlBtMnEtVmowYlJ0N2lsbXpoOVd6YV8xaTg4dWNwUzNuTnAzZGZVLWI3UkE?oc=5",
-      "date": "2026-04-23",
-      "source": "جريدة المال",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMingNBVV95cUxOT011UHVSTUlIcUZMWHdmYW54V0VsdkI3bVFJTjJzMERTaUJJSlNxR1kzanpnSnpsWjdkdWQ4Q18wWG5JOFo3Q3daUExCU3ktUWpRQV9GdEtUNUpILWx1X1JpRVJHMGUtQXVGV2VVU1"
-    },
-    {
-      "title": "كاسبرسكي تكشف عن ثغرة أمنية في شرائح كوالكوم قد تعرّض الأجهزة للاختراق وتسبب فقدان البيانات - بوابة الدولة الاخبارية",
-      "link": "https://news.google.com/rss/articles/CBMiS0FVX3lxTE1hc3RuWGppRHI0dklSTnRxcVRlTEJ4emdhdWxSelhPWnZ0djhKdjh2QUFCd3BKRDlwbjdSZlF0bkJKSFhEcTIycEFFQQ?oc=5",
-      "date": "2026-04-23",
-      "source": "بوابة الدولة الاخبارية",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMiS0FVX3lxTE1hc3RuWGppRHI0dklSTnRxcVRlTEJ4emdhdWxSelhPWnZ0djhKdjh2QUFCd3BKRDlwbjdSZlF0bkJKSFhEcTIycEFFQQ?oc=5\" target=\"_blank\">كاسبرسكي تكشف عن ثغرة أمن"
-    },
-    {
-      "title": "آبل تُغلق ثغرة تستعيد رسائل سيغنال المحذوفة وموزيلا توظّف الذكاء الاصطناعي لاكتشاف مئات الثغرات في فايرفوكس - مونت كارلو الدولية",
-      "link": "https://news.google.com/rss/articles/CBMi1gdBVV95cUxQSjZkYTRQUWJoV3ljMTMzbUktV2dVVjVOdloyaElOUUptQWtOeFJuR19hZmxoQk5BeXUxb0lVS1ZFTzB5bVpGQjhVWlpnUlBCd1diMTBJSU5iSDhabk5KUlVKNHB4M2F2SjgtMF9LbENtNVVGam1qdEJUb3NjbTVSMkVzdEN2RnRoUFM0VmREZFhqTmNmbnc3Vk9GbWtKYmpaczkwSS04VHE0MlRvRllaUmcxTzJ0cjlHQ2U1anhmTUxWdV9jR1hYQkpadUJ2bG95MUViSEV4N3JsOVlFdlRodnZQVkhLUXl2XzFkYS1xWEpYb3B6eHNON01aUW40OVFteVBEc1NnMjVERVFTTFhSZEtwU1RGUGJZOTZVZXF4dUJDcFVXMEdKUGtHTGhfOFBqTk9kU1l1a2MyODJDaVRaZ0E2MENBaG9LOE5hRTZQRkZ2eWFTODdPc2xrNVlDYVNFTjhlWGFvdWZVTkZ1VU1XOFRYWThsUjVZeU5nLU1kd2hwVDAxdmtFcXI0bGVpVUdQbDkxejREdEJVdkYxODhHcGJVZW9kdm5rY1RJemZmckg5UlIxbXh1eGRpMkROVFNZdzhnbmV1UlIwWmFnVGhkek1oTmNPc0cwejlPT3NGSDd2SUxValBiTkNvaDNwV21sQkFZd3dnU1JYYS14YXI5bDVqZ3VqcWFzRGo4alR5UERaZ1M4UWVUQlh6WlFLYkpLM3oxMWU0Q0l0NDFmOWQ2VDRSLWVmWVNBU2ZoOGJhdXotQlpPZEpDRFBiV3VoMm12LVR1Rmloa0VScE9acEJrM0VmSW1GRGJabTM1VlJES0J6WWJQVXlLZi03R3lKbmcxekJnSlFsbVhwS2s1OWJ3X1BlNEh1RENRU2FfVGRnSUVqNE40dlVoMk11MWlKbEZES1A3OF8xaXpmUlFqUzdDNFEyTEl5MEFkSm1lQTBueE9PUDBXenFJYS1RWlJSRVhjOHp0dUR3Zmc4TmpfN05IUlYtcFVLT3BDM2lCNHdOU3hMcTVlRmowWHREcWxteG1oRFJ1d1NIUW5KME1IcmNxdGp0WEZfbHlZbmpKa2Zhd2NzUDlPTDRoM05GODlNZGc1MzUyb0FBdExjaEY1RzFmR2hJb3B3LTR3TDYyYzh2OHl1VklwUHA1b3VPeTdDYVhFWVJKcWh2TzdBWUxqUWRweXJia0VkTzR3ODNNTnB0dkhYby1MZFk1TzhzQzFKLWswZHFkdUVrQlJ6LXlwRHFBMGNhZkJpSGE5UWhER1ExelNDT2NBd2ZJbnA2OVRsU3VJTEdfSVhn?oc=5",
-      "date": "2026-04-23",
-      "source": "مونت كارلو الدولية",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMi1gdBVV95cUxQSjZkYTRQUWJoV3ljMTMzbUktV2dVVjVOdloyaElOUUptQWtOeFJuR19hZmxoQk5BeXUxb0lVS1ZFTzB5bVpGQjhVWlpnUlBCd1diMTBJSU5iSDhabk5KUlVKNHB4M2F2SjgtMF9LbE"
-    },
-    {
-      "title": "كاسبرسكي تكشف ثغرة في شرائح كوالكوم تتيح اختراق الأجهزة وسرقة البيانات.. تفاصيل - Masrawy",
-      "link": "https://news.google.com/rss/articles/CBMi5gRBVV95cUxQd0dTQUQwb3k5SjBaMVRSZElYaG9Od2dyLUJkRUtWT1hpNG1adnJOWkhtWTdfQ0NnYW1CQjY5RVljR2hoYWNUeVViTUxjQkI4QTZGS2hNemhBMFVSRk5aMEhFY0tvWFczUG1XdFg2NmxuRXRTTXoyczJSbjhGR2ZURlh1bTdGYk0xbExfbHZGNGF6YWdTNHdhS1VGcmhjRmF6LWpNWF9SU1QtLVBock1xd2thNFZzTjI4ckYxdXRpdlNYU3NzSjBlQlhmWWZ6Y3BCUzFrblBlTWdiWFZwRTdFZmRWel9vZVY1RkJucWxpZVJKd3FabWE4M0FLQUVSREZpeW1iRUw3REpsV00wbTFLSDBLVVZaYWUzRUk1MEVIcGJ1bHlia3UwZVZjY3ZOZGQ0MklPTEstUk1QWDBMVEJ5eFJyUWl6XzZkMXFQdFR3V1FZXzFBejEwLWFDV3NNTzFBVTVIN29CY1lfdDIyZzNZMzg2ZHVYY01ldy1pZWZTRml3LU1KRnR2eW0xcFR1bmFGVkZOUG1hUlFLdFU4Q3oyY29KR1FfSU9sWlVCMDU4a1FkYnA4eWlIR3Y1MlZEZU10VUZSWW1yMkViQzlqM29OMDFhQWYweHdnd3UtS2gtNENlZjRpcDByMmxldVRsTm9qNmxReDFZamZUWmhHb3RGVlNQR2piOW5ubTZvVWRFZGIyQ24wT2M1N19QWXZhM2I2YjVQOHJqVTBfaUZWWVloTHFNaFF3MkVTekx4LW1HOE9CTkdha2Y3dVQtWUxDVVNxeHRQQnJjVDlqYzVTemxncWhHRU0yQQ?oc=5",
-      "date": "2026-04-23",
-      "source": "Masrawy",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMi5gRBVV95cUxQd0dTQUQwb3k5SjBaMVRSZElYaG9Od2dyLUJkRUtWT1hpNG1adnJOWkhtWTdfQ0NnYW1CQjY5RVljR2hoYWNUeVViTUxjQkI4QTZGS2hNemhBMFVSRk5aMEhFY0tvWFczUG1XdFg2Nm"
-    },
-    {
-      "title": "​كاسبرسكي تكشف عن ثغرة أمنية في شرائح «كوالكوم» تهدد الهواتف والأنظمة الصناعية عالمياً - جريدة الغد المصرية",
-      "link": "https://news.google.com/rss/articles/CBMiQEFVX3lxTE1qMnNucUFraVh5MC1fX3RyN3k1NXBnLTVkdkJXVlVjVGg0VjFmU1FNSFEwdXV5QmVTZUw5YU50M3k?oc=5",
-      "date": "2026-04-23",
-      "source": "جريدة الغد المصرية",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMiQEFVX3lxTE1qMnNucUFraVh5MC1fX3RyN3k1NXBnLTVkdkJXVlVjVGg0VjFmU1FNSFEwdXV5QmVTZUw5YU50M3k?oc=5\" target=\"_blank\">​كاسبرسكي تكشف عن ثغرة أمنية في شرائح «ك"
-    },
-    {
-      "title": "آبل تغلق ثغرة أمنية استغلها مكتب التحقيقات الفيدرالي للدخول إلى أجهزة المستخدمين - Arageek",
-      "link": "https://news.google.com/rss/articles/CBMiywJBVV95cUxQeVJ5WFVBODAzX3JBcTdfS0ZDV0k3VnBlY2t0S0VYVDFPNlRaSU1LZ2ZfUWJEY1llX2F2ZUFXNDdPMzlldjNYdVBGRklJbmZmcjlnQmxSeHcwV1U1amp4V252NFFIbGJmSkprZUpoVXc2R2ZpcUpmc1NMTWdrNDFpa3FPNzEyZ0RBdjBOQkJZNjExbXZFY2Vnd3NHdXcxanIyN09rS3NoZXYzYVhwbHFOYlFYVnh0dkNCcDdNbEl3Y3FwSUE4cGs3eExUbTd1RkhDZm5pWGZleDBOSjh2bHNWWFduS3I5dEhRMFBpSGpOWTVrRk5DQjlBblNPMjJNRDdEZ01TRkVQQURCRkVqYVZCdUVJb2VaekliYVo0eWNlMlZkaUp5X0N1V19Mc3RLanMzVlNQYzJoYUlTbkkwVEtwN1hKUWY0UklNZFZF?oc=5",
-      "date": "2026-04-23",
-      "source": "Arageek",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMiywJBVV95cUxQeVJ5WFVBODAzX3JBcTdfS0ZDV0k3VnBlY2t0S0VYVDFPNlRaSU1LZ2ZfUWJEY1llX2F2ZUFXNDdPMzlldjNYdVBGRklJbmZmcjlnQmxSeHcwV1U1amp4V252NFFIbGJmSkprZUpoVX"
-    },
-    {
-      "title": "ثغرة في قلب المنظومة الأمنية.. مخاوف إسرائيلية من استيراد الطائرات المسيّرة - عربي21",
-      "link": "https://news.google.com/rss/articles/CBMixwRBVV95cUxPQzZQRnhxQmVKRnZHREdIQ1V5dzB2N1ZKLUliQmJ2OGhkZTdOeHpGODdBYkxadm04VUZraHVVMHVGN09HRUZnU1NuZ3djSEpNVGt2OERSb2ZpTURjVklCanNablpWemxGQjZEeGpGMmYzakdUWTF4ekN2WExFdjJ1ZEM5LW14bHJ4ODZqTGUyVWlocHBlWXVja1Y2ZEFRQkdBUHZjdWJsY19KM2twQ0ZfRmhpOHpKc0d4b1BqYVktSkVqYVJBSFl6OGp3Qm9DOXZXWFAwS05KeWN3THptV3ZWSlo5d0I2enBSaGxLS2hqY2JMNzFhV2RGZnNBcnFwS1hrOUJSRXNCZDJFTmlGbUtTNzY2QUJxZXpWSzc3Rlc3bUxObG9KUWY3cnByRjBzQzlwSnE4MnlFUXFEUkp6eS1vb2ZOeWNRZmtmeU1UVnZDQnBxSHZZTkEyN19EamUwaVRnZDFCSWhtaXRfSFIwN0t2NDNQeXViVHh3bnFLQTJZbmJabi1mVS1lODFjWm5JWkdvMXVQcUJ6NEJOb25wMGpBQjZHUFB4N29jZW5mQm9TLU81OHBEX0Qyd2YxejREbVo3clJIRjd3cVpsSl91eUxHdTRuRVRIbFRyd2dVV1JISXpDT0M2UWpydjdLX0hFZ2xFWkxuVUFNTXFlemJvSlhNUjVuYmduQWtyWG1HbjdYbk5VRFpESTV3cWlqZU0wMTJPaDcyMHVSSXFiVGxIOUppcDJCUF9XVVZWTVFVNWFENVQxVnlLR2Nn?oc=5",
-      "date": "2026-04-23",
-      "source": "عربي21",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMixwRBVV95cUxPQzZQRnhxQmVKRnZHREdIQ1V5dzB2N1ZKLUliQmJ2OGhkZTdOeHpGODdBYkxadm04VUZraHVVMHVGN09HRUZnU1NuZ3djSEpNVGt2OERSb2ZpTURjVklCanNablpWemxGQjZEeGpGMm"
-    },
-    {
-      "title": "تحذير لمستخدمي ماك.. ثغرة في \"كلود ديسكتوب\" تتيح زرع برامج تجسس - موقع 24",
-      "link": "https://news.google.com/rss/articles/CBMi2ANBVV95cUxNMEdSajJNLVhfc0Z3TUtrSHIwN0VRUFVLeUZzUndKNi1VMG9vRUItb1pQeFgtOUhUY3FhZTRfRVhtSDhJVzRnY09nYU1yTHpaNHp2Q3AySTZsTnBMaU1ELW04eWp2Y19oYXpySEFyZEdLb0FTSExPRWhrcmFVeUJHbXRFT001ZFVLQXBZcC10ZHhIQkpDaGJtbW0xUkdYZFlKN2c4UWdWNmh2NVpjYkVmMnNKdHhXQjFxanppMTZ3LXFXdm5xc1dhWm53U3hYa3dVT3Q4U0lzdmdVdEJ6NGR5amI2WFlMZU5KZ1NkUERHNHVDVVV1WENHZkk5RGZRdG5vZEFPWkZvVUMwNUp6NHJtRk5PSDJQWmF6a2VOMURjVlVQTjlqbnlEZmxiRkgxaEtWZXliY3B1NXNZeF9XUVVHNnQxZkROWnB4YjJFZVVNOFJzaGJjTjhIUXZCQU81MmNuU0NtazF5UEdYUGJoWm5GODl5UWVDaW9jc0VXSExJbVlZc3hkZktvQkZjcnNtWFZRUmM5VGVmTU5fQ0wyb04yNy14RzBpVndWOWlYVmVSWk1WcnFWR0Z3YWR2MVIxVGw0QWtyejQzekRHNDhlckFYNzRaOGNjSFVD?oc=5",
-      "date": "2026-04-23",
-      "source": "موقع 24",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMi2ANBVV95cUxNMEdSajJNLVhfc0Z3TUtrSHIwN0VRUFVLeUZzUndKNi1VMG9vRUItb1pQeFgtOUhUY3FhZTRfRVhtSDhJVzRnY09nYU1yTHpaNHp2Q3AySTZsTnBMaU1ELW04eWp2Y19oYXpySEFyZE"
-    },
-    {
-      "title": "ثغرة في تطبيق «كلود» تثير مخاوف أمنية على «ماك» - الخليج",
-      "link": "https://news.google.com/rss/articles/CBMi8wNBVV95cUxPdHRCZDFrNFhwdXJEd0JvYXZ4RGFOYjZESG1iNERsemRwbnlLT0tlZENlaEdZQXRNdEliS3h5cW1GWW04UTJaNVRXeHJZV2ZqQVMta2NhY2ZZX241dWp4VTFGZ1B1Q2NCcjhsMVJkSEJibVJfWS1vcDd5VWFhOUVUR2J3NW1FRnJwOVRPaDZ6M3BZMlE1SnBTWXBUT0F1czlXMXJpS2ZFcERfSHRXNkl0azRwbUhLZ0xnTXlqOFhRZTJUbXRKVHVYSW5MYlExTVNwQWk3bnEwWmNpdERDbXBvUUdZckJHbFVmTmM3eThQMkl3X2djWGVQOGpobGRtaEJiRzBfMHdtbnlfeUE5c3hEWXUwMUVzVGwyN0tSaVFCd1pnZGM5UHAtN25RV3hGTFI4WENPRzctNC1iNktnckZNZ1BTRHZ2TTF4ajZpXzZJWFdtclJ1RWNXX0prN1BuOGxfWWtMQ21pVTZ3cW1VSC1UYlpPRFZjTE5ibk1aYTJTQVQ0bEUzSWMxNXctSlZPbU9TeUo4ejIyZVZfaWlteklSZ29VbktVbTlYMURfM2UzTFlJcnl5clRUZHE3N1RKdWJ6NVM4RWJEeWd3NHZscUI0bVNxNlFoOFRvZjJ3X3ZnbG05aEhOMlBMaFNSQmwzMi03QmxB?oc=5",
-      "date": "2026-04-23",
-      "source": "الخليج",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMi8wNBVV95cUxPdHRCZDFrNFhwdXJEd0JvYXZ4RGFOYjZESG1iNERsemRwbnlLT0tlZENlaEdZQXRNdEliS3h5cW1GWW04UTJaNVRXeHJZV2ZqQVMta2NhY2ZZX241dWp4VTFGZ1B1Q2NCcjhsMVJkSE"
-    },
-    {
-      "title": "آبل تصلح ثغرة تسريب إشعارات الرسائل المحذوفة - وكالة خبر للأنباء",
-      "link": "https://news.google.com/rss/articles/CBMiV0FVX3lxTE8zbFMwLXJrQ182RV9vdzZDSXloR3lTeEV3eFp1SUNfbDg3NnFfZ0trYTR4ZTRoenFJVHVoN3d2cUMxVkUxWDhEXzNRUUhvbzRLWldRY0VOTQ?oc=5",
-      "date": "2026-04-23",
-      "source": "وكالة خبر للأنباء",
-      "summary": "<a href=\"https://news.google.com/rss/articles/CBMiV0FVX3lxTE8zbFMwLXJrQ182RV9vdzZDSXloR3lTeEV3eFp1SUNfbDg3NnFfZ0trYTR4ZTRoenFJVHVoN3d2cUMxVkUxWDhEXzNRUUhvbzRLWldRY0VOTQ?oc=5\" target=\"_blank\">آبل تصلح "
     }
   ]
 }
