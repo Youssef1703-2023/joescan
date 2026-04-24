@@ -66,6 +66,18 @@ export default function Blog() {
   const newsArticles = ARTICLES.filter(a => a.isNews).slice(0, 4);
   const regularArticles = filteredArticles.filter(a => !a.featured || activeCategory !== 'All');
 
+  // Sort daily news by date descending (newest first) and only keep last 14 days
+  const sortedDailyNews = useMemo(() => {
+    if (!dailyNewsData.articles || !dailyNewsData.articles.length) return [];
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 14);
+    return [...dailyNewsData.articles]
+      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .filter((a: any) => new Date(a.date) >= cutoff);
+  }, []);
+
+  const totalArticleCount = ARTICLES.length + sortedDailyNews.length;
+
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6" dir="ltr">
       {/* Header */}
@@ -86,7 +98,7 @@ export default function Blog() {
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-xl">
             <Newspaper className="w-4 h-4 text-accent" />
-            <span className="text-xs font-bold text-accent">{ARTICLES.length} Articles</span>
+            <span className="text-xs font-bold text-accent">{totalArticleCount} Articles</span>
           </div>
         </div>
       </div>
@@ -256,7 +268,7 @@ export default function Blog() {
             className="space-y-6"
           >
             {/* Daily Auto-Fetched News */}
-            {dailyNewsData.articles && dailyNewsData.articles.length > 0 && (
+            {sortedDailyNews.length > 0 && (
               <div className="bg-gradient-to-br from-cyan-500/5 via-bg-surface to-emerald-500/5 border border-cyan-500/20 rounded-2xl p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
@@ -265,10 +277,10 @@ export default function Blog() {
                       <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">Latest News — Auto Updated</span>
                     </div>
                   </div>
-                  <span className="text-[10px] text-text-dim font-mono">{dailyNewsData.articles.length} articles</span>
+                  <span className="text-[10px] text-text-dim font-mono">{sortedDailyNews.length} articles</span>
                 </div>
                 <div className="grid grid-cols-1 gap-2">
-                  {dailyNewsData.articles.slice(0, 10).map((news: any, idx: number) => (
+                  {sortedDailyNews.slice(0, 10).map((news: any, idx: number) => (
                     <motion.div
                       key={idx}
                       onClick={() => openNews(news as DailyNewsItem)}
