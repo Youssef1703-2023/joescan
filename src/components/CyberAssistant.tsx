@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bot, X, Send, Sparkles, Trash2, Shield, Mail, KeyRound, Globe, Wifi, ChevronDown, Zap } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import OpenAI from 'openai';
 
 // ─── Types ───
 interface ChatMessage {
@@ -21,7 +20,9 @@ interface QuickAction {
 // ─── Constants ───
 const STORAGE_KEY = 'joescan_cyber_assistant_history';
 const MAX_HISTORY = 50;
-const BUILTIN_GROQ_KEY = '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';
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_API_KEY = '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';
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const SYSTEM_PROMPT_EN = `You are JoeScan AI — an elite cybersecurity assistant embedded inside JoeScan, a professional OSINT & cybersecurity intelligence platform. 
 
@@ -115,6 +116,33 @@ function formatMessage(text: string) {
 
     return line.trim() === '' ? <div key={i} className="h-2" /> : <p key={i} className="my-0.5">{formatted}</p>;
   });
+}
+
+// ─── Direct Groq API call via fetch (no SDK dependency) ───
+async function callGroqChat(
+  messages: { role: string; content: string }[],
+): Promise<string> {
+  const res = await fetch(GROQ_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: GROQ_MODEL,
+      messages,
+      max_tokens: 1024,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => 'Unknown error');
+    throw new Error(`Groq API ${res.status}: ${errText}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || '';
 }
 
 // ─── Component ───
@@ -213,48 +241,35 @@ export default function CyberAssistant() {
     setIsTyping(true);
 
     try {
-      const openai = new OpenAI({
-        apiKey: BUILTIN_GROQ_KEY,
-        baseURL: 'https://api.groq.com/openai/v1',
-        dangerouslyAllowBrowser: true,
-      });
-
       // Build conversation history for context (last 10 messages)
       const historyForAI = [...messages.slice(-10), userMsg]
         .filter(m => m.role !== 'system')
-        .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
+        .map(m => ({ role: m.role, content: m.content }));
 
       const systemPrompt = isRtl ? SYSTEM_PROMPT_AR : SYSTEM_PROMPT_EN;
 
-      const res = await openai.chat.completions.create({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...historyForAI,
-        ],
-        max_tokens: 1024,
-        temperature: 0.7,
-      });
-
-      const reply = res.choices[0].message?.content || (isRtl ? 'عذراً، حدث خطأ. حاول مرة أخرى.' : 'Sorry, something went wrong. Please try again.');
+      const reply = await callGroqChat([
+        { role: 'system', content: systemPrompt },
+        ...historyForAI,
+      ]);
 
       const assistantMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: reply,
+        content: reply || (isRtl ? 'عذراً، لم أتمكن من الرد. حاول مرة أخرى.' : 'Sorry, I couldn\'t generate a response. Please try again.'),
         timestamp: Date.now(),
       };
 
       setMessages(prev => [...prev, assistantMsg]);
       if (!isOpen) setHasUnread(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('[CyberAssistant] AI Error:', err);
       const errorMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
         content: isRtl
-          ? '⚠️ عذراً، حدث خطأ في الاتصال. تأكد من اتصالك بالإنترنت وحاول مرة أخرى.'
-          : '⚠️ Connection error. Please check your internet and try again.',
+          ? `⚠️ حدث خطأ: ${err?.message || 'خطأ غير معروف'}. تأكد من اتصالك بالإنترنت وحاول مرة أخرى.`
+          : `⚠️ Error: ${err?.message || 'Unknown error'}. Please check your connection and try again.`,
         timestamp: Date.now(),
       };
       setMessages(prev => [...prev, errorMsg]);
