@@ -21,8 +21,18 @@ interface QuickAction {
 const STORAGE_KEY = 'joescan_cyber_assistant_history';
 const MAX_HISTORY = 50;
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_API_KEY = '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';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
+function getGroqApiKey(): string {
+  try {
+    const s = localStorage.getItem('joe_api_settings');
+    if (s) {
+      const parsed = JSON.parse(s);
+      if (parsed.groqKey) return parsed.groqKey;
+    }
+  } catch {}
+  return import.meta.env.VITE_GROQ_API_KEY || '';
+}
 
 const SYSTEM_PROMPT_EN = `You are JoeScan AI — an elite cybersecurity assistant embedded inside JoeScan, a professional OSINT & cybersecurity intelligence platform. 
 
@@ -125,7 +135,7 @@ async function callGroqChat(
   const res = await fetch(GROQ_API_URL, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${GROQ_API_KEY}`,
+      'Authorization': `Bearer ${getGroqApiKey()}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

@@ -17,12 +17,21 @@ function getGeminiClient(): GoogleGenAI {
 }
 
 // Built-in AI provider — Groq Llama 3
-const BUILTIN_GROQ_KEY = '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';
+function getGroqKey(): string {
+  try {
+    const s = localStorage.getItem('joe_api_settings');
+    if (s) {
+      const parsed = JSON.parse(s);
+      if (parsed.groqKey) return parsed.groqKey;
+    }
+  } catch {}
+  return import.meta.env.VITE_GROQ_API_KEY || '';
+}
 
 async function executeUniversalAI(prompt: string, schemaObj: any, useSearch: boolean, arabicInstruction?: string) {
   // Always use built-in Groq Llama 3
   const openai = new OpenAI({
-     apiKey: BUILTIN_GROQ_KEY,
+     apiKey: getGroqKey(),
      baseURL: 'https://api.groq.com/openai/v1',
      dangerouslyAllowBrowser: true
   });
