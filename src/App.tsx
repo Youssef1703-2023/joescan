@@ -165,7 +165,7 @@ function AppContent() {
     setLoginLoading(true);
     try {
       // Check if signups are enabled before allowing login
-      const { doc, getDoc } = await import('firebase/firestore');
+      const { doc, getDoc, setDoc } = await import('firebase/firestore');
       const configSnap = await getDoc(doc(db, 'adminConfig', 'platformSettings'));
       if (configSnap.exists() && configSnap.data().signupsEnabled === false) {
         // Check if this is an existing user trying to log in — we still allow existing users
@@ -173,7 +173,15 @@ function AppContent() {
         // we'll let it proceed and check after
       }
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const cred = await signInWithPopup(auth, provider);
+      // Save email + name to Firestore immediately on Google login
+      if (cred.user) {
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          uid: cred.user.uid,
+          email: cred.user.email?.toLowerCase() || '',
+          name: cred.user.displayName || '',
+        }, { merge: true });
+      }
     } catch (err: any) {
       console.error(err);
     } finally {

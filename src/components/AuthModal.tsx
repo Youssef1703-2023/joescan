@@ -221,6 +221,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
       
+      // Always save email + name to Firestore on Google login
+      if (cred.user) {
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          uid: cred.user.uid,
+          email: cred.user.email?.toLowerCase() || '',
+          name: cred.user.displayName || '',
+        }, { merge: true });
+      }
+
       const additionalInfo = getAdditionalUserInfo(cred);
       if (additionalInfo?.isNewUser && validReferrerCodeDoc) {
             const referrerUid = validReferrerCodeDoc.id;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Shield } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -15,7 +16,15 @@ export default function Auth() {
     setError(null);
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const cred = await signInWithPopup(auth, provider);
+      // Save email + name to Firestore immediately
+      if (cred.user) {
+        await setDoc(doc(db, 'users', cred.user.uid), {
+          uid: cred.user.uid,
+          email: cred.user.email?.toLowerCase() || '',
+          name: cred.user.displayName || '',
+        }, { merge: true });
+      }
     } catch (err: any) {
       console.error(err);
       setError(err.message);
