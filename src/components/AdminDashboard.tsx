@@ -253,10 +253,50 @@ export default function AdminDashboard() {
     { id: 'settings', label: t('admin_config'), icon: Settings, color: 'text-slate-400' },
   ];
 
-  // Analytics calculations
-  const totalUsers = users.length;
-  const proUsers = users.filter(u => u.tier === 'pro').length;
-  const enterpriseUsers = users.filter(u => u.tier === 'enterprise').length;
+  // ─── Deduplicate users by email ───
+  // Group all user docs by email. Each email appears once. Track all UIDs (devices).
+  const groupedUsersMap = React.useMemo(() => {
+    const map = new Map<string, { email: string; name: string; tier: string; uids: string[]; primaryUid: string; raw: any }>();
+    
+    for (const u of users) {
+      // Resolve email: try email field, then fallback to name field if it looks like email
+      const resolvedEmail = (u.email && u.email.trim()) 
+        ? u.email.trim().toLowerCase()
+        : (u.name && u.name.includes('@')) ? u.name.trim().toLowerCase()
+        : '';
+      
+      const key = resolvedEmail || `_uid_${u.id}`; // unique users without email get their own row
+      
+      if (map.has(key)) {
+        const existing = map.get(key)!;
+        existing.uids.push(u.id);
+        // Prefer a higher tier
+        const tierRank: Record<string, number> = { enterprise: 3, pro: 2, free: 1 };
+        if ((tierRank[u.tier] || 0) > (tierRank[existing.tier] || 0)) {
+          existing.tier = u.tier;
+          existing.primaryUid = u.id;
+          existing.raw = u;
+        }
+        // Prefer a non-empty name
+        if (!existing.name && u.name) existing.name = u.name;
+      } else {
+        map.set(key, {
+          email: resolvedEmail,
+          name: u.name || u.displayName || '',
+          tier: u.tier || 'free',
+          uids: [u.id],
+          primaryUid: u.id,
+          raw: u,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [users]);
+
+  // Analytics calculations (unique users)
+  const totalUsers = groupedUsersMap.length;
+  const proUsers = groupedUsersMap.filter(u => u.tier === 'pro').length;
+  const enterpriseUsers = groupedUsersMap.filter(u => u.tier === 'enterprise').length;
   const bannedCount = Object.keys(bannedMap).length;
   const openTickets = tickets.filter(t => t.status === 'open').length;
   const todayActivities = activities.filter(a => {
@@ -322,7 +362,7 @@ export default function AdminDashboard() {
             <div className="space-y-6">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {[
-                  { label: 'Total Users', value: totalUsers, icon: Users, color: 'text-accent', bg: 'bg-accent/10' },
+                  { label: 'Unique Users', value: totalUsers, icon: Users, color: 'text-accent', bg: 'bg-accent/10' },
                   { label: 'Pro Tier', value: proUsers, icon: TrendingUp, color: 'text-blue-400', bg: 'bg-blue-500/10' },
                   { label: 'Enterprise', value: enterpriseUsers, icon: Shield, color: 'text-purple-400', bg: 'bg-purple-500/10' },
                   { label: 'Banned', value: bannedCount, icon: Ban, color: 'text-error', bg: 'bg-error/10' },
@@ -395,7 +435,9 @@ export default function AdminDashboard() {
                 <div className="p-2 bg-accent/10 border border-accent/20 rounded-lg text-accent">
                   <Users className="w-5 h-5" />
                 </div>
-                <h2 className="text-xl font-bold uppercase tracking-widest text-text-main">Operatives ({users.length})</h2>
+                <h2 className="text-xl font-bold uppercase tracking-widest text-text-main">
+                  Operatives ({totalUsers} unique / {users.length} sessions)
+                </h2>
               </div>
 
               <div className="bg-[#0a0a0a] border border-border-subtle rounded-xl overflow-hidden overflow-x-auto scroller">
@@ -405,31 +447,46 @@ export default function AdminDashboard() {
                       <th className="px-4 py-3">Email</th>
                       <th className="px-4 py-3">Name</th>
                       <th className="px-4 py-3">Tier</th>
+                      <th className="px-4 py-3">Devices</th>
                       <th className="px-4 py-3">Status</th>
                       <th className="px-4 py-3 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {users.map(u => {
-                      const isBanned = !!bannedMap[u.id];
-                      const isAdminUser = u.email === ADMIN_EMAIL;
+                    {groupedUsersMap.map(gu => {
+                      const isBanned = gu.uids.some(uid => !!bannedMap[uid]);
+                      const isAdminUser = gu.email === ADMIN_EMAIL;
+                      const primaryUid = gu.primaryUid;
                       return (
-                        <tr key={u.id} className={`border-b border-border-subtle/50 transition-colors ${isBanned ? 'bg-error/5' : 'hover:bg-bg-surface'}`}>
+                        <tr key={primaryUid} className={`border-b border-border-subtle/50 transition-colors ${isBanned ? 'bg-error/5' : 'hover:bg-bg-surface'}`}>
                           <td className="px-4 py-3">
                             <div className="flex flex-col">
-                              <span className="font-bold text-text-main text-xs">{u.email || 'N/A'}</span>
-                              <span className="font-mono text-[10px] text-text-dim/70 truncate max-w-[120px]">{u.id}</span>
+                              <span className={`font-bold text-xs ${gu.email ? 'text-text-main' : 'text-text-dim italic'}`}>
+                                {gu.email || 'No email'}
+                              </span>
+                              <span className="font-mono text-[10px] text-text-dim/70 truncate max-w-[160px]">{primaryUid}</span>
                             </div>
                           </td>
-                          <td className="px-4 py-3 text-xs">{u.name || '-'}</td>
+                          <td className="px-4 py-3 text-xs">{gu.name || '-'}</td>
                           <td className="px-4 py-3">
                             {isAdminUser ? (
                               <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded bg-error/20 text-error ring-1 ring-error/50">ROOT ADMIN</span>
                             ) : (
-                              <span className={`text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded ${u.tier === 'enterprise' ? 'bg-error/20 text-error' : u.tier === 'pro' ? 'bg-accent/20 text-accent' : 'bg-bg-elevated text-text-dim'}`}>
-                                {u.tier || 'FREE'}
+                              <span className={`text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded ${gu.tier === 'enterprise' ? 'bg-error/20 text-error' : gu.tier === 'pro' ? 'bg-accent/20 text-accent' : 'bg-bg-elevated text-text-dim'}`}>
+                                {gu.tier || 'FREE'}
                               </span>
                             )}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              <Wifi className="w-3 h-3 text-text-dim" />
+                              <span className={`text-[11px] font-mono font-bold ${gu.uids.length > 1 ? 'text-yellow-400' : 'text-text-dim'}`}>
+                                {gu.uids.length}
+                              </span>
+                              {gu.uids.length > 1 && (
+                                <span className="text-[9px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded font-bold uppercase">multi</span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-4 py-3">
                             {isBanned ? (
@@ -442,23 +499,23 @@ export default function AdminDashboard() {
                             {!isAdminUser && (
                               <div className="flex gap-2 justify-end">
                                 {isBanned ? (
-                                  <button onClick={() => handleUnban(u.id)} className="text-[10px] px-3 py-1.5 bg-accent/10 text-accent rounded-lg font-bold uppercase hover:bg-accent/20 transition-colors border border-accent/20">
+                                  <button onClick={() => handleUnban(primaryUid)} className="text-[10px] px-3 py-1.5 bg-accent/10 text-accent rounded-lg font-bold uppercase hover:bg-accent/20 transition-colors border border-accent/20">
                                     Unban
                                   </button>
                                 ) : (
                                   <>
-                                    {banTarget === u.id ? (
+                                    {banTarget === primaryUid ? (
                                       <div className="flex gap-1 items-center">
                                         <input type="text" value={banReason} onChange={e => setBanReason(e.target.value)} placeholder="Reason..." className="bg-bg-base border border-border-subtle rounded px-2 py-1 text-[10px] w-24 font-mono" />
-                                        <button onClick={() => handleBan(u.id)} className="text-[10px] px-2 py-1 bg-error/20 text-error rounded font-bold hover:bg-error/30">GO</button>
+                                        <button onClick={() => handleBan(primaryUid)} className="text-[10px] px-2 py-1 bg-error/20 text-error rounded font-bold hover:bg-error/30">GO</button>
                                         <button onClick={() => setBanTarget(null)} className="text-[10px] px-2 py-1 text-text-dim hover:text-text-main">✕</button>
                                       </div>
                                     ) : (
-                                      <button onClick={() => setBanTarget(u.id)} className="text-[10px] px-3 py-1.5 bg-error/10 text-error rounded-lg font-bold uppercase hover:bg-error/20 transition-colors border border-error/20">
+                                      <button onClick={() => setBanTarget(primaryUid)} className="text-[10px] px-3 py-1.5 bg-error/10 text-error rounded-lg font-bold uppercase hover:bg-error/20 transition-colors border border-error/20">
                                         Ban
                                       </button>
                                     )}
-                                    <button onClick={() => handleDeleteUser(u.id)} title="Delete User" className="text-[10px] p-1.5 bg-error/10 text-error rounded-lg font-bold hover:bg-error/20 transition-colors border border-error/20 flex items-center justify-center">
+                                    <button onClick={() => handleDeleteUser(primaryUid)} title="Delete User" className="text-[10px] p-1.5 bg-error/10 text-error rounded-lg font-bold hover:bg-error/20 transition-colors border border-error/20 flex items-center justify-center">
                                       <Trash2 className="w-4 h-4" />
                                     </button>
                                   </>
@@ -469,8 +526,8 @@ export default function AdminDashboard() {
                         </tr>
                       );
                     })}
-                    {users.length === 0 && (
-                      <tr><td colSpan={5} className="text-center py-6 text-text-dim font-mono">No users found.</td></tr>
+                    {groupedUsersMap.length === 0 && (
+                      <tr><td colSpan={6} className="text-center py-6 text-text-dim font-mono">No users found.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -759,20 +816,21 @@ export default function AdminDashboard() {
                 <button onClick={fetchData} className="text-xs text-text-dim hover:text-accent font-mono uppercase flex items-center gap-1"><RefreshCw className="w-3 h-3" /> Refresh</button>
               </div>
               <div className="space-y-2">
-                {users.slice(0, 8).map((u, i) => {
+                {groupedUsersMap.slice(0, 8).map((gu, i) => {
                   const isOnline = Math.random() > 0.5;
                   const pages = ['Dashboard', 'Email Audit', 'IP Scan', 'Domain WHOIS', 'Password Check', 'Pricing', 'Support'];
                   return (
-                    <div key={u.id} className="glass-card p-4 rounded-xl flex items-center justify-between text-xs">
+                    <div key={gu.primaryUid} className="glass-card p-4 rounded-xl flex items-center justify-between text-xs">
                       <div className="flex items-center gap-3">
                         <div className={`w-2.5 h-2.5 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-text-dim/30'}`} />
                         <div>
-                          <div className="font-bold text-text-main">{u.email || 'Unknown'}</div>
+                          <div className="font-bold text-text-main">{gu.email || gu.name || 'Unknown'}</div>
                           <div className="text-[10px] text-text-dim font-mono">{isOnline ? `Viewing: ${pages[Math.floor(Math.random() * pages.length)]}` : 'Offline'}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${u.tier === 'enterprise' ? 'bg-purple-500/10 text-purple-400' : u.tier === 'pro' ? 'bg-blue-500/10 text-blue-400' : 'bg-bg-surface text-text-dim'}`}>{u.tier || 'free'}</span>
+                        <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded ${gu.tier === 'enterprise' ? 'bg-purple-500/10 text-purple-400' : gu.tier === 'pro' ? 'bg-blue-500/10 text-blue-400' : 'bg-bg-surface text-text-dim'}`}>{gu.tier || 'free'}</span>
+                        {gu.uids.length > 1 && <span className="text-[9px] text-yellow-400 font-bold">{gu.uids.length}×</span>}
                         {isOnline && <span className="text-[9px] text-green-400 font-bold uppercase">LIVE</span>}
                       </div>
                     </div>
