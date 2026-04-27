@@ -100,7 +100,26 @@ export async function updateUserProfile(uid: string, updates: Partial<UserProfil
 
 export async function ensureUserProfile(uid: string, email: string | null, displayName: string | null): Promise<UserProfileDocument> {
   const existing = await getUserProfile(uid);
-  if (existing) return existing;
+  if (existing) {
+    // Fix: if we now have email/name but the stored doc doesn't, patch it
+    const patches: Record<string, any> = {};
+    if (email && (!existing.email || existing.email === '')) {
+      patches.email = email;
+    }
+    if (displayName && (!existing.name || existing.name === '')) {
+      patches.name = displayName;
+    }
+    if (Object.keys(patches).length > 0) {
+      patches.updatedAt = new Date().toISOString();
+      try {
+        await setDoc(doc(db, 'users', uid), patches, { merge: true });
+        return { ...existing, ...patches };
+      } catch (err) {
+        console.error("Failed to patch user profile:", err);
+      }
+    }
+    return existing;
+  }
   
   // Create initial profile — convert nulls to empty strings for Firestore rules compatibility
   const newProfile: UserProfileDocument = {
