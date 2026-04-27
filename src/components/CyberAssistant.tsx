@@ -20,18 +20,49 @@ interface QuickAction {
 // ─── Constants ───
 const STORAGE_KEY = 'joescan_cyber_assistant_history';
 const MAX_HISTORY = 50;
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const AI_MODEL = 'openai/gpt-oss-120b:free';
 
-function getGroqApiKey(): string {
+function getApiKey(): string {
   try {
     const s = localStorage.getItem('joe_api_settings');
     if (s) {
       const parsed = JSON.parse(s);
-      if (parsed.groqKey) return parsed.groqKey;
+      if (parsed.openrouterKey) return parsed.openrouterKey;
     }
   } catch {}
-  return import.meta.env.VITE_GROQ_API_KEY || '';
+  return import.meta.env.VITE_OPENROUTER_API_KEY || '';
+}
+
+// ... (system prompts stay the same, skip to after formatMessage)
+
+// ─── OpenRouter API call via fetch ───
+async function callAIChat(
+  messages: { role: string; content: string }[],
+): Promise<string> {
+  const res = await fetch(OPENROUTER_API_URL, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${getApiKey()}`,
+      'Content-Type': 'application/json',
+      'HTTP-Referer': 'https://joescan.me',
+      'X-Title': 'JoeScan AI Cyber Assistant',
+    },
+    body: JSON.stringify({
+      model: AI_MODEL,
+      messages,
+      max_tokens: 1024,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text().catch(() => 'Unknown error');
+    throw new Error(`AI API ${res.status}: ${errText}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || '';
 }
 
 const SYSTEM_PROMPT_EN = `You are JoeScan AI — an elite cybersecurity assistant built into JoeScan, a professional OSINT & cybersecurity intelligence platform developed by **JoeTech**.
@@ -163,32 +194,6 @@ function formatMessage(text: string) {
   });
 }
 
-// ─── Direct Groq API call via fetch (no SDK dependency) ───
-async function callGroqChat(
-  messages: { role: string; content: string }[],
-): Promise<string> {
-  const res = await fetch(GROQ_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${getGroqApiKey()}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages,
-      max_tokens: 1024,
-      temperature: 0.7,
-    }),
-  });
-
-  if (!res.ok) {
-    const errText = await res.text().catch(() => 'Unknown error');
-    throw new Error(`Groq API ${res.status}: ${errText}`);
-  }
-
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || '';
-}
 
 // ─── Component ───
 export default function CyberAssistant() {
@@ -293,7 +298,7 @@ export default function CyberAssistant() {
 
       const systemPrompt = isRtl ? SYSTEM_PROMPT_AR : SYSTEM_PROMPT_EN;
 
-      const reply = await callGroqChat([
+      const reply = await callAIChat([
         { role: 'system', content: systemPrompt },
         ...historyForAI,
       ]);
