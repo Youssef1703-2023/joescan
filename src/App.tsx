@@ -41,6 +41,7 @@ import CommandPalette from './components/CommandPalette';
 import OnboardingTour from './components/OnboardingTour';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import SEOHead from './components/SEOHead';
+import CyberAssistant from './components/CyberAssistant';
 
 import { HelmetProvider } from 'react-helmet-async';
 
@@ -458,6 +459,9 @@ function AppContent() {
         isOpen={showApiSettings}
         onClose={() => setShowApiSettings(false)}
       />
+
+      {/* AI Cyber Assistant — floating chatbot */}
+      {user && <CyberAssistant />}
     </div>
   );
 }
