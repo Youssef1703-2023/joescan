@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Bot, X, Send, Sparkles, Trash2, Shield, Mail, KeyRound, Globe, Wifi, ChevronDown, Zap } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { auth } from '../lib/firebase';
+import { AiQuotaExceededError } from '../lib/gemini';
 
 // ─── Types ───
 interface ChatMessage {
@@ -43,26 +44,27 @@ function getCustomApiKey(): { key: string; provider: 'groq' | 'openrouter' } | n
 }
 
 // ─── AI Chat call via direct custom key or secure Cloudflare Worker proxy (C4) ───
-async function callAIChat(
-  messages: { role: string; content: string }[],
-): Promise<string> {
+async function callAIChat(messages: { role: string; content: string }[]): Promise<string> {
   const custom = getCustomApiKey();
 
-  // If the user supplied their own key, call the provider directly with it (D2)
+  // If user supplies their own custom key in settings, call provider directly (D2)
   if (custom) {
-    const isGroq = custom.provider === 'groq';
-    const res = await fetch(isGroq ? GROQ_API_URL : OPENROUTER_API_URL, {
+    const url = custom.provider === 'groq' ? GROQ_API_URL : OPENROUTER_API_URL;
+    const model = custom.provider === 'groq' ? GROQ_MODEL : OPENROUTER_MODEL;
+    const headers: Record<string, string> = {
+      'Authorization': `Bearer ${custom.key}`,
+      'Content-Type': 'application/json',
+    };
+    if (custom.provider === 'openrouter') {
+      headers['HTTP-Referer'] = 'https://joescan.me';
+      headers['X-Title'] = 'JoeScan AI Cyber Assistant';
+    }
+
+    const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${custom.key}`,
-        'Content-Type': 'application/json',
-        ...(isGroq ? {} : {
-          'HTTP-Referer': 'https://joescan.me',
-          'X-Title': 'JoeScan AI Cyber Assistant',
-        }),
-      },
+      headers,
       body: JSON.stringify({
-        model: isGroq ? GROQ_MODEL : OPENROUTER_MODEL,
+        model,
         messages,
         max_tokens: 1024,
         temperature: 0.7,
@@ -70,8 +72,8 @@ async function callAIChat(
     });
 
     if (!res.ok) {
-      const errText = await res.text().catch(() => 'Unknown error');
-      throw new Error(`AI API ${res.status}: ${errText}`);
+      const err = await res.json().catch(() => ({ error: { message: `HTTP ${res.status}` } }));
+      throw new Error(err.error?.message || `AI provider error: HTTP ${res.status}`);
     }
 
     const data = await res.json();
@@ -81,12 +83,12 @@ async function callAIChat(
   // Otherwise, route to Cloudflare Worker AI proxy (C4)
   const proxyUrl = import.meta.env.VITE_AI_PROXY_URL;
   if (!proxyUrl) {
-    throw new Error("AI proxy service is not configured. Please check your environment settings or provide a personal Groq API key in Settings.");
+    throw new Error("AI proxy service is not configured. Please check your environment settings or provide a personal API key in Settings.");
   }
 
   const user = auth.currentUser;
   if (!user) {
-    throw new Error("Authentication required. Please sign in to chat with JoeScan AI.");
+    throw new Error("Authentication required. Please sign in to chat with the assistant.");
   }
 
   const idToken = await user.getIdToken();
@@ -108,7 +110,20 @@ async function callAIChat(
 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    if (res.status === 429 && errData.code === 'AI_DAILY_QUOTA_EXCEEDED') {
+      throw new AiQuotaExceededError(errData);
+    }
+    if (res.status === 429 && errData.code === 'RATE_LIMIT_EXCEEDED') {
+      throw new Error(errData.error || 'Burst rate limit exceeded. Please slow down and try again shortly.');
+    }
+    if (res.status === 503) {
+      throw new Error(errData.error || 'AI quota service is temporarily unavailable. Please try again shortly.');
+    }
     throw new Error(errData.error || `AI proxy error: HTTP ${res.status}`);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('joescan_ai_usage_updated'));
   }
 
   const data = await res.json();
@@ -364,12 +379,26 @@ export default function CyberAssistant() {
       if (!isOpen) setHasUnread(true);
     } catch (err: any) {
       console.error('[CyberAssistant] AI Error:', err);
+      let contentText = '';
+      if (err instanceof AiQuotaExceededError || err?.code === 'AI_DAILY_QUOTA_EXCEEDED') {
+        const tierLabel = err.tier === 'pro'
+          ? (isRtl ? 'الاحترافية' : 'PRO')
+          : err.tier === 'enterprise'
+          ? (isRtl ? 'المؤسسية' : 'ENTERPRISE')
+          : (isRtl ? 'المجانية' : 'FREE');
+        contentText = isRtl
+          ? `⚠️ تم استهلاك الحد اليومي لطلبات الذكاء الاصطناعي (${err.used}/${err.limit} للباقة ${tierLabel}). يتجدد الرصيد يومياً في منتصف الليل بتوقيت القاهرة. يمكنك إضافة مفتاح Groq الخاص بك من الإعدادات للاستخدام بدون حدود.`
+          : `⚠️ Daily AI quota reached (${err.used}/${err.limit} used for ${tierLabel} tier). Quota resets at midnight Cairo time. You can configure your personal Groq API key in Settings to bypass the platform limit.`;
+      } else {
+        contentText = isRtl
+          ? `⚠️ حدث خطأ: ${err?.message || 'خطأ غير معروف'}. تأكد من اتصالك بالإنترنت وحاول مرة أخرى.`
+          : `⚠️ Error: ${err?.message || 'Unknown error'}. Please check your connection and try again.`;
+      }
+
       const errorMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: isRtl
-          ? `⚠️ حدث خطأ: ${err?.message || 'خطأ غير معروف'}. تأكد من اتصالك بالإنترنت وحاول مرة أخرى.`
-          : `⚠️ Error: ${err?.message || 'Unknown error'}. Please check your connection and try again.`,
+        content: contentText,
         timestamp: Date.now(),
       };
       setMessages(prev => [...prev, errorMsg]);

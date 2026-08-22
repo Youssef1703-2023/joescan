@@ -6,3 +6,14 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 ENVIRONMENT = "production"
 PROJECT_ID = "gen-lang-client-0439091084"
+FIRESTORE_DATABASE_ID = "ai-studio-13222500-ae8c-4550-8b61-6f7dce0d48f6"
+
+[durable_objects]
+bindings = [
+  { name = "QUOTA_COUNTER", class_name = "QuotaCounter" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["QuotaCounter"]
+

@@ -9,6 +9,24 @@ export const Type = {
   BOOLEAN: 'BOOLEAN',
 } as const;
 
+export class AiQuotaExceededError extends Error {
+  code: string;
+  limit: number;
+  used: number;
+  tier: string;
+  retryAfter: number;
+
+  constructor(data: { code?: string; error?: string; limit?: number; used?: number; tier?: string; retryAfter?: number }) {
+    super(data.error || 'Daily AI request quota exceeded. Resets at midnight Cairo time.');
+    this.name = 'AiQuotaExceededError';
+    this.code = data.code || 'AI_DAILY_QUOTA_EXCEEDED';
+    this.limit = data.limit ?? 10;
+    this.used = data.used ?? 10;
+    this.tier = data.tier || 'free';
+    this.retryAfter = data.retryAfter ?? 0;
+  }
+}
+
 // Custom user-supplied key from settings (D2)
 function getCustomGroqKey(): string {
   try {
@@ -80,7 +98,20 @@ async function executeUniversalAI(prompt: string, schemaObj: any, _useSearch: bo
 
   if (!response.ok) {
     const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+    if (response.status === 429 && errData.code === 'AI_DAILY_QUOTA_EXCEEDED') {
+      throw new AiQuotaExceededError(errData);
+    }
+    if (response.status === 429 && errData.code === 'RATE_LIMIT_EXCEEDED') {
+      throw new Error(errData.error || 'Burst rate limit exceeded. Please slow down and try again shortly.');
+    }
+    if (response.status === 503) {
+      throw new Error(errData.error || 'AI quota service is temporarily unavailable. Please try again shortly.');
+    }
     throw new Error(errData.error || `AI proxy error: HTTP ${response.status}`);
+  }
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('joescan_ai_usage_updated'));
   }
 
   const data = await response.json();

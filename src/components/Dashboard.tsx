@@ -7,6 +7,7 @@ import { Shield, Mail, KeyRound, Smartphone, Link as LinkIcon, UserSearch, Messa
 import { useLanguage } from '../contexts/LanguageContext';
 import { computeTier } from './BadgeSystem';
 import SocTrialBanner from './SocTrialBanner';
+import AiQuotaMeter from './AiQuotaMeter';
 
 type TabId = 'email' | 'password' | 'phone' | 'url' | 'username' | 'social' | 'message' | 'ip' | 'domain' | 'fingerprint' | 'history' | 'device_security';
 
@@ -310,6 +311,8 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
           </div>
         </div>
       </motion.div>
+
+      <AiQuotaMeter />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div
