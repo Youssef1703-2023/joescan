@@ -147,8 +147,16 @@ export async function getUserTier(uid: string): Promise<SubscriptionTier> {
   if (auth.currentUser?.email === ADMIN_EMAIL) return 'enterprise';
   try {
     const userDoc = await getDocFromServer(doc(db, 'users', uid));
-    if (userDoc.exists() && userDoc.data().tier) {
-      return userDoc.data().tier as SubscriptionTier;
+    if (userDoc.exists()) {
+      const data = userDoc.data();
+      const tier = data.tier as SubscriptionTier;
+      if (tier && tier !== 'free') {
+        const expiry = data.subscriptionExpiry?.toDate?.() || (data.subscriptionExpiry ? new Date(data.subscriptionExpiry) : null);
+        if (expiry && expiry.getTime() <= Date.now()) {
+          return 'free';
+        }
+        return tier;
+      }
     }
   } catch (err) {
     console.error("Failed to fetch user tier, defaulting to free", err);
@@ -156,15 +164,9 @@ export async function getUserTier(uid: string): Promise<SubscriptionTier> {
   return 'free';
 }
 
-export async function upgradeUserTier(uid: string, newTier: SubscriptionTier, durationDays: number = 30): Promise<void> {
-  const expiry = new Date();
-  expiry.setDate(expiry.getDate() + durationDays);
-  
-  await setDoc(doc(db, 'users', uid), {
-    tier: newTier,
-    subscriptionExpiry: expiry
-  }, { merge: true });
-}
+// upgradeUserTier was removed: the client may no longer write tier fields (Firestore rules
+// freeze them). Tier changes go through the startSocTrial, claimReferralReward,
+// submitSubscriptionRequest and adminGrantTier callables.
 
 // ─── Activity Logger ───
 export type ActivityType = 'login' | 'scan' | 'upgrade' | 'ban' | 'unban' | 'promo_create' | 'promo_delete' | 'ticket_create' | 'ticket_reply' | 'apikey_create' | 'apikey_delete' | 'profile_update' | 'config_update' | 'flag_update' | 'broadcast' | 'user_deleted';

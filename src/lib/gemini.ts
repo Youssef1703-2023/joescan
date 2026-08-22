@@ -1,23 +1,17 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import OpenAI from "openai";
+import { functions } from "./firebase";
+import { httpsCallable } from "firebase/functions";
 
-function getGeminiKey(): string {
-  try {
-    const s = localStorage.getItem('joe_api_settings');
-    if (s) {
-      const parsed = JSON.parse(s);
-      if (parsed.geminiKey) return parsed.geminiKey;
-    }
-  } catch {}
-  return import.meta.env.VITE_GEMINI_API_KEY || "";
-}
+export const Type = {
+  OBJECT: 'OBJECT',
+  STRING: 'STRING',
+  ARRAY: 'ARRAY',
+  INTEGER: 'INTEGER',
+  BOOLEAN: 'BOOLEAN',
+} as const;
 
-function getGeminiClient(): GoogleGenAI {
-  return new GoogleGenAI({ apiKey: getGeminiKey() });
-}
-
-// Built-in AI provider — Groq Llama 3
-function getGroqKey(): string {
+// Custom user-supplied key from settings (D2)
+function getCustomGroqKey(): string {
   try {
     const s = localStorage.getItem('joe_api_settings');
     if (s) {
@@ -25,31 +19,45 @@ function getGroqKey(): string {
       if (parsed.groqKey) return parsed.groqKey;
     }
   } catch {}
-  return import.meta.env.VITE_GROQ_API_KEY || '';
+  return '';
 }
 
-async function executeUniversalAI(prompt: string, schemaObj: any, useSearch: boolean, arabicInstruction?: string) {
-  // Always use built-in Groq Llama 3
-  const openai = new OpenAI({
-     apiKey: getGroqKey(),
-     baseURL: 'https://api.groq.com/openai/v1',
-     dangerouslyAllowBrowser: true
-  });
-  
-  const schemaDetails = Object.keys(schemaObj.properties).map(k => " - " + k).join("\\n");
+async function executeUniversalAI(prompt: string, schemaObj: any, _useSearch: boolean, arabicInstruction?: string) {
+  const customKey = getCustomGroqKey();
   const sysInstruction = arabicInstruction || "You are a friendly cybersecurity expert.";
-  const systemPrompt = `${sysInstruction}\n\nCRITICAL: You MUST output ONLY valid JSON. The JSON MUST contain exactly the following keys:\n${schemaDetails}`;
 
-  const res = await openai.chat.completions.create({
-    model: 'llama-3.3-70b-versatile',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: prompt }
-    ],
-    response_format: { type: 'json_object' }
+  // If user supplies their own custom key in settings, call Groq directly (D2)
+  if (customKey) {
+    const openai = new OpenAI({
+      apiKey: customKey,
+      baseURL: 'https://api.groq.com/openai/v1',
+      dangerouslyAllowBrowser: true
+    });
+    
+    const schemaDetails = Object.keys(schemaObj.properties || {}).map(k => " - " + k).join("\n");
+    const systemPrompt = `${sysInstruction}\n\nCRITICAL: You MUST output ONLY valid JSON. The JSON MUST contain exactly the following keys:\n${schemaDetails}`;
+
+    const res = await openai.chat.completions.create({
+      model: 'llama-3.3-70b-versatile',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+      ],
+      response_format: { type: 'json_object' }
+    });
+    
+    return JSON.parse(res.choices[0].message?.content || '{}');
+  }
+
+  // Otherwise, route to backend AI proxy callable with server-side secrets (C3)
+  const aiProxyCallable = httpsCallable(functions, 'aiProxy');
+  const res = await aiProxyCallable({
+    prompt,
+    systemPrompt: sysInstruction,
+    schemaObj,
   });
-  
-  return JSON.parse(res.choices[0].message?.content || '{}');
+
+  return res.data as any;
 }
 
 export async function translateReport(reportText: string, actionPlan: string, scoreFactors: string[] = [], scoreImprovement: string[] = [], language: string) {

@@ -11,8 +11,9 @@ import {
   getAdditionalUserInfo,
   sendEmailVerification
 } from 'firebase/auth';
-import { auth, db } from '../lib/firebase';
-import { doc, setDoc, getDoc, getDocs, collection, query, where, updateDoc, increment } from 'firebase/firestore';
+import { auth, db, functions } from '../lib/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { doc, setDoc, getDoc, getDocs, collection, query, where } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
 import { isDisposableEmail } from '../utils/disposableDomains';
 
@@ -107,19 +108,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         const existingDoc = await getDoc(doc(db, 'usernames', username.toLowerCase()));
         if (existingDoc.exists()) throw new Error('This username is already taken. Please choose another.');
 
-        // Validate Referral Code if provided
-        let validReferrerCodeDoc = null;
-        if (referralCode.trim()) {
-           const cleanCode = referralCode.trim().toUpperCase();
-           const codeQuery = query(collection(db, 'referrals'), where('code', '==', cleanCode));
-           const codeSnap = await getDocs(codeQuery);
-           if (!codeSnap.empty) {
-               validReferrerCodeDoc = codeSnap.docs[0];
-           } else {
-               throw new Error('Invalid referral code. Please check or leave empty.');
-           }
-        }
-        
         // Prevent abuse: Check basic device footprint
         const deviceId = localStorage.getItem('joescan-device-id') || crypto.randomUUID();
         localStorage.setItem('joescan-device-id', deviceId);
@@ -147,23 +135,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           email: email.toLowerCase(),
         }, { merge: true });
 
-        // Process Referral
-        if (validReferrerCodeDoc) {
-             const referrerUid = validReferrerCodeDoc.id;
-             const hasReferredBefore = localStorage.getItem(`joescan-referred-${referrerUid}`);
-             
-             if (!hasReferredBefore) {
-                 await setDoc(doc(db, 'referralSignups', cred.user.uid), {
-                    newUid: cred.user.uid,
-                    referrerUid: referrerUid,
-                    email: email.toLowerCase(),
-                    createdAt: new Date().toISOString()
-                 });
-                 await updateDoc(doc(db, 'referrals', referrerUid), {
-                    referralCount: increment(1)
-                 });
-                 localStorage.setItem(`joescan-referred-${referrerUid}`, 'true');
-             }
+        // Process Referral via backend callable
+        if (referralCode.trim()) {
+          try {
+            const redeem = httpsCallable(functions, 'redeemReferralCode');
+            await redeem({ code: referralCode.trim().toUpperCase() });
+          } catch (refErr) {
+            // Account creation already succeeded — never block the signup on this.
+            // Still tell the user, otherwise a mistyped code fails silently.
+            console.warn('Referral redemption failed:', refErr);
+            setSuccessMsg('Account created, but the referral code could not be applied.');
+          }
         }
         
       } else if (mode === 'login') {
@@ -205,19 +187,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleGoogleAuth = async () => {
     setLoading(true);
     try {
-      // Validate Referral Code if provided (even for Google)
-      let validReferrerCodeDoc = null;
-      if (mode === 'signup' && referralCode.trim()) {
-         const cleanCode = referralCode.trim().toUpperCase();
-         const codeQuery = query(collection(db, 'referrals'), where('code', '==', cleanCode));
-         const codeSnap = await getDocs(codeQuery);
-         if (!codeSnap.empty) {
-             validReferrerCodeDoc = codeSnap.docs[0];
-         } else {
-             throw new Error('Invalid referral code. Please check or leave empty.');
-         }
-      }
-
       const provider = new GoogleAuthProvider();
       const cred = await signInWithPopup(auth, provider);
       
@@ -231,22 +200,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       }
 
       const additionalInfo = getAdditionalUserInfo(cred);
-      if (additionalInfo?.isNewUser && validReferrerCodeDoc) {
-            const referrerUid = validReferrerCodeDoc.id;
-            const hasReferredBefore = localStorage.getItem(`joescan-referred-${referrerUid}`);
-            
-            if (!hasReferredBefore) {
-                await setDoc(doc(db, 'referralSignups', cred.user.uid), {
-                  newUid: cred.user.uid,
-                  referrerUid: referrerUid,
-                  email: cred.user.email?.toLowerCase() || '',
-                  createdAt: new Date().toISOString()
-                });
-                await updateDoc(doc(db, 'referrals', referrerUid), {
-                  referralCount: increment(1)
-                });
-                localStorage.setItem(`joescan-referred-${referrerUid}`, 'true');
-            }
+      if (additionalInfo?.isNewUser && referralCode.trim()) {
+        try {
+          const redeem = httpsCallable(functions, 'redeemReferralCode');
+          await redeem({ code: referralCode.trim().toUpperCase() });
+        } catch (refErr) {
+          // Sign-in already succeeded — never block it on this, but do not fail silently.
+          console.warn('Referral redemption failed:', refErr);
+          setSuccessMsg('Signed in, but the referral code could not be applied.');
+        }
       }
     } catch (err: any) {
       console.error(err);

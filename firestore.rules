@@ -44,12 +44,24 @@ service cloud.firestore {
         data.userId == request.auth.uid;
     }
 
+    function entitlementFieldsUnchanged() {
+      return !request.resource.data.diff(resource.data).affectedKeys()
+        .hasAny(['tier','subscriptionExpiry','tierExpiry',
+                 'socTrialUsed','socTrialActivatedAt','upgradedVia']);
+    }
+
     // ─── Users ───
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
-      allow create: if isAuthenticated() && isValidUser();
-      allow update: if (isOwner(userId) || isAdmin()) && isValidUser();
+      allow create: if isOwner(userId)
+        && isValidUser()
+        && uidUnchanged()
+        && (!('tier' in request.resource.data) || request.resource.data.tier == 'free')
+        && !request.resource.data.keys().hasAny(
+             ['subscriptionExpiry','tierExpiry','socTrialUsed','socTrialActivatedAt','upgradedVia']);
+      allow update: if isAdmin() && isValidUser();
+      allow update: if isOwner(userId) && isValidUser() && entitlementFieldsUnchanged();
       allow delete: if isAdmin();
     }
 
@@ -79,12 +91,13 @@ service cloud.firestore {
       allow create: if isAdmin();
       allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow list: if isAuthenticated();
+      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     // ─── Promo Codes ───
     match /promoCodes/{codeId} {
-      allow read: if isAuthenticated();
+      allow get: if isAuthenticated();
+      allow list: if isAdmin();
       allow write: if isAdmin();
     }
 
@@ -105,7 +118,7 @@ service cloud.firestore {
       allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow update: if isAdmin();
-      allow list: if isAdmin() || isAuthenticated();
+      allow list: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
 
     // ─── API Keys ───
@@ -113,7 +126,7 @@ service cloud.firestore {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow list: if isAuthenticated();
+      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     // ─── Scans ───
@@ -129,15 +142,14 @@ service cloud.firestore {
       allow read, delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
       allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
       allow update: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
-      allow list: if isAuthenticated();
+      allow list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
     }
 
     // ─── Teams ───
     match /teams/{teamId} {
-      allow read: if isAuthenticated();
+      allow read, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
       allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
-      allow list: if isAuthenticated();
     }
 
     // ─── Watchlist ───
@@ -155,18 +167,25 @@ service cloud.firestore {
     // ─── Referrals ───
     match /referrals/{userId} {
       allow read: if isAuthenticated();
-      allow create, delete: if isAuthenticated() && request.auth.uid == userId;
-      allow update: if isAuthenticated() && (
-        request.auth.uid == userId || 
-        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['referralCount']) && 
-         request.resource.data.referralCount == resource.data.referralCount + 1)
-      );
+      allow create: if isAuthenticated() && request.auth.uid == userId
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.referralCount == 0
+        && request.resource.data.claimedTiers.size() == 0;
+      allow delete: if isAdmin();
+      allow update: if isAuthenticated() && request.auth.uid == userId
+        && !request.resource.data.diff(resource.data).affectedKeys()
+             .hasAny(['referralCount','claimedTiers','userId']);
     }
 
     // ─── Referral Signups ───
     match /referralSignups/{signupId} {
       allow read: if isAuthenticated() && resource.data.referrerUid == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.newUid == request.auth.uid;
+      allow write: if false;
+    }
+
+    // ─── Subscription Requests ───
+    match /subscriptionRequests/{reqId} {
+      allow read, write: if isAdmin();
     }
   }
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Zap, Lock, CreditCard, Gift, Check, X, ShieldCheck, ExternalLink, Sparkles } from 'lucide-react';
-import { auth, db, getUserTier, upgradeUserTier, SubscriptionTier } from '../lib/firebase';
+import { auth, db, getUserTier, SubscriptionTier } from '../lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
 import CheckoutModal from './CheckoutModal';
@@ -58,15 +58,12 @@ export default function Pricing() {
     if (tier === 'free') return;
     setSelectedTier(tier);
     setPaymentSuccess(false);
-    setPaymentSuccess(false);
     setCheckoutError('');
     setIsCheckoutOpen(true);
   };
 
-  const handlePaymentSuccess = async (tier: 'pro' | 'enterprise') => {
+  const handlePaymentSuccess = async (_tier: 'pro' | 'enterprise') => {
     if (!auth.currentUser) throw new Error("Not logged in");
-    await upgradeUserTier(auth.currentUser.uid, tier, 30);
-    setCurrentTier(tier);
     setPaymentSuccess(true);
   };
 
@@ -143,8 +140,8 @@ export default function Pricing() {
           <div className="absolute inset-0 bg-gradient-to-r from-accent/5 via-transparent to-accent/5 animate-pulse" />
           <div className="relative z-10 flex flex-col items-center gap-3">
             <ShieldCheck className="w-10 h-10 text-accent" />
-            <h2 className="text-xl font-black uppercase tracking-widest">{t('pricing_access_granted')}</h2>
-            <p className="text-text-dim text-sm">{t('pricing_upgraded')}</p>
+            <h2 className="text-xl font-black uppercase tracking-widest">Subscription Request Received</h2>
+            <p className="text-text-dim text-sm">Your subscription request is being processed. Your clearance will update upon verification.</p>
           </div>
         </motion.div>
       )}

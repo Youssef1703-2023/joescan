@@ -7,13 +7,14 @@ import {
   Send, Flag, Download, Settings, Megaphone, Wifi, ToggleLeft, ToggleRight,
   FileSpreadsheet, Globe
 } from 'lucide-react';
-import { db, auth, logActivity, banUser, unbanUser, ADMIN_EMAIL } from '../lib/firebase';
+import { db, auth, functions, logActivity, banUser, unbanUser, ADMIN_EMAIL } from '../lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 import {
   collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, limit, getDoc, addDoc, serverTimestamp, onSnapshot
 } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
 
-type AdminTab = 'analytics' | 'users' | 'promos' | 'activity' | 'tickets' | 'revenue' | 'health' | 'growth' | 'broadcast' | 'sessions' | 'flags' | 'exports' | 'settings';
+type AdminTab = 'analytics' | 'requests' | 'users' | 'promos' | 'activity' | 'tickets' | 'revenue' | 'health' | 'growth' | 'broadcast' | 'sessions' | 'flags' | 'exports' | 'settings';
 
 export default function AdminDashboard() {
   const { t } = useLanguage();
@@ -22,6 +23,7 @@ export default function AdminDashboard() {
   const [promoCodes, setPromoCodes] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
+  const [subscriptionRequests, setSubscriptionRequests] = useState<any[]>([]);
   const [bannedMap, setBannedMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
@@ -31,6 +33,10 @@ export default function AdminDashboard() {
   const [newTargetTier, setNewTargetTier] = useState('pro');
   const [banReason, setBanReason] = useState('');
   const [banTarget, setBanTarget] = useState<string | null>(null);
+  const [grantTarget, setGrantTarget] = useState<string | null>(null);
+  const [grantTier, setGrantTier] = useState<'free' | 'pro' | 'enterprise'>('pro');
+  const [grantDays, setGrantDays] = useState<number>(30);
+  const [grantLoading, setGrantLoading] = useState(false);
   const [ticketReply, setTicketReply] = useState('');
   const [replyTarget, setReplyTarget] = useState<string | null>(null);
   const [broadcastMsg, setBroadcastMsg] = useState('');
@@ -113,7 +119,7 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [usersSnap, promosSnap, activitySnap, ticketsSnap, bannedSnap, platformSnap, flagsSnap, broadcastsSnap] = await Promise.all([
+      const [usersSnap, promosSnap, activitySnap, ticketsSnap, bannedSnap, platformSnap, flagsSnap, broadcastsSnap, subReqsSnap] = await Promise.all([
         getDocs(collection(db, 'users')),
         getDocs(collection(db, 'promoCodes')),
         getDocs(query(collection(db, 'activityLog'), orderBy('timestamp', 'desc'), limit(50))),
@@ -122,11 +128,13 @@ export default function AdminDashboard() {
         getDoc(doc(db, 'adminConfig', 'platformSettings')),
         getDoc(doc(db, 'adminConfig', 'featureFlags')),
         getDocs(query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'), limit(10))),
+        getDocs(query(collection(db, 'subscriptionRequests'), orderBy('createdAt', 'desc'), limit(50))),
       ]);
       setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setPromoCodes(promosSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setActivities(activitySnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setTickets(ticketsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setSubscriptionRequests(subReqsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       const bMap: Record<string, any> = {};
       bannedSnap.docs.forEach(d => { if (d.data().active) bMap[d.id] = d.data(); });
       setBannedMap(bMap);
@@ -159,6 +167,21 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => { fetchData(); }, []);
+
+  const handleGrantTier = async (uid: string, tier: 'free' | 'pro' | 'enterprise', daysValid: number = 30, requestId?: string) => {
+    setGrantLoading(true);
+    try {
+      const grant = httpsCallable(functions, 'adminGrantTier');
+      await grant({ uid, tier, daysValid, requestId });
+      setGrantTarget(null);
+      await fetchData();
+    } catch (err: any) {
+      console.error('Failed to grant tier:', err);
+      alert('Failed to grant tier: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setGrantLoading(false);
+    }
+  };
 
   const handleAddPromo = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -238,8 +261,11 @@ export default function AdminDashboard() {
     fetchData();
   };
 
+  const pendingRequestsCount = subscriptionRequests.filter(r => r.status === 'pending').length;
+
   const tabs: { id: AdminTab; label: string; icon: any; color: string }[] = [
     { id: 'analytics', label: t('admin_analytics'), icon: BarChart3, color: 'text-purple-400' },
+    { id: 'requests', label: 'Subscription Requests', icon: Shield, color: 'text-yellow-400' },
     { id: 'revenue', label: t('admin_revenue'), icon: DollarSign, color: 'text-green-400' },
     { id: 'growth', label: t('admin_growth'), icon: TrendingUp, color: 'text-cyan-400' },
     { id: 'users', label: t('admin_users'), icon: Users, color: 'text-accent' },
@@ -428,6 +454,85 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* ═══════════ SUBSCRIPTION REQUESTS ═══════════ */}
+          {activeTab === 'requests' && (
+            <div className="glass-card p-6 rounded-xl">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-400">
+                    <Shield className="w-5 h-5" />
+                  </div>
+                  <h2 className="text-xl font-bold uppercase tracking-widest text-text-main">
+                    Subscription Requests ({subscriptionRequests.length})
+                  </h2>
+                </div>
+                {pendingRequestsCount > 0 && (
+                  <span className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-widest">
+                    {pendingRequestsCount} Pending Review
+                  </span>
+                )}
+              </div>
+
+              <div className="space-y-4">
+                {subscriptionRequests.map(req => {
+                  const isPending = req.status === 'pending';
+                  return (
+                    <div key={req.id} className={`bg-bg-surface border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 ${isPending ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-border-subtle'}`}>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-text-main">{req.email || req.uid}</span>
+                          <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${
+                            req.tier === 'enterprise' ? 'bg-error/20 text-error' : 'bg-accent/20 text-accent'
+                          }`}>
+                            Requested {req.tier?.toUpperCase()}
+                          </span>
+                          <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${
+                            isPending ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
+                          }`}>
+                            {req.status?.toUpperCase()}
+                          </span>
+                        </div>
+                        <p className="text-[10px] font-mono text-text-dim">
+                          UID: {req.uid} • Promo: {req.promoCode || 'None'} {req.discount ? `(${req.discount}% off)` : ''}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {isPending ? (
+                          <>
+                            <button
+                              onClick={() => handleGrantTier(req.uid, req.tier || 'pro', 30, req.id)}
+                              disabled={grantLoading}
+                              className="text-xs px-4 py-2 bg-accent/20 text-accent border border-accent/40 rounded-xl font-bold uppercase hover:bg-accent/30 transition-all disabled:opacity-50"
+                            >
+                              Approve {req.tier?.toUpperCase()} (30d)
+                            </button>
+                            <button
+                              onClick={() => handleGrantTier(req.uid, 'free', 0, req.id)}
+                              disabled={grantLoading}
+                              className="text-xs px-3 py-2 bg-error/10 text-error border border-error/30 rounded-xl font-bold uppercase hover:bg-error/20 transition-all disabled:opacity-50"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-text-dim font-mono flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4 text-green-400" /> Approved
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {subscriptionRequests.length === 0 && (
+                  <div className="text-center py-8 text-text-dim font-mono border border-dashed border-border-subtle rounded-xl">
+                    No subscription requests recorded yet.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* ═══════════ USERS & BANS ═══════════ */}
           {activeTab === 'users' && (
             <div className="glass-card p-6 rounded-xl">
@@ -497,13 +602,42 @@ export default function AdminDashboard() {
                           </td>
                           <td className="px-4 py-3 text-right">
                             {!isAdminUser && (
-                              <div className="flex gap-2 justify-end">
+                              <div className="flex gap-2 justify-end items-center">
                                 {isBanned ? (
                                   <button onClick={() => handleUnban(primaryUid)} className="text-[10px] px-3 py-1.5 bg-accent/10 text-accent rounded-lg font-bold uppercase hover:bg-accent/20 transition-colors border border-accent/20">
                                     Unban
                                   </button>
                                 ) : (
                                   <>
+                                    {grantTarget === primaryUid ? (
+                                      <div className="flex gap-1 items-center bg-bg-surface border border-accent/30 p-1 rounded-lg">
+                                        <select
+                                          value={grantTier}
+                                          onChange={e => setGrantTier(e.target.value as any)}
+                                          className="bg-bg-base border border-border-subtle rounded px-1.5 py-1 text-[10px] font-mono"
+                                        >
+                                          <option value="pro">Pro (30d)</option>
+                                          <option value="enterprise">Enterprise (30d)</option>
+                                          <option value="free">Free</option>
+                                        </select>
+                                        <button
+                                          onClick={() => handleGrantTier(primaryUid, grantTier, grantDays)}
+                                          disabled={grantLoading}
+                                          className="text-[10px] px-2 py-1 bg-accent/20 text-accent rounded font-bold hover:bg-accent/30"
+                                        >
+                                          Save
+                                        </button>
+                                        <button onClick={() => setGrantTarget(null)} className="text-[10px] px-1.5 py-1 text-text-dim hover:text-text-main">✕</button>
+                                      </div>
+                                    ) : (
+                                      <button
+                                        onClick={() => { setGrantTarget(primaryUid); setGrantTier((gu.tier === 'enterprise' || gu.tier === 'pro') ? gu.tier : 'pro'); }}
+                                        className="text-[10px] px-2.5 py-1.5 bg-purple-500/10 text-purple-400 rounded-lg font-bold uppercase hover:bg-purple-500/20 transition-colors border border-purple-500/20"
+                                      >
+                                        Grant Tier
+                                      </button>
+                                    )}
+
                                     {banTarget === primaryUid ? (
                                       <div className="flex gap-1 items-center">
                                         <input type="text" value={banReason} onChange={e => setBanReason(e.target.value)} placeholder="Reason..." className="bg-bg-base border border-border-subtle rounded px-2 py-1 text-[10px] w-24 font-mono" />

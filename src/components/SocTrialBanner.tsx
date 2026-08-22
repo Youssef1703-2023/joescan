@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import { db, auth, upgradeUserTier, getUserTier } from '../lib/firebase';
+import { db, auth, functions } from '../lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, Zap, Clock, CheckCircle, Sparkles, X } from 'lucide-react';
@@ -60,15 +61,8 @@ export default function SocTrialBanner() {
 
     setActivating(true);
     try {
-      // Upgrade to enterprise (SOC) for 3 days
-      await upgradeUserTier(user.uid, 'enterprise', 3);
-
-      // Mark trial as used so they can't activate again
-      const { setDoc } = await import('firebase/firestore');
-      await setDoc(doc(db, 'users', user.uid), {
-        socTrialUsed: true,
-        socTrialActivatedAt: new Date().toISOString(),
-      }, { merge: true });
+      const startSocTrial = httpsCallable(functions, 'startSocTrial');
+      await startSocTrial();
 
       setActivated(true);
       setDaysLeft(3);

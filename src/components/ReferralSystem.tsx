@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Gift, Copy, Check, Users, Share2, MessageCircle, Trophy, Sparkles, Loader2, Star, Edit2, Shield, Gem, Crown } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { auth, db } from '../lib/firebase';
+import { auth, db, functions } from '../lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc, orderBy, limit } from 'firebase/firestore';
 import confetti from 'canvas-confetti';
 
@@ -64,7 +65,6 @@ export default function ReferralSystem() {
         await setDoc(doc(db, 'referrals', uid), {
           code,
           userId: uid,
-          email: auth.currentUser.email,
           referralCount: 0,
           claimedTiers: [],
           createdAt: new Date().toISOString(),
@@ -93,7 +93,7 @@ export default function ReferralSystem() {
       const snap = await getDocs(q);
       const topUsers = snap.docs
         .map(d => ({
-          email: d.data().email || 'Anonymous',
+          email: d.data().email || (d.data().code ? `Operative (${d.data().code})` : 'Anonymous'),
           count: d.data().referralCount || 0
         }))
         .filter(u => u.count > 0);
@@ -145,30 +145,10 @@ export default function ReferralSystem() {
   const handleClaimTier = async (tier: number) => {
     if (!auth.currentUser || referralCount < tier || claimedTiers.includes(tier)) return;
     try {
-      let daysToAdd = 0;
-      let tierName = 'pro';
-      
-      if (tier === 3) daysToAdd = 7;
-      if (tier === 5) daysToAdd = 30;
-      if (tier === 10) { daysToAdd = 3650; tierName = 'vip'; } // 10 years for VIP
-      
-      const newClaimed = [...claimedTiers, tier];
-      
-      // Update User Level
-      if (daysToAdd > 0) {
-        const userRef = doc(db, 'users', auth.currentUser.uid);
-        await updateDoc(userRef, {
-          tier: tierName,
-          tierExpiry: new Date(Date.now() + daysToAdd * 24 * 60 * 60 * 1000).toISOString(),
-          upgradedVia: `referral_reward_tier_${tier}`,
-        });
-      }
+      const claim = httpsCallable(functions, 'claimReferralReward');
+      await claim({ tier });
 
-      // Mark reward as claimed
-      await updateDoc(doc(db, 'referrals', auth.currentUser.uid), {
-        claimedTiers: newClaimed,
-      });
-      
+      const newClaimed = [...claimedTiers, tier];
       setClaimedTiers(newClaimed);
       fireConfetti();
     } catch (err) {

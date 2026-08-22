@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bot, X, Send, Sparkles, Trash2, Shield, Mail, KeyRound, Globe, Wifi, ChevronDown, Zap } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { functions } from '../lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 
 // ─── Types ───
 interface ChatMessage {
@@ -23,7 +25,8 @@ const MAX_HISTORY = 50;
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const AI_MODEL = 'openai/gpt-oss-120b:free';
 
-function getApiKey(): string {
+// Custom user-supplied key from settings (D2)
+function getCustomApiKey(): string {
   try {
     const s = localStorage.getItem('joe_api_settings');
     if (s) {
@@ -31,38 +34,46 @@ function getApiKey(): string {
       if (parsed.openrouterKey) return parsed.openrouterKey;
     }
   } catch {}
-  return import.meta.env.VITE_OPENROUTER_API_KEY || '';
+  return '';
 }
 
-// ... (system prompts stay the same, skip to after formatMessage)
-
-// ─── OpenRouter API call via fetch ───
+// ─── AI Chat call via direct custom key or secure backend proxy ───
 async function callAIChat(
   messages: { role: string; content: string }[],
 ): Promise<string> {
-  const res = await fetch(OPENROUTER_API_URL, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${getApiKey()}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://joescan.me',
-      'X-Title': 'JoeScan AI Cyber Assistant',
-    },
-    body: JSON.stringify({
-      model: AI_MODEL,
-      messages,
-      max_tokens: 1024,
-      temperature: 0.7,
-    }),
-  });
+  const customKey = getCustomApiKey();
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => 'Unknown error');
-    throw new Error(`AI API ${res.status}: ${errText}`);
+  // If user supplies their own custom OpenRouter key (D2)
+  if (customKey) {
+    const res = await fetch(OPENROUTER_API_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${customKey}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://joescan.me',
+        'X-Title': 'JoeScan AI Cyber Assistant',
+      },
+      body: JSON.stringify({
+        model: AI_MODEL,
+        messages,
+        max_tokens: 1024,
+        temperature: 0.7,
+      }),
+    });
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => 'Unknown error');
+      throw new Error(`AI API ${res.status}: ${errText}`);
+    }
+
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
   }
 
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || '';
+  // Otherwise, route to backend chatProxy callable with server-side secrets (C3)
+  const chatProxyCallable = httpsCallable(functions, 'chatProxy');
+  const res = await chatProxyCallable({ messages });
+  return (res.data as string) || '';
 }
 
 const SYSTEM_PROMPT_EN = `You are JoeScan AI — an elite cybersecurity assistant built into JoeScan, a professional OSINT & cybersecurity intelligence platform developed by **JoeTech**.

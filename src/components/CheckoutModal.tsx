@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Lock, CheckCircle, Loader2, Shield, MessageCircle, Tag, Sparkles } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { db } from '../lib/firebase';
+import { db, functions } from '../lib/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc } from 'firebase/firestore';
 
 interface CheckoutModalProps {
@@ -58,15 +59,17 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
         return;
       }
 
-      // If discount is 100%, auto-upgrade immediately
+      // If discount is 100%, submit subscription request server-side
       if (data.discount >= 100) {
         setPromoApplied({ code, discount: 100 });
         setIsProcessing(true);
         try {
+          const submitReq = httpsCallable(functions, 'submitSubscriptionRequest');
+          await submitReq({ tier, promoCode: code });
           await onPaymentSuccess(tier);
           setIsSuccess(true);
         } catch (err: any) {
-          setError(err.message || 'Failed to upgrade');
+          setError(err.message || 'Failed to submit request');
         }
         setIsProcessing(false);
       } else {
@@ -94,6 +97,13 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
     e.preventDefault();
     setIsProcessing(true);
     
+    try {
+      const submitReq = httpsCallable(functions, 'submitSubscriptionRequest');
+      await submitReq({ tier, promoCode: promoApplied?.code });
+    } catch (err) {
+      console.warn('Subscription request record failed:', err);
+    }
+
     const phoneNumber = "201123343296";
     const promoText = promoApplied ? ` (Promo: ${promoApplied.code} - ${promoApplied.discount}% off)` : '';
     const finalPrice = promoApplied ? getDiscountedPrice() : price;
@@ -167,8 +177,8 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
               <div className="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center mb-4">
                 <CheckCircle className="w-10 h-10 text-accent" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-1">Upgrade Successful!</h3>
-              <p className="text-text-dim text-sm">Welcome to {planName}. All features are now unlocked.</p>
+              <h3 className="text-xl font-bold text-white mb-1">Request Submitted</h3>
+              <p className="text-text-dim text-sm max-w-sm">Your subscription request for {planName} has been submitted for review. Your tier will be activated upon verification.</p>
               <button onClick={onClose} className="mt-6 px-8 py-3 bg-accent text-accent-fg font-bold uppercase tracking-widest rounded-xl text-sm">
                 Continue
               </button>
