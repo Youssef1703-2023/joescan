@@ -1,6 +1,5 @@
 import OpenAI from "openai";
-import { functions } from "./firebase";
-import { httpsCallable } from "firebase/functions";
+import { auth } from "./firebase";
 
 export const Type = {
   OBJECT: 'OBJECT',
@@ -25,6 +24,8 @@ function getCustomGroqKey(): string {
 async function executeUniversalAI(prompt: string, schemaObj: any, _useSearch: boolean, arabicInstruction?: string) {
   const customKey = getCustomGroqKey();
   const sysInstruction = arabicInstruction || "You are a friendly cybersecurity expert.";
+  const schemaDetails = Object.keys(schemaObj.properties || {}).map(k => " - " + k).join("\n");
+  const systemPrompt = `${sysInstruction}\n\nCRITICAL: You MUST output ONLY valid JSON. The JSON MUST contain exactly the following keys:\n${schemaDetails}`;
 
   // If user supplies their own custom key in settings, call Groq directly (D2)
   if (customKey) {
@@ -33,9 +34,6 @@ async function executeUniversalAI(prompt: string, schemaObj: any, _useSearch: bo
       baseURL: 'https://api.groq.com/openai/v1',
       dangerouslyAllowBrowser: true
     });
-    
-    const schemaDetails = Object.keys(schemaObj.properties || {}).map(k => " - " + k).join("\n");
-    const systemPrompt = `${sysInstruction}\n\nCRITICAL: You MUST output ONLY valid JSON. The JSON MUST contain exactly the following keys:\n${schemaDetails}`;
 
     const res = await openai.chat.completions.create({
       model: 'llama-3.3-70b-versatile',
@@ -49,15 +47,45 @@ async function executeUniversalAI(prompt: string, schemaObj: any, _useSearch: bo
     return JSON.parse(res.choices[0].message?.content || '{}');
   }
 
-  // Otherwise, route to backend AI proxy callable with server-side secrets (C3)
-  const aiProxyCallable = httpsCallable(functions, 'aiProxy');
-  const res = await aiProxyCallable({
-    prompt,
-    systemPrompt: sysInstruction,
-    schemaObj,
+  // Otherwise, route to Cloudflare Worker AI proxy (C4)
+  const proxyUrl = import.meta.env.VITE_AI_PROXY_URL;
+  if (!proxyUrl) {
+    throw new Error("AI proxy service is not configured. Please check your environment settings or provide a personal Groq API key in Settings.");
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Authentication required. Please sign in to run AI analysis.");
+  }
+
+  const idToken = await user.getIdToken();
+
+  const response = await fetch(proxyUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${idToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      provider: 'groq',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt }
+      ],
+      model: 'llama-3.3-70b-versatile',
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+    }),
   });
 
-  return res.data as any;
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({ error: `HTTP ${response.status}` }));
+    throw new Error(errData.error || `AI proxy error: HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  const rawContent = data.choices?.[0]?.message?.content || '{}';
+  return JSON.parse(rawContent);
 }
 
 export async function translateReport(reportText: string, actionPlan: string, scoreFactors: string[] = [], scoreImprovement: string[] = [], language: string) {

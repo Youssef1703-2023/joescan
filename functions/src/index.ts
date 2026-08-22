@@ -1,3 +1,11 @@
+/**
+ * ARCHIVED / UNSUPPORTED REFERENCE:
+ * This Firebase Cloud Functions module is NOT deployed on the Spark plan (Cloud Functions are disabled).
+ * AI proxying is superseded by the Cloudflare Worker in `workers/ai-proxy/`.
+ * Entitlement grants and referral redemptions are performed directly by the admin in Firestore transactions
+ * from the Admin Dashboard, secured by Firestore security rules.
+ */
+
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as crypto from 'crypto';

@@ -11,8 +11,7 @@ import {
   getAdditionalUserInfo,
   sendEmailVerification
 } from 'firebase/auth';
-import { auth, db, functions } from '../lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { auth, db } from '../lib/firebase';
 import { doc, setDoc, getDoc, getDocs, collection, query, where } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
 import { isDisposableEmail } from '../utils/disposableDomains';
@@ -135,15 +134,19 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           email: email.toLowerCase(),
         }, { merge: true });
 
-        // Process Referral via backend callable
+        // Process Referral via referralClaims
         if (referralCode.trim()) {
           try {
-            const redeem = httpsCallable(functions, 'redeemReferralCode');
-            await redeem({ code: referralCode.trim().toUpperCase() });
+            await setDoc(doc(db, 'referralClaims', cred.user.uid), {
+              newUid: cred.user.uid,
+              code: referralCode.trim().toUpperCase(),
+              status: 'pending',
+              createdAt: new Date().toISOString(),
+            });
           } catch (refErr) {
             // Account creation already succeeded — never block the signup on this.
             // Still tell the user, otherwise a mistyped code fails silently.
-            console.warn('Referral redemption failed:', refErr);
+            console.warn('Referral claim filing failed:', refErr);
             setSuccessMsg('Account created, but the referral code could not be applied.');
           }
         }
@@ -202,11 +205,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       const additionalInfo = getAdditionalUserInfo(cred);
       if (additionalInfo?.isNewUser && referralCode.trim()) {
         try {
-          const redeem = httpsCallable(functions, 'redeemReferralCode');
-          await redeem({ code: referralCode.trim().toUpperCase() });
+          await setDoc(doc(db, 'referralClaims', cred.user.uid), {
+            newUid: cred.user.uid,
+            code: referralCode.trim().toUpperCase(),
+            status: 'pending',
+            createdAt: new Date().toISOString(),
+          });
         } catch (refErr) {
           // Sign-in already succeeded — never block it on this, but do not fail silently.
-          console.warn('Referral redemption failed:', refErr);
+          console.warn('Referral claim filing failed:', refErr);
           setSuccessMsg('Signed in, but the referral code could not be applied.');
         }
       }

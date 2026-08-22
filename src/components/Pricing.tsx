@@ -161,7 +161,7 @@ export default function Pricing() {
           
           return (
             <motion.div 
-              key={t.id}
+              key={tier.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.1 }}

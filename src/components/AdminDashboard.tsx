@@ -7,10 +7,9 @@ import {
   Send, Flag, Download, Settings, Megaphone, Wifi, ToggleLeft, ToggleRight,
   FileSpreadsheet, Globe
 } from 'lucide-react';
-import { db, auth, functions, logActivity, banUser, unbanUser, ADMIN_EMAIL } from '../lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { db, auth, logActivity, banUser, unbanUser, ADMIN_EMAIL, calculateEntitlementGrant } from '../lib/firebase';
 import {
-  collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, limit, getDoc, addDoc, serverTimestamp, onSnapshot
+  collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, limit, getDoc, addDoc, serverTimestamp, onSnapshot, runTransaction, where
 } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -23,7 +22,8 @@ export default function AdminDashboard() {
   const [promoCodes, setPromoCodes] = useState<any[]>([]);
   const [activities, setActivities] = useState<any[]>([]);
   const [tickets, setTickets] = useState<any[]>([]);
-  const [subscriptionRequests, setSubscriptionRequests] = useState<any[]>([]);
+  const [tierRequests, setTierRequests] = useState<any[]>([]);
+  const [referralClaims, setReferralClaims] = useState<any[]>([]);
   const [bannedMap, setBannedMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
@@ -119,7 +119,7 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [usersSnap, promosSnap, activitySnap, ticketsSnap, bannedSnap, platformSnap, flagsSnap, broadcastsSnap, subReqsSnap] = await Promise.all([
+      const [usersSnap, promosSnap, activitySnap, ticketsSnap, bannedSnap, platformSnap, flagsSnap, broadcastsSnap, tierReqsSnap, refClaimsSnap] = await Promise.all([
         getDocs(collection(db, 'users')),
         getDocs(collection(db, 'promoCodes')),
         getDocs(query(collection(db, 'activityLog'), orderBy('timestamp', 'desc'), limit(50))),
@@ -128,13 +128,15 @@ export default function AdminDashboard() {
         getDoc(doc(db, 'adminConfig', 'platformSettings')),
         getDoc(doc(db, 'adminConfig', 'featureFlags')),
         getDocs(query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'), limit(10))),
-        getDocs(query(collection(db, 'subscriptionRequests'), orderBy('createdAt', 'desc'), limit(50))),
+        getDocs(query(collection(db, 'tierRequests'), orderBy('createdAt', 'desc'), limit(50))),
+        getDocs(query(collection(db, 'referralClaims'), orderBy('createdAt', 'desc'), limit(50))),
       ]);
       setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setPromoCodes(promosSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setActivities(activitySnap.docs.map(d => ({ id: d.id, ...d.data() })));
       setTickets(ticketsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setSubscriptionRequests(subReqsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setTierRequests(tierReqsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      setReferralClaims(refClaimsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       const bMap: Record<string, any> = {};
       bannedSnap.docs.forEach(d => { if (d.data().active) bMap[d.id] = d.data(); });
       setBannedMap(bMap);
@@ -168,16 +170,304 @@ export default function AdminDashboard() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const handleGrantTier = async (uid: string, tier: 'free' | 'pro' | 'enterprise', daysValid: number = 30, requestId?: string) => {
+  // Approve a deterministic Tier Request (SOC trial, Referral reward, Subscription) (B3)
+  const handleApproveTierRequest = async (reqId: string) => {
     setGrantLoading(true);
     try {
-      const grant = httpsCallable(functions, 'adminGrantTier');
-      await grant({ uid, tier, daysValid, requestId });
+      await runTransaction(db, async (tx) => {
+        const reqRef = doc(db, 'tierRequests', reqId);
+        const reqSnap = await tx.get(reqRef);
+        if (!reqSnap.exists()) throw new Error('Request not found');
+        const reqData = reqSnap.data();
+        if (reqData.status !== 'pending') throw new Error('Request is no longer pending');
+
+        const userRef = doc(db, 'users', reqData.userId);
+        const userSnap = await tx.get(userRef);
+        const userData = userSnap.exists() ? userSnap.data() : {};
+
+        let grantTier: 'free' | 'pro' | 'enterprise' = 'pro';
+        let days = 30;
+        let isSoc = false;
+
+        if (reqData.kind === 'soc_trial') {
+          if (userData.socTrialUsed) {
+            throw new Error('User has already used their SOC trial');
+          }
+          grantTier = 'enterprise';
+          days = 3;
+          isSoc = true;
+        } else if (reqData.kind === 'referral_reward') {
+          const refRef = doc(db, 'referrals', reqData.userId);
+          const refSnap = await tx.get(refRef);
+          const refData = refSnap.exists() ? refSnap.data() : {};
+          const count = refData.referralCount || 0;
+          const claimed = refData.claimedTiers || [];
+          const rTier = reqData.rewardTier;
+
+          if (count < rTier) {
+            throw new Error(`User has ${count} referrals, needs ${rTier}`);
+          }
+          if (claimed.includes(rTier)) {
+            throw new Error(`Reward tier ${rTier} already claimed`);
+          }
+
+          if (rTier === 1) {
+            grantTier = 'pro';
+            days = 7;
+          } else if (rTier === 3) {
+            grantTier = 'pro';
+            days = 30;
+          } else if (rTier === 5) {
+            grantTier = 'pro';
+            days = 90;
+          } else if (rTier === 10) {
+            grantTier = 'enterprise';
+            days = 3650;
+          }
+
+          tx.set(refRef, {
+            claimedTiers: [...claimed, rTier],
+            updatedAt: new Date().toISOString()
+          }, { merge: true });
+        } else if (reqData.kind === 'subscription') {
+          grantTier = reqData.tier === 'enterprise' ? 'enterprise' : 'pro';
+          days = 30;
+        }
+
+        const entitlement = calculateEntitlementGrant(
+          userData.tier,
+          userData.subscriptionExpiry,
+          grantTier,
+          days,
+          isSoc
+        );
+
+        tx.set(userRef, {
+          ...entitlement,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        tx.set(reqRef, {
+          status: 'approved',
+          decidedBy: auth.currentUser?.email || 'admin',
+          decidedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        const logRef = doc(collection(db, 'activityLog'));
+        tx.set(logRef, {
+          userId: auth.currentUser?.uid,
+          email: auth.currentUser?.email,
+          action: 'upgrade',
+          details: `Approved ${reqData.kind} for ${reqData.userId} (${grantTier}, ${days}d)`,
+          targetUser: reqData.userId,
+          timestamp: new Date().toISOString(),
+        });
+      });
+
+      await fetchData();
+    } catch (err: any) {
+      console.error('Failed to approve tier request:', err);
+      alert('Approval failed: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setGrantLoading(false);
+    }
+  };
+
+  // Reject a deterministic Tier Request (B3)
+  const handleRejectTierRequest = async (reqId: string, reason: string = 'Rejected by admin') => {
+    setGrantLoading(true);
+    try {
+      await runTransaction(db, async (tx) => {
+        const reqRef = doc(db, 'tierRequests', reqId);
+        const reqSnap = await tx.get(reqRef);
+        if (!reqSnap.exists()) throw new Error('Request not found');
+        const reqData = reqSnap.data();
+        if (reqData.status !== 'pending') throw new Error('Request is no longer pending');
+
+        tx.set(reqRef, {
+          status: 'rejected',
+          rejectionReason: reason,
+          decidedBy: auth.currentUser?.email || 'admin',
+          decidedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        const logRef = doc(collection(db, 'activityLog'));
+        tx.set(logRef, {
+          userId: auth.currentUser?.uid,
+          email: auth.currentUser?.email,
+          action: 'config_update',
+          details: `Rejected ${reqData.kind} request for ${reqData.userId}`,
+          targetUser: reqData.userId,
+          timestamp: new Date().toISOString(),
+        });
+      });
+
+      await fetchData();
+    } catch (err: any) {
+      console.error('Failed to reject tier request:', err);
+      alert('Rejection failed: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setGrantLoading(false);
+    }
+  };
+
+  // Approve a Referral Signup Claim (B3)
+  const handleApproveReferralClaim = async (claimId: string) => {
+    setGrantLoading(true);
+    try {
+      const claimRef = doc(db, 'referralClaims', claimId);
+      const claimSnap = await getDoc(claimRef);
+      if (!claimSnap.exists()) throw new Error('Claim not found');
+      const claimData = claimSnap.data();
+      if (claimData.status !== 'pending') throw new Error('Claim is no longer pending');
+
+      const refQuery = query(collection(db, 'referrals'), where('code', '==', claimData.code));
+      const refQuerySnap = await getDocs(refQuery);
+      if (refQuerySnap.empty) throw new Error(`Referral code "${claimData.code}" does not exist`);
+
+      const referrerDoc = refQuerySnap.docs[0];
+      const referrerUid = referrerDoc.id;
+
+      if (referrerUid === claimData.newUid) {
+        throw new Error('Self-referral is not allowed');
+      }
+
+      await runTransaction(db, async (tx) => {
+        const cSnap = await tx.get(claimRef);
+        if (!cSnap.exists() || cSnap.data().status !== 'pending') {
+          throw new Error('Claim is no longer pending');
+        }
+
+        const markerRef = doc(db, 'referralSignups', claimData.newUid);
+        const markerSnap = await tx.get(markerRef);
+        if (markerSnap.exists()) {
+          throw new Error('This user has already redeemed a referral code');
+        }
+
+        const referrerRef = doc(db, 'referrals', referrerUid);
+        const referrerSnap = await tx.get(referrerRef);
+        if (!referrerSnap.exists()) throw new Error('Referrer document not found');
+        const rData = referrerSnap.data();
+        if (rData.code !== claimData.code) throw new Error('Referrer code mismatch');
+
+        // 1. Create signup marker (permanent)
+        tx.set(markerRef, {
+          newUid: claimData.newUid,
+          referrerUid,
+          code: claimData.code,
+          createdAt: new Date().toISOString(),
+        });
+
+        // 2. Increment referrer's referralCount
+        tx.set(referrerRef, {
+          referralCount: (rData.referralCount || 0) + 1,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        // 3. Mark claim approved
+        tx.set(claimRef, {
+          status: 'approved',
+          referrerUid,
+          decidedBy: auth.currentUser?.email || 'admin',
+          decidedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        // 4. Log activity
+        const logRef = doc(collection(db, 'activityLog'));
+        tx.set(logRef, {
+          userId: auth.currentUser?.uid,
+          email: auth.currentUser?.email,
+          action: 'config_update',
+          details: `Approved referral signup for ${claimData.newUid} credited to ${referrerUid} (code ${claimData.code})`,
+          targetUser: referrerUid,
+          timestamp: new Date().toISOString(),
+        });
+      });
+
+      await fetchData();
+    } catch (err: any) {
+      console.error('Failed to approve referral claim:', err);
+      alert('Referral claim approval failed: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setGrantLoading(false);
+    }
+  };
+
+  // Reject a Referral Signup Claim (B3)
+  const handleRejectReferralClaim = async (claimId: string, reason: string = 'Invalid or duplicate referral') => {
+    setGrantLoading(true);
+    try {
+      await runTransaction(db, async (tx) => {
+        const claimRef = doc(db, 'referralClaims', claimId);
+        const claimSnap = await tx.get(claimRef);
+        if (!claimSnap.exists()) throw new Error('Claim not found');
+        if (claimSnap.data().status !== 'pending') throw new Error('Claim is no longer pending');
+
+        tx.set(claimRef, {
+          status: 'rejected',
+          rejectionReason: reason,
+          decidedBy: auth.currentUser?.email || 'admin',
+          decidedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        const logRef = doc(collection(db, 'activityLog'));
+        tx.set(logRef, {
+          userId: auth.currentUser?.uid,
+          email: auth.currentUser?.email,
+          action: 'config_update',
+          details: `Rejected referral claim ${claimId}`,
+          targetUser: claimId,
+          timestamp: new Date().toISOString(),
+        });
+      });
+
+      await fetchData();
+    } catch (err: any) {
+      console.error('Failed to reject referral claim:', err);
+      alert('Rejection failed: ' + (err?.message || 'Unknown error'));
+    } finally {
+      setGrantLoading(false);
+    }
+  };
+
+  // Manual admin tier grant from Users tab (B3)
+  const handleManualGrantTier = async (uid: string, tier: 'free' | 'pro' | 'enterprise', daysValid: number = 30) => {
+    setGrantLoading(true);
+    try {
+      await runTransaction(db, async (tx) => {
+        const userRef = doc(db, 'users', uid);
+        const userSnap = await tx.get(userRef);
+        const userData = userSnap.exists() ? userSnap.data() : {};
+
+        const entitlement = calculateEntitlementGrant(
+          userData.tier,
+          userData.subscriptionExpiry,
+          tier,
+          daysValid,
+          false
+        );
+
+        tx.set(userRef, {
+          ...entitlement,
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+
+        const logRef = doc(collection(db, 'activityLog'));
+        tx.set(logRef, {
+          userId: auth.currentUser?.uid,
+          email: auth.currentUser?.email,
+          action: 'upgrade',
+          details: `Manual grant: ${tier} for ${daysValid} days`,
+          targetUser: uid,
+          timestamp: new Date().toISOString(),
+        });
+      });
+
       setGrantTarget(null);
       await fetchData();
     } catch (err: any) {
-      console.error('Failed to grant tier:', err);
-      alert('Failed to grant tier: ' + (err?.message || 'Unknown error'));
+      console.error('Failed to manually grant tier:', err);
+      alert('Manual grant failed: ' + (err?.message || 'Unknown error'));
     } finally {
       setGrantLoading(false);
     }
@@ -261,11 +551,11 @@ export default function AdminDashboard() {
     fetchData();
   };
 
-  const pendingRequestsCount = subscriptionRequests.filter(r => r.status === 'pending').length;
+  const pendingRequestsCount = tierRequests.filter(r => r.status === 'pending').length + referralClaims.filter(c => c.status === 'pending').length;
 
   const tabs: { id: AdminTab; label: string; icon: any; color: string }[] = [
     { id: 'analytics', label: t('admin_analytics'), icon: BarChart3, color: 'text-purple-400' },
-    { id: 'requests', label: 'Subscription Requests', icon: Shield, color: 'text-yellow-400' },
+    { id: 'requests', label: 'Requests & Claims', icon: Shield, color: 'text-yellow-400' },
     { id: 'revenue', label: t('admin_revenue'), icon: DollarSign, color: 'text-green-400' },
     { id: 'growth', label: t('admin_growth'), icon: TrendingUp, color: 'text-cyan-400' },
     { id: 'users', label: t('admin_users'), icon: Users, color: 'text-accent' },
@@ -278,6 +568,15 @@ export default function AdminDashboard() {
     { id: 'exports', label: t('admin_export'), icon: Download, color: 'text-teal-400' },
     { id: 'settings', label: t('admin_config'), icon: Settings, color: 'text-slate-400' },
   ];
+
+  // Map user ID to resolved email / name
+  const userEmailMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    users.forEach(u => {
+      map[u.id] = u.email || u.name || u.username || u.id;
+    });
+    return map;
+  }, [users]);
 
   // ─── Deduplicate users by email ───
   // Group all user docs by email. Each email appears once. Track all UIDs (devices).
@@ -454,81 +753,183 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ═══════════ SUBSCRIPTION REQUESTS ═══════════ */}
+          {/* ═══════════ TIER & REFERRAL REQUESTS ═══════════ */}
           {activeTab === 'requests' && (
-            <div className="glass-card p-6 rounded-xl">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-400">
-                    <Shield className="w-5 h-5" />
+            <div className="space-y-8">
+              {/* Tier Requests Section */}
+              <div className="glass-card p-6 rounded-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg text-yellow-400">
+                      <Shield className="w-5 h-5" />
+                    </div>
+                    <h2 className="text-xl font-bold uppercase tracking-widest text-text-main">
+                      Tier & Subscription Requests ({tierRequests.length})
+                    </h2>
                   </div>
-                  <h2 className="text-xl font-bold uppercase tracking-widest text-text-main">
-                    Subscription Requests ({subscriptionRequests.length})
-                  </h2>
+                  {tierRequests.filter(r => r.status === 'pending').length > 0 && (
+                    <span className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-widest">
+                      {tierRequests.filter(r => r.status === 'pending').length} Pending Review
+                    </span>
+                  )}
                 </div>
-                {pendingRequestsCount > 0 && (
-                  <span className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-widest">
-                    {pendingRequestsCount} Pending Review
-                  </span>
-                )}
+
+                <div className="space-y-4">
+                  {tierRequests.map(req => {
+                    const isPending = req.status === 'pending';
+                    const isApproved = req.status === 'approved';
+                    const resolvedEmail = userEmailMap[req.userId] || req.userId;
+
+                    const kindLabels: Record<string, string> = {
+                      soc_trial: 'SOC Trial (3d Enterprise)',
+                      referral_reward: `Referral Reward (Tier ${req.rewardTier || '?'})`,
+                      subscription: `Subscription (${(req.tier || 'pro').toUpperCase()})`,
+                    };
+
+                    return (
+                      <div key={req.id} className={`bg-bg-surface border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 ${isPending ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-border-subtle'}`}>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-text-main">{resolvedEmail}</span>
+                            <span className="text-[9px] uppercase font-bold px-2 py-0.5 rounded bg-accent/20 text-accent">
+                              {kindLabels[req.kind] || req.kind}
+                            </span>
+                            <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${
+                              isPending ? 'bg-yellow-500/20 text-yellow-400' : isApproved ? 'bg-green-500/20 text-green-400' : 'bg-error/20 text-error'
+                            }`}>
+                              {req.status?.toUpperCase()}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-mono text-text-dim">
+                            UID: {req.userId} • Created: {new Date(req.createdAt).toLocaleString()}
+                            {req.promoCode ? ` • Promo: ${req.promoCode}` : ''}
+                            {req.decidedBy ? ` • Decided by: ${req.decidedBy}` : ''}
+                            {req.rejectionReason ? ` • Reason: ${req.rejectionReason}` : ''}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {isPending ? (
+                            <>
+                              <button
+                                onClick={() => handleApproveTierRequest(req.id)}
+                                disabled={grantLoading}
+                                className="text-xs px-4 py-2 bg-accent/20 text-accent border border-accent/40 rounded-xl font-bold uppercase hover:bg-accent/30 transition-all disabled:opacity-50"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleRejectTierRequest(req.id)}
+                                disabled={grantLoading}
+                                className="text-xs px-3 py-2 bg-error/10 text-error border border-error/30 rounded-xl font-bold uppercase hover:bg-error/20 transition-all disabled:opacity-50"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          ) : isApproved ? (
+                            <span className="text-xs text-green-400 font-mono flex items-center gap-1">
+                              <CheckCircle className="w-4 h-4 text-green-400" /> Approved
+                            </span>
+                          ) : (
+                            <span className="text-xs text-error font-mono flex items-center gap-1">
+                              <XCircle className="w-4 h-4 text-error" /> Rejected
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {tierRequests.length === 0 && (
+                    <div className="text-center py-8 text-text-dim font-mono border border-dashed border-border-subtle rounded-xl">
+                      No tier requests recorded yet.
+                    </div>
+                  )}
+                </div>
               </div>
 
-              <div className="space-y-4">
-                {subscriptionRequests.map(req => {
-                  const isPending = req.status === 'pending';
-                  return (
-                    <div key={req.id} className={`bg-bg-surface border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 ${isPending ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-border-subtle'}`}>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-text-main">{req.email || req.uid}</span>
-                          <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${
-                            req.tier === 'enterprise' ? 'bg-error/20 text-error' : 'bg-accent/20 text-accent'
-                          }`}>
-                            Requested {req.tier?.toUpperCase()}
-                          </span>
-                          <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${
-                            isPending ? 'bg-yellow-500/20 text-yellow-400' : 'bg-green-500/20 text-green-400'
-                          }`}>
-                            {req.status?.toUpperCase()}
-                          </span>
-                        </div>
-                        <p className="text-[10px] font-mono text-text-dim">
-                          UID: {req.uid} • Promo: {req.promoCode || 'None'} {req.discount ? `(${req.discount}% off)` : ''}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {isPending ? (
-                          <>
-                            <button
-                              onClick={() => handleGrantTier(req.uid, req.tier || 'pro', 30, req.id)}
-                              disabled={grantLoading}
-                              className="text-xs px-4 py-2 bg-accent/20 text-accent border border-accent/40 rounded-xl font-bold uppercase hover:bg-accent/30 transition-all disabled:opacity-50"
-                            >
-                              Approve {req.tier?.toUpperCase()} (30d)
-                            </button>
-                            <button
-                              onClick={() => handleGrantTier(req.uid, 'free', 0, req.id)}
-                              disabled={grantLoading}
-                              className="text-xs px-3 py-2 bg-error/10 text-error border border-error/30 rounded-xl font-bold uppercase hover:bg-error/20 transition-all disabled:opacity-50"
-                            >
-                              Reject
-                            </button>
-                          </>
-                        ) : (
-                          <span className="text-xs text-text-dim font-mono flex items-center gap-1">
-                            <CheckCircle className="w-4 h-4 text-green-400" /> Approved
-                          </span>
-                        )}
-                      </div>
+              {/* Referral Signup Claims Section */}
+              <div className="glass-card p-6 rounded-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-500/10 border border-purple-500/20 rounded-lg text-purple-400">
+                      <Users className="w-5 h-5" />
                     </div>
-                  );
-                })}
-                {subscriptionRequests.length === 0 && (
-                  <div className="text-center py-8 text-text-dim font-mono border border-dashed border-border-subtle rounded-xl">
-                    No subscription requests recorded yet.
+                    <h2 className="text-xl font-bold uppercase tracking-widest text-text-main">
+                      Referral Signup Claims ({referralClaims.length})
+                    </h2>
                   </div>
-                )}
+                  {referralClaims.filter(c => c.status === 'pending').length > 0 && (
+                    <span className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-xs px-3 py-1 rounded-full font-bold uppercase tracking-widest">
+                      {referralClaims.filter(c => c.status === 'pending').length} Pending Review
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  {referralClaims.map(claim => {
+                    const isPending = claim.status === 'pending';
+                    const isApproved = claim.status === 'approved';
+                    const resolvedEmail = userEmailMap[claim.newUid] || claim.newUid;
+
+                    return (
+                      <div key={claim.id} className={`bg-bg-surface border rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 ${isPending ? 'border-yellow-500/30 bg-yellow-500/5' : 'border-border-subtle'}`}>
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-sm text-text-main">{resolvedEmail}</span>
+                            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-300">
+                              Code: {claim.code}
+                            </span>
+                            <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded ${
+                              isPending ? 'bg-yellow-500/20 text-yellow-400' : isApproved ? 'bg-green-500/20 text-green-400' : 'bg-error/20 text-error'
+                            }`}>
+                              {claim.status?.toUpperCase()}
+                            </span>
+                          </div>
+                          <p className="text-[10px] font-mono text-text-dim">
+                            New UID: {claim.newUid} • Created: {new Date(claim.createdAt).toLocaleString()}
+                            {claim.referrerUid ? ` • Credited to: ${userEmailMap[claim.referrerUid] || claim.referrerUid}` : ''}
+                            {claim.decidedBy ? ` • Decided by: ${claim.decidedBy}` : ''}
+                            {claim.rejectionReason ? ` • Reason: ${claim.rejectionReason}` : ''}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {isPending ? (
+                            <>
+                              <button
+                                onClick={() => handleApproveReferralClaim(claim.id)}
+                                disabled={grantLoading}
+                                className="text-xs px-4 py-2 bg-accent/20 text-accent border border-accent/40 rounded-xl font-bold uppercase hover:bg-accent/30 transition-all disabled:opacity-50"
+                              >
+                                Approve Claim
+                              </button>
+                              <button
+                                onClick={() => handleRejectReferralClaim(claim.id)}
+                                disabled={grantLoading}
+                                className="text-xs px-3 py-2 bg-error/10 text-error border border-error/30 rounded-xl font-bold uppercase hover:bg-error/20 transition-all disabled:opacity-50"
+                              >
+                                Reject
+                              </button>
+                            </>
+                          ) : isApproved ? (
+                            <span className="text-xs text-green-400 font-mono flex items-center gap-1">
+                              <CheckCircle className="w-4 h-4 text-green-400" /> Credited
+                            </span>
+                          ) : (
+                            <span className="text-xs text-error font-mono flex items-center gap-1">
+                              <XCircle className="w-4 h-4 text-error" /> Rejected
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {referralClaims.length === 0 && (
+                    <div className="text-center py-8 text-text-dim font-mono border border-dashed border-border-subtle rounded-xl">
+                      No referral signup claims recorded yet.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -621,7 +1022,7 @@ export default function AdminDashboard() {
                                           <option value="free">Free</option>
                                         </select>
                                         <button
-                                          onClick={() => handleGrantTier(primaryUid, grantTier, grantDays)}
+                                          onClick={() => handleManualGrantTier(primaryUid, grantTier, grantDays)}
                                           disabled={grantLoading}
                                           className="text-[10px] px-2 py-1 bg-accent/20 text-accent rounded font-bold hover:bg-accent/30"
                                         >

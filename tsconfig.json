@@ -25,6 +25,7 @@
   },
   "exclude": [
     "functions",
+    "workers",
     "dist",
     "node_modules"
   ]

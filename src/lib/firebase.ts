@@ -1,7 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, getDocFromServer, getDocs, doc, setDoc, addDoc, collection, query, where, arrayUnion, arrayRemove } from "firebase/firestore";
-import { getFunctions } from "firebase/functions";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import firebaseConfig from "../../firebase-applet-config.json";
 
@@ -12,7 +11,6 @@ export const appCheck = initializeAppCheck(app, {
 });
 export const auth = getAuth(app);
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
-export const functions = getFunctions(app);
 
 async function testConnection() {
   try {
@@ -164,9 +162,58 @@ export async function getUserTier(uid: string): Promise<SubscriptionTier> {
   return 'free';
 }
 
-// upgradeUserTier was removed: the client may no longer write tier fields (Firestore rules
-// freeze them). Tier changes go through the startSocTrial, claimReferralReward,
-// submitSubscriptionRequest and adminGrantTier callables.
+// ─── Entitlement Arithmetic (B0) ───
+export function calculateEntitlementGrant(
+  currentTier: SubscriptionTier | undefined,
+  currentExpiry: any,
+  grantTier: SubscriptionTier,
+  grantedDays: number,
+  isSocTrial: boolean = false
+): {
+  tier: SubscriptionTier;
+  subscriptionExpiry: string;
+  socTrialUsed?: boolean;
+  socTrialActivatedAt?: string;
+  upgradedVia?: string;
+} {
+  const now = Date.now();
+  let existingExpiryMs = 0;
+  if (currentExpiry) {
+    if (typeof currentExpiry.toDate === 'function') {
+      existingExpiryMs = currentExpiry.toDate().getTime();
+    } else {
+      const parsed = new Date(currentExpiry).getTime();
+      if (!isNaN(parsed)) existingExpiryMs = parsed;
+    }
+  }
+
+  // New expiry = max(now, existingExpiry) + grantedDays (extends, never truncates)
+  const baseMs = Math.max(now, existingExpiryMs);
+  const newExpiryDate = new Date(baseMs + grantedDays * 24 * 60 * 60 * 1000);
+
+  // Never downgrade: if existing tier is enterprise and grant is pro, retain enterprise
+  let targetTier: SubscriptionTier = grantTier;
+  if (currentTier === 'enterprise' && grantTier === 'pro') {
+    targetTier = 'enterprise';
+  }
+
+  const result: any = {
+    tier: targetTier,
+    subscriptionExpiry: newExpiryDate.toISOString(),
+  };
+
+  if (isSocTrial) {
+    result.socTrialUsed = true;
+    result.socTrialActivatedAt = new Date().toISOString();
+    result.upgradedVia = 'soc_trial';
+  }
+
+  return result;
+}
+
+// Tier grants and activations are performed in Firestore transactions by the administrator,
+// after reviewing deterministic requests in tierRequests and referralClaims. Client-side
+// tier writes are frozen by Firestore security rules.
 
 // ─── Activity Logger ───
 export type ActivityType = 'login' | 'scan' | 'upgrade' | 'ban' | 'unban' | 'promo_create' | 'promo_delete' | 'ticket_create' | 'ticket_reply' | 'apikey_create' | 'apikey_delete' | 'profile_update' | 'config_update' | 'flag_update' | 'broadcast' | 'user_deleted';

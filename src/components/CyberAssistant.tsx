@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bot, X, Send, Sparkles, Trash2, Shield, Mail, KeyRound, Globe, Wifi, ChevronDown, Zap } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { functions } from '../lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { auth } from '../lib/firebase';
 
 // ─── Types ───
 interface ChatMessage {
@@ -37,7 +36,7 @@ function getCustomApiKey(): string {
   return '';
 }
 
-// ─── AI Chat call via direct custom key or secure backend proxy ───
+// ─── AI Chat call via direct custom key or secure Cloudflare Worker proxy (C4) ───
 async function callAIChat(
   messages: { role: string; content: string }[],
 ): Promise<string> {
@@ -70,10 +69,41 @@ async function callAIChat(
     return data.choices?.[0]?.message?.content || '';
   }
 
-  // Otherwise, route to backend chatProxy callable with server-side secrets (C3)
-  const chatProxyCallable = httpsCallable(functions, 'chatProxy');
-  const res = await chatProxyCallable({ messages });
-  return (res.data as string) || '';
+  // Otherwise, route to Cloudflare Worker AI proxy (C4)
+  const proxyUrl = import.meta.env.VITE_AI_PROXY_URL;
+  if (!proxyUrl) {
+    throw new Error("AI proxy service is not configured. Please check your environment settings or provide a personal OpenRouter API key in Settings.");
+  }
+
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error("Authentication required. Please sign in to chat with JoeScan AI.");
+  }
+
+  const idToken = await user.getIdToken();
+
+  const res = await fetch(proxyUrl, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${idToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      provider: 'openrouter',
+      messages,
+      model: AI_MODEL,
+      max_tokens: 1024,
+      temperature: 0.7,
+    }),
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(errData.error || `AI proxy error: HTTP ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || '';
 }
 
 const SYSTEM_PROMPT_EN = `You are JoeScan AI — an elite cybersecurity assistant built into JoeScan, a professional OSINT & cybersecurity intelligence platform developed by **JoeTech**.

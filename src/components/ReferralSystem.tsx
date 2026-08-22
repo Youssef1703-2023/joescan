@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Gift, Copy, Check, Users, Share2, MessageCircle, Trophy, Sparkles, Loader2, Star, Edit2, Shield, Gem, Crown } from 'lucide-react';
+import { Gift, Copy, Check, Users, Share2, MessageCircle, Trophy, Sparkles, Loader2, Star, Edit2, Shield, Gem, Crown, Clock } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { auth, db, functions } from '../lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { auth, db } from '../lib/firebase';
 import { doc, getDoc, setDoc, collection, query, where, getDocs, updateDoc, orderBy, limit } from 'firebase/firestore';
 import confetti from 'canvas-confetti';
 
@@ -26,6 +25,8 @@ export default function ReferralSystem() {
   const [referralCode, setReferralCode] = useState('');
   const [referralCount, setReferralCount] = useState(0);
   const [claimedTiers, setClaimedTiers] = useState<number[]>([]);
+  const [pendingRewardTier, setPendingRewardTier] = useState<number | null>(null);
+  const [claimLoading, setClaimLoading] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [referredUsers, setReferredUsers] = useState<{ email: string; date: string }[]>([]);
@@ -72,6 +73,15 @@ export default function ReferralSystem() {
         setReferralCode(code);
       }
 
+      // Check for pending reward requests
+      const reqSnap = await getDoc(doc(db, 'tierRequests', `${uid}_referral_reward`));
+      if (reqSnap.exists()) {
+        const reqData = reqSnap.data();
+        if (reqData.status === 'pending') {
+          setPendingRewardTier(reqData.rewardTier);
+        }
+      }
+
       // Get referred users
       const signupsQuery = query(collection(db, 'referralSignups'), where('referrerUid', '==', uid));
       const signupsSnap = await getDocs(signupsQuery);
@@ -80,7 +90,6 @@ export default function ReferralSystem() {
         date: d.data().createdAt || '',
       }));
       setReferredUsers(users);
-      setReferralCount(users.length);
     } catch (err) {
       console.error('Error loading referral data:', err);
     }
@@ -144,15 +153,22 @@ export default function ReferralSystem() {
 
   const handleClaimTier = async (tier: number) => {
     if (!auth.currentUser || referralCount < tier || claimedTiers.includes(tier)) return;
+    setClaimLoading(tier);
     try {
-      const claim = httpsCallable(functions, 'claimReferralReward');
-      await claim({ tier });
+      await setDoc(doc(db, 'tierRequests', `${auth.currentUser.uid}_referral_reward`), {
+        userId: auth.currentUser.uid,
+        kind: 'referral_reward',
+        status: 'pending',
+        rewardTier: tier,
+        createdAt: new Date().toISOString(),
+      });
 
-      const newClaimed = [...claimedTiers, tier];
-      setClaimedTiers(newClaimed);
-      fireConfetti();
+      setPendingRewardTier(tier);
     } catch (err) {
-      console.error('Error claiming reward:', err);
+      console.error('Error requesting reward claim:', err);
+      alert(lang === 'ar' ? 'لديك طلب مكافأة قيد المراجعة بالفعل.' : 'You already have a pending reward request under review.');
+    } finally {
+      setClaimLoading(null);
     }
   };
 
@@ -346,19 +362,22 @@ export default function ReferralSystem() {
           {TIERS.map((tier) => {
             const isUnlocked = referralCount >= tier.count;
             const isClaimed = claimedTiers.includes(tier.count);
-            const canClaim = isUnlocked && !isClaimed;
+            const isPending = pendingRewardTier === tier.count;
+            const canClaim = isUnlocked && !isClaimed && !isPending;
             
             return (
               <div 
                 key={tier.count} 
                 className={`flex flex-col items-center text-center p-4 rounded-2xl border-2 transition-all ${
                   isClaimed ? 'bg-accent/10 border-accent/40' : 
+                  isPending ? 'bg-yellow-500/10 border-yellow-500/40' :
                   canClaim ? 'bg-bg-surface border-accent shadow-[0_0_20px_rgba(139,92,246,0.3)] scale-105' : 
                   'bg-bg-base border-border-subtle opacity-60'
                 }`}
               >
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${
-                  isClaimed || canClaim ? 'bg-accent/20 text-accent' : 'bg-bg-elevated text-text-dim'
+                  isClaimed || canClaim ? 'bg-accent/20 text-accent' : 
+                  isPending ? 'bg-yellow-500/20 text-yellow-400' : 'bg-bg-elevated text-text-dim'
                 }`}>
                   <tier.icon className="w-6 h-6" />
                 </div>
@@ -374,12 +393,21 @@ export default function ReferralSystem() {
                   <span className="text-xs font-bold text-accent flex items-center gap-1 bg-accent/10 px-3 py-1.5 rounded-full">
                     <Check className="w-3 h-3" /> {t('reward_claimed_msg').split('!')[0]}
                   </span>
+                ) : isPending ? (
+                  <span className="text-xs font-bold text-yellow-400 flex items-center gap-1 bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 rounded-full">
+                    <Clock className="w-3 h-3 animate-pulse" /> {lang === 'ar' ? 'قيد المراجعة' : 'Pending Review'}
+                  </span>
                 ) : canClaim ? (
                   <button 
                     onClick={() => handleClaimTier(tier.count)}
-                    className="text-xs font-bold bg-accent text-accent-fg w-full py-2 rounded-xl hover:bg-accent-active shadow-lg shadow-accent/20 transition-all hover:scale-105"
+                    disabled={claimLoading === tier.count}
+                    className="text-xs font-bold bg-accent text-accent-fg w-full py-2 rounded-xl hover:bg-accent-active shadow-lg shadow-accent/20 transition-all hover:scale-105 disabled:opacity-50"
                   >
-                    {t('claim_reward')}
+                    {claimLoading === tier.count ? (
+                      <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                    ) : (
+                      t('claim_reward')
+                    )}
                   </button>
                 ) : (
                   <span className="text-[10px] text-text-muted font-mono uppercase tracking-widest border border-border-subtle px-2 py-1 rounded-md">

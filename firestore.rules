@@ -44,6 +44,8 @@ service cloud.firestore {
         data.userId == request.auth.uid;
     }
 
+    function reqOwnerId() { return request.resource.data.userId; }
+
     function entitlementFieldsUnchanged() {
       return !request.resource.data.diff(resource.data).affectedKeys()
         .hasAny(['tier','subscriptionExpiry','tierExpiry',
@@ -104,7 +106,9 @@ service cloud.firestore {
     // ─── Activity Log ───
     match /activityLog/{logId} {
       allow read: if isAdmin();
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
     }
 
     // ─── Banned Users ───
@@ -172,20 +176,63 @@ service cloud.firestore {
         && request.resource.data.referralCount == 0
         && request.resource.data.claimedTiers.size() == 0;
       allow delete: if isAdmin();
+      // Owner: everything except the privileged counters (unchanged from a95ff15).
       allow update: if isAuthenticated() && request.auth.uid == userId
         && !request.resource.data.diff(resource.data).affectedKeys()
              .hasAny(['referralCount','claimedTiers','userId']);
+      // Admin: may move the counters. This is the necessary, narrow exception.
+      allow update: if isAdmin();
     }
 
     // ─── Referral Signups ───
     match /referralSignups/{signupId} {
-      allow read: if isAuthenticated() && resource.data.referrerUid == request.auth.uid;
-      allow write: if false;
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.referrerUid == request.auth.uid);
+      allow create: if isAdmin() && request.resource.data.newUid == signupId;
+      allow update, delete: if false;   // markers are permanent
     }
 
-    // ─── Subscription Requests ───
-    match /subscriptionRequests/{reqId} {
-      allow read, write: if isAdmin();
+    // ─── Tier Requests ───
+    match /tierRequests/{reqId} {
+      allow get:  if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+
+      allow create: if isAuthenticated()
+        && reqId == request.auth.uid + '_' + request.resource.data.kind
+        && reqOwnerId() == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.kind in ['soc_trial','referral_reward','subscription']
+        && request.resource.data.keys().hasOnly(
+             ['userId','kind','status','tier','rewardTier','promoCode','createdAt'])
+        && request.resource.data.keys().hasAll(['userId','kind','status','createdAt'])
+        && request.resource.data.createdAt is string
+        && request.resource.data.createdAt.size() <= 40
+        && (!('tier' in request.resource.data)
+            || request.resource.data.tier in ['pro','enterprise'])
+        && (!('rewardTier' in request.resource.data)
+            || request.resource.data.rewardTier in [1,3,5,10])
+        && (!('promoCode' in request.resource.data)
+            || (request.resource.data.promoCode is string
+                && request.resource.data.promoCode.size() <= 32));
+
+      allow update, delete: if isAdmin();
+    }
+
+    // ─── Referral Claims ───
+    match /referralClaims/{claimId} {
+      allow get:  if isAdmin() || (isAuthenticated() && claimId == request.auth.uid);
+      allow list: if isAdmin();
+      allow create: if isAuthenticated()
+        && claimId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['newUid','code','status','createdAt'])
+        && request.resource.data.keys().hasAll(['newUid','code','status','createdAt'])
+        && request.resource.data.newUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.code is string
+        && request.resource.data.code.size() >= 4
+        && request.resource.data.code.size() <= 32
+        && request.resource.data.createdAt is string;
+      allow update: if isAdmin();
+      allow delete: if false;   // deleting would let the user file a second claim
     }
   }
 }

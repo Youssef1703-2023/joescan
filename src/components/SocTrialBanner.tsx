@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db, auth, functions } from '../lib/firebase';
-import { httpsCallable } from 'firebase/functions';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Zap, Clock, CheckCircle, Sparkles, X } from 'lucide-react';
+import { Shield, Zap, Clock, CheckCircle, Sparkles, X, AlertCircle } from 'lucide-react';
 
 export default function SocTrialBanner() {
   const { lang } = useLanguage();
   const [visible, setVisible] = useState(false);
   const [activating, setActivating] = useState(false);
   const [activated, setActivated] = useState(false);
+  const [isPending, setIsPending] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [daysLeft, setDaysLeft] = useState<number | null>(null);
+  const [requestError, setRequestError] = useState<string | null>(null);
 
   useEffect(() => {
     checkEligibility();
@@ -45,6 +46,17 @@ export default function SocTrialBanner() {
         return;
       }
 
+      // Check if user has a pending or previous request
+      const reqSnap = await getDoc(doc(db, 'tierRequests', `${user.uid}_soc_trial`));
+      if (reqSnap.exists()) {
+        const reqData = reqSnap.data();
+        if (reqData.status === 'pending') {
+          setIsPending(true);
+          setVisible(true);
+          return;
+        }
+      }
+
       // Free tier — show trial banner if not already used
       if (tier === 'free' && !trialUsed) {
         setVisible(true);
@@ -60,17 +72,23 @@ export default function SocTrialBanner() {
     if (!user) return;
 
     setActivating(true);
+    setRequestError(null);
     try {
-      const startSocTrial = httpsCallable(functions, 'startSocTrial');
-      await startSocTrial();
+      await setDoc(doc(db, 'tierRequests', `${user.uid}_soc_trial`), {
+        userId: user.uid,
+        kind: 'soc_trial',
+        status: 'pending',
+        tier: 'enterprise',
+        createdAt: new Date().toISOString(),
+      });
 
-      setActivated(true);
-      setDaysLeft(3);
-
-      // Reload page after brief delay to reflect new tier
-      setTimeout(() => window.location.reload(), 2000);
-    } catch (err) {
-      console.error('Trial activation failed:', err);
+      setIsPending(true);
+    } catch (err: any) {
+      console.error('Trial request failed:', err);
+      setRequestError(lang === 'ar'
+        ? 'لديك طلب تجربة قيد المراجعة بالفعل.'
+        : 'You already have a pending trial request under review.');
+      setIsPending(true);
     } finally {
       setActivating(false);
     }
@@ -107,6 +125,8 @@ export default function SocTrialBanner() {
           <div className="w-16 h-16 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0">
             {activated ? (
               <CheckCircle className="w-8 h-8 text-accent" />
+            ) : isPending ? (
+              <Clock className="w-8 h-8 text-yellow-400 animate-pulse" />
             ) : (
               <Sparkles className="w-8 h-8 text-accent animate-pulse" />
             )}
@@ -123,6 +143,22 @@ export default function SocTrialBanner() {
                   {lang === 'ar'
                     ? `لديك ${daysLeft} أيام متبقية من اشتراك SOC Enterprise المجاني. استمتع بجميع الأدوات المتقدمة بما فيها SIEM وإدارة الفريق وخريطة التهديدات!`
                     : `You have ${daysLeft} day${daysLeft !== 1 ? 's' : ''} remaining on your free SOC Enterprise trial. Enjoy SIEM, Team Management, Threat Map & all tools!`}
+                </p>
+              </>
+            ) : isPending ? (
+              <>
+                <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                  <span className="inline-block px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 uppercase tracking-wider">
+                    {lang === 'ar' ? 'قيد المراجعة' : 'Pending Review'}
+                  </span>
+                  <h3 className="text-lg font-black uppercase tracking-wide text-text-main">
+                    {lang === 'ar' ? 'طلب النسخة التجريبية قيد المعالجة' : 'Trial Request Submitted'}
+                  </h3>
+                </div>
+                <p className="text-sm text-text-dim max-w-lg">
+                  {requestError || (lang === 'ar'
+                    ? 'تم إرسال طلب تفعيل نسخة SOC Enterprise التجريبية (3 أيام) للإدارة. سيتم التفعيل بعد مراجعة الطلب.'
+                    : 'Your 3-day SOC Enterprise trial request has been submitted for admin verification. Access will be enabled upon approval.')}
                 </p>
               </>
             ) : (
@@ -147,7 +183,7 @@ export default function SocTrialBanner() {
           </div>
 
           {/* CTA Button */}
-          {!activated && (
+          {!activated && !isPending && (
             <button
               onClick={handleActivate}
               disabled={activating}

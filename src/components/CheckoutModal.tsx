@@ -2,9 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Lock, CheckCircle, Loader2, Shield, MessageCircle, Tag, Sparkles } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { db, functions } from '../lib/firebase';
-import { httpsCallable } from 'firebase/functions';
-import { doc, getDoc } from 'firebase/firestore';
+import { db, auth } from '../lib/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -33,6 +32,14 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
     setPromoLoading(true);
     setPromoError('');
     setPromoApplied(null);
+    setError(null);
+
+    const user = auth.currentUser;
+    if (!user) {
+      setPromoError('Please sign in to your account before applying a promo code');
+      setPromoLoading(false);
+      return;
+    }
 
     try {
       const code = promoCode.toUpperCase().trim();
@@ -59,17 +66,22 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
         return;
       }
 
-      // If discount is 100%, submit subscription request server-side
+      // If discount is 100%, submit subscription request to tierRequests
       if (data.discount >= 100) {
         setPromoApplied({ code, discount: 100 });
         setIsProcessing(true);
         try {
-          const submitReq = httpsCallable(functions, 'submitSubscriptionRequest');
-          await submitReq({ tier, promoCode: code });
-          await onPaymentSuccess(tier);
+          await setDoc(doc(db, 'tierRequests', `${user.uid}_subscription`), {
+            userId: user.uid,
+            kind: 'subscription',
+            status: 'pending',
+            tier,
+            promoCode: code,
+            createdAt: new Date().toISOString(),
+          });
           setIsSuccess(true);
         } catch (err: any) {
-          setError(err.message || 'Failed to submit request');
+          setError(err.message || 'Failed to submit subscription request');
         }
         setIsProcessing(false);
       } else {
@@ -95,13 +107,27 @@ export default function CheckoutModal({ isOpen, onClose, planName, price, tier, 
 
   const handleWhatsApp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
+
+    const user = auth.currentUser;
+    if (!user) {
+      setError('Please sign in to your account first before subscribing.');
+      return;
+    }
+
     setIsProcessing(true);
     
     try {
-      const submitReq = httpsCallable(functions, 'submitSubscriptionRequest');
-      await submitReq({ tier, promoCode: promoApplied?.code });
+      await setDoc(doc(db, 'tierRequests', `${user.uid}_subscription`), {
+        userId: user.uid,
+        kind: 'subscription',
+        status: 'pending',
+        tier,
+        ...(promoApplied?.code ? { promoCode: promoApplied.code } : {}),
+        createdAt: new Date().toISOString(),
+      });
     } catch (err) {
-      console.warn('Subscription request record failed:', err);
+      console.warn('Subscription request record failed (may already exist):', err);
     }
 
     const phoneNumber = "201123343296";
