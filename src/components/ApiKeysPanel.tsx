@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Key, Copy, Trash2, Plus, Zap, Eye, EyeOff, Shield } from 'lucide-react';
+import { Key, Copy, Trash2, Plus, Zap, Shield } from 'lucide-react';
 import { auth, db, logActivity, getUserTier } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, where, deleteDoc, doc } from 'firebase/firestore';
 
@@ -9,7 +9,8 @@ export default function ApiKeysPanel() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [keyName, setKeyName] = useState('');
-  const [showKey, setShowKey] = useState<string | null>(null);
+  // Held in memory only, shown once right after creation.
+  const [newlyCreatedKey, setNewlyCreatedKey] = useState<string | null>(null);
   const [tier, setTier] = useState('free');
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -33,9 +34,19 @@ export default function ApiKeysPanel() {
   const generateApiKey = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     const prefix = 'js_live_';
+    // crypto.getRandomValues, not Math.random — this is a credential.
+    const bytes = new Uint8Array(40);
+    crypto.getRandomValues(bytes);
     let result = prefix;
-    for (let i = 0; i < 40; i++) result += chars.charAt(Math.floor(Math.random() * chars.length));
+    for (let i = 0; i < bytes.length; i++) result += chars.charAt(bytes[i] % chars.length);
     return result;
+  };
+
+  const sha256Hex = async (input: string) => {
+    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(input));
+    return Array.from(new Uint8Array(digest))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -44,16 +55,21 @@ export default function ApiKeysPanel() {
     setCreating(true);
     try {
       const apiKey = generateApiKey();
+      // Store only a hash and the last 4 characters. The raw key is shown to the
+      // user once, below, and is never persisted — so a leak of this collection
+      // discloses nothing usable.
       await addDoc(collection(db, 'apiKeys'), {
         userId: auth.currentUser.uid,
         email: auth.currentUser.email,
         name: keyName,
-        key: apiKey,
+        keyHash: await sha256Hex(apiKey),
+        last4: apiKey.slice(-4),
         createdAt: new Date().toISOString(),
         lastUsed: null,
         requestCount: 0,
       });
       await logActivity('apikey_create', `Created API key: ${keyName}`);
+      setNewlyCreatedKey(apiKey);
       setKeyName('');
       fetchKeys();
     } catch (err) {
@@ -119,6 +135,38 @@ export default function ApiKeysPanel() {
         </div>
       )}
 
+      {/* The one and only time the raw key is visible */}
+      {newlyCreatedKey && (
+        <div className="glass-card p-5 rounded-xl border border-accent/40 mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Shield className="w-4 h-4 text-accent" />
+            <h3 className="font-bold text-sm text-accent uppercase tracking-wide">Copy your key now</h3>
+          </div>
+          <p className="text-xs text-text-dim mb-3">
+            This is the only time it will be shown. Only a hash is stored, so it cannot be recovered later.
+          </p>
+          <div className="bg-[#0a0a0a] border border-border-subtle rounded-lg px-4 py-2.5 font-mono text-xs flex items-center justify-between gap-3">
+            <span className="truncate">{newlyCreatedKey}</span>
+            <button
+              onClick={() => handleCopy(newlyCreatedKey, 'new')}
+              className="p-1.5 text-text-dim hover:text-accent transition-colors rounded shrink-0"
+              title="Copy"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="flex items-center justify-between mt-3">
+            {copied === 'new' && <span className="text-accent text-[10px] font-bold uppercase">Copied!</span>}
+            <button
+              onClick={() => setNewlyCreatedKey(null)}
+              className="ml-auto text-[10px] font-mono uppercase tracking-widest text-text-dim hover:text-text-main transition-colors"
+            >
+              I saved it — dismiss
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Keys List */}
       <div className="space-y-3">
         {keys.map((k, i) => (
@@ -131,20 +179,14 @@ export default function ApiKeysPanel() {
                 <p className="text-[10px] font-mono text-text-dim mt-1">Created: {new Date(k.createdAt).toLocaleDateString()}</p>
               </div>
               <div className="flex gap-2">
-                <button onClick={() => handleCopy(k.key, k.id)} className="p-2 text-text-dim hover:text-accent transition-colors rounded-lg hover:bg-accent/10" title="Copy">
-                  <Copy className="w-4 h-4" />
-                </button>
-                <button onClick={() => setShowKey(showKey === k.id ? null : k.id)} className="p-2 text-text-dim hover:text-text-main transition-colors rounded-lg hover:bg-bg-surface" title="Toggle visibility">
-                  {showKey === k.id ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
                 <button onClick={() => handleDelete(k.id, k.name)} className="p-2 text-text-dim hover:text-error transition-colors rounded-lg hover:bg-error/10" title="Delete">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
             <div className="bg-[#0a0a0a] border border-border-subtle rounded-lg px-4 py-2.5 font-mono text-xs flex items-center justify-between">
-              <span className="truncate">{showKey === k.id ? k.key : `${k.key.substring(0, 12)}${'•'.repeat(30)}`}</span>
-              {copied === k.id && <span className="text-accent text-[10px] font-bold uppercase shrink-0 ml-2">Copied!</span>}
+              <span className="truncate">{`js_live_${'•'.repeat(30)}${k.last4 || ''}`}</span>
+              <span className="text-text-dim text-[10px] uppercase shrink-0 ml-2">shown once at creation</span>
             </div>
           </motion.div>
         ))}

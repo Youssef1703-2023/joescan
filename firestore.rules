@@ -10,8 +10,15 @@ service cloud.firestore {
        return isAuthenticated() && request.auth.uid == userId;
     }
     
+    // Admin = an explicit custom claim (preferred; set with scripts/set-admin-claim.js),
+    // or the owner's email but only when Firebase has actually verified it — an
+    // unverified same-email signup from another provider must not inherit admin.
     function isAdmin() {
-       return isAuthenticated() && request.auth.token.email == 'joetech.dev.systems@gmail.com';
+      return isAuthenticated() && (
+        request.auth.token.admin == true ||
+        (request.auth.token.email == 'joetech.dev.systems@gmail.com'
+          && request.auth.token.email_verified == true)
+      );
     }
     
     function hasRequiredFields(fields) {
@@ -52,6 +59,27 @@ service cloud.firestore {
                  'socTrialUsed','socTrialActivatedAt','upgradedVia']);
     }
 
+    // Allowlist, not denylist: a sensitive field added to the schema later is
+    // denied by default instead of being silently writable by the owner.
+    // These are exactly the keys the client writes today.
+    function userOwnerKeysOk() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(
+        ['name','email','username','avatarURL','completedLessons',
+         'mfaSecret','mfaSkipped','createdAt','updatedAt']);
+    }
+
+    function userCreateKeysOk() {
+      return request.resource.data.keys().hasOnly(
+        ['uid','email','name','username','avatarURL','tier',
+         'completedLessons','createdAt','updatedAt']);
+    }
+
+    // Entitlement gate for premium resources. Costs one document read per
+    // evaluation, so it is used only on create of a paid-tier resource.
+    function tierIsEnterprise() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tier == 'enterprise';
+    }
+
     // ─── Users ───
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin();
@@ -59,18 +87,24 @@ service cloud.firestore {
       allow create: if isOwner(userId)
         && isValidUser()
         && uidUnchanged()
-        && (!('tier' in request.resource.data) || request.resource.data.tier == 'free')
-        && !request.resource.data.keys().hasAny(
-             ['subscriptionExpiry','tierExpiry','socTrialUsed','socTrialActivatedAt','upgradedVia']);
+        && userCreateKeysOk()
+        && (!('tier' in request.resource.data) || request.resource.data.tier == 'free');
       allow update: if isAdmin() && isValidUser();
-      allow update: if isOwner(userId) && isValidUser() && entitlementFieldsUnchanged();
+      allow update: if isOwner(userId) && isValidUser()
+        && userOwnerKeysOk() && entitlementFieldsUnchanged();
       allow delete: if isAdmin();
     }
 
     // ─── Usernames (unique username registry) ───
+    // Per-username `get` must stay public: login resolves a username to an email
+    // before the user is authenticated. `list` is denied — the documents carry
+    // uid + email, so listing would expose every user's address to anyone.
     match /usernames/{usernameId} {
-      allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create: if isAuthenticated()
+        && request.resource.data.keys().hasOnly(['uid','email','username','createdAt'])
+        && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
     }
 
@@ -90,8 +124,13 @@ service cloud.firestore {
     // ─── Notifications ───
     match /notifications/{notifId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAdmin();
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      // The app creates in-app notifications for the signed-in user
+      // (NotificationContext); admin fan-out creates them for others.
+      allow create: if isAdmin() ||
+        (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+      // Owner may only flip the read flag, not rewrite the content.
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
@@ -121,14 +160,28 @@ service cloud.firestore {
     match /supportTickets/{ticketId} {
       allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAdmin();
+      // The ticket owner may append a reply or close the ticket; everything else
+      // is admin-only. Without this the app's own reply button was denied.
+      allow update: if isAdmin() ||
+        (isAuthenticated() && resource.data.userId == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly(['replies','status']));
+      allow delete: if false;
       allow list: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
     }
 
     // ─── API Keys ───
+    // Only a SHA-256 hash and the last 4 characters are ever stored. The raw key
+    // is shown to the user once at creation and never persisted, so a future leak
+    // of this collection discloses nothing usable.
     match /apiKeys/{keyId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.keys().hasOnly(
+             ['userId','email','name','keyHash','last4','createdAt','lastUsed','requestCount'])
+        && !('key' in request.resource.data);
+      allow update: if false;
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
@@ -137,14 +190,18 @@ service cloud.firestore {
     match /scans/{scanId} {
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
       allow create: if isAuthenticated() && isValidScan();
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid && isValidScan() && request.resource.data.userId == resource.data.userId;
+      // Scan history is append-only; nothing in the app edits a scan after the
+      // fact, and an immutable log is worth more than an editable one.
+      allow update: if false;
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     // ─── Webhooks / SIEM ───
     match /webhooks/{hookId} {
       allow read, delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      // Enterprise-only feature: enforce the entitlement here, not just in the UI.
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid
+        && (isAdmin() || tierIsEnterprise());
       allow update: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
       allow list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
     }
@@ -152,7 +209,9 @@ service cloud.firestore {
     // ─── Teams ───
     match /teams/{teamId} {
       allow read, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
-      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      // Enterprise-only feature: enforce the entitlement here, not just in the UI.
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid
+        && (isAdmin() || tierIsEnterprise());
       allow update, delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
     }
 
@@ -215,6 +274,25 @@ service cloud.firestore {
                 && request.resource.data.promoCode.size() <= 32));
 
       allow update, delete: if isAdmin();
+    }
+
+    // ─── Server-only collections ───
+    // Nothing in the browser may touch these. The Admin SDK bypasses rules, so a
+    // local script or a future backend can still use them.
+    match /mfaSecrets/{uid} {
+      allow read, write: if false;
+    }
+
+    match /aiUsage/{uid} {
+      allow read, write: if false;
+    }
+
+    match /pendingOrders/{orderId} {
+      allow read, write: if false;
+    }
+
+    match /rateLimits/{uid} {
+      allow read, write: if false;
     }
 
     // ─── Referral Claims ───

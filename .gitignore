@@ -8,3 +8,5 @@ coverage/
 !.env.example
 dist-worker/
 .wrangler/
+scripts/service-account.json
+*service-account*.json
