@@ -82,7 +82,7 @@ The test failure is pre-existing and out of scope.
    ```bash
    cd workers/ai-proxy
    npx wrangler secret put GROQ_API_KEY
-   npx wrangler secret put OPENROUTER_API_KEY
+   npx wrangler secret put OPENROUTER_API_KEY   # OPTIONAL — Groq now serves the chatbot too
    npx wrangler deploy
    ```
    Note the deployed worker URL (e.g. `https://joescan-ai-proxy.<subdomain>.workers.dev`).

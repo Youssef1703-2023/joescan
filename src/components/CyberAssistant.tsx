@@ -21,39 +21,48 @@ interface QuickAction {
 // ─── Constants ───
 const STORAGE_KEY = 'joescan_cyber_assistant_history';
 const MAX_HISTORY = 50;
+// Groq hosts the same gpt-oss-120b model and is already the provider used by the
+// analyzers, so the assistant uses it too — one key to manage instead of two.
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_MODEL = 'openai/gpt-oss-120b';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const AI_MODEL = 'openai/gpt-oss-120b:free';
+const OPENROUTER_MODEL = 'openai/gpt-oss-120b:free';
 
-// Custom user-supplied key from settings (D2)
-function getCustomApiKey(): string {
+// Custom user-supplied key from settings (D2). Groq is preferred; an OpenRouter
+// key is still honored for users who already configured one.
+function getCustomApiKey(): { key: string; provider: 'groq' | 'openrouter' } | null {
   try {
     const s = localStorage.getItem('joe_api_settings');
     if (s) {
       const parsed = JSON.parse(s);
-      if (parsed.openrouterKey) return parsed.openrouterKey;
+      if (parsed.groqKey) return { key: parsed.groqKey, provider: 'groq' };
+      if (parsed.openrouterKey) return { key: parsed.openrouterKey, provider: 'openrouter' };
     }
   } catch {}
-  return '';
+  return null;
 }
 
 // ─── AI Chat call via direct custom key or secure Cloudflare Worker proxy (C4) ───
 async function callAIChat(
   messages: { role: string; content: string }[],
 ): Promise<string> {
-  const customKey = getCustomApiKey();
+  const custom = getCustomApiKey();
 
-  // If user supplies their own custom OpenRouter key (D2)
-  if (customKey) {
-    const res = await fetch(OPENROUTER_API_URL, {
+  // If the user supplied their own key, call the provider directly with it (D2)
+  if (custom) {
+    const isGroq = custom.provider === 'groq';
+    const res = await fetch(isGroq ? GROQ_API_URL : OPENROUTER_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${customKey}`,
+        'Authorization': `Bearer ${custom.key}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': 'https://joescan.me',
-        'X-Title': 'JoeScan AI Cyber Assistant',
+        ...(isGroq ? {} : {
+          'HTTP-Referer': 'https://joescan.me',
+          'X-Title': 'JoeScan AI Cyber Assistant',
+        }),
       },
       body: JSON.stringify({
-        model: AI_MODEL,
+        model: isGroq ? GROQ_MODEL : OPENROUTER_MODEL,
         messages,
         max_tokens: 1024,
         temperature: 0.7,
@@ -72,7 +81,7 @@ async function callAIChat(
   // Otherwise, route to Cloudflare Worker AI proxy (C4)
   const proxyUrl = import.meta.env.VITE_AI_PROXY_URL;
   if (!proxyUrl) {
-    throw new Error("AI proxy service is not configured. Please check your environment settings or provide a personal OpenRouter API key in Settings.");
+    throw new Error("AI proxy service is not configured. Please check your environment settings or provide a personal Groq API key in Settings.");
   }
 
   const user = auth.currentUser;
@@ -89,9 +98,9 @@ async function callAIChat(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      provider: 'openrouter',
+      provider: 'groq',
       messages,
-      model: AI_MODEL,
+      model: GROQ_MODEL,
       max_tokens: 1024,
       temperature: 0.7,
     }),
