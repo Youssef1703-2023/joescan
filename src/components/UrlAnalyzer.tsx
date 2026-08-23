@@ -6,6 +6,7 @@ import { Link, Loader2, ShieldCheck, ShieldAlert, AlertTriangle, ArrowRight, Glo
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { generateReportPDF } from '../lib/generatePDF';
+import { fetchGeoIp } from '../lib/geoip';
 import MiniHistory from './MiniHistory';
 
 // ─── Types ───
@@ -383,12 +384,16 @@ export default function UrlAnalyzer() {
             if (aRecord) {
               dns.ip = aRecord.data;
               try {
-                const geoRes = await fetch(`http://ip-api.com/json/${dns.ip}?fields=status,country,city,isp,org,as`);
-                if (geoRes.ok) {
-                  const geo = await geoRes.json();
-                  if (geo.status === 'success') {
-                    dns = { ...dns, country: geo.country, city: geo.city, isp: geo.isp, org: geo.org, as: geo.as };
-                  }
+                const geo = await fetchGeoIp(dns.ip);
+                if (geo && !geo.isPrivate) {
+                  dns = {
+                    ...dns,
+                    country: geo.country,
+                    city: geo.city,
+                    isp: geo.isp,
+                    org: geo.org,
+                    as: geo.as
+                  };
                 }
               } catch {}
             }

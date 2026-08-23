@@ -7,7 +7,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUTPUT_PATH = path.join(__dirname, '..', 'src', 'data', 'dailyNews.json');
+const OUTPUT_PATH = path.join(__dirname, '..', 'public', 'data', 'dailyNews.json');
 
 const INITIAL_COUNT = 15;
 const DAILY_COUNT = 2;

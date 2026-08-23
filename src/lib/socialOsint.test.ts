@@ -1,76 +1,79 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-function jsonResponse(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
-}
+vi.mock('./gemini', () => ({
+  searchSocialProfiles: vi.fn(),
+  searchPhoneProfiles: vi.fn(),
+}));
 
 describe('socialOsint', () => {
   beforeEach(() => {
-    vi.resetModules();
-    vi.useFakeTimers();
+    vi.clearAllMocks();
   });
 
   afterEach(() => {
-    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
   it('returns categorized hit results from the API flow', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse({ platforms: [{ name: 'AcmeHub', category: 'Social Media' }] }))
-      .mockResolvedValueOnce(jsonResponse({ queryId: 'query-1', totalPlatforms: 2 }))
-      .mockResolvedValueOnce(jsonResponse({
-        status: 'completed',
-        results: [
-          { platform: 'AcmeHub', url: 'https://acme.example/john_doe', status: 'hit', responseTime: 123 },
-          { platform: 'GhostTown', url: 'https://ghost.example/john_doe', status: 'miss', responseTime: 100 },
-        ],
-      }));
-
-    vi.stubGlobal('fetch', fetchMock);
-
-    const { searchUsername } = await import('./socialOsint');
-    const promise = searchUsername('john_doe');
-
-    await vi.advanceTimersByTimeAsync(1000);
-    const result = await promise;
-
-    expect(fetchMock).toHaveBeenCalledTimes(3);
-    expect(result).toEqual({
-      username: 'john_doe',
-      totalPlatforms: 2,
-      status: 'completed',
-      hits: [
+    const { searchSocialProfiles } = await import('./gemini');
+    vi.mocked(searchSocialProfiles).mockResolvedValueOnce({
+      foundProfiles: [
         {
-          platform: 'AcmeHub',
-          url: 'https://acme.example/john_doe',
-          status: 'hit',
-          responseTime: 123,
-          category: 'social',
+          platform: 'Twitter/X',
+          url: 'https://x.com/john_doe',
+          bio: 'Developer',
+          followers: '1.2k',
+          verified: true,
+          accountType: 'Personal',
+        },
+        {
+          platform: 'GitHub',
+          url: 'https://github.com/john_doe',
         },
       ],
     });
+
+    const { searchUsername } = await import('./socialOsint');
+    const result = await searchUsername('john_doe');
+
+    expect(searchSocialProfiles).toHaveBeenCalledWith('john_doe', expect.any(String));
+    expect(result.username).toBe('john_doe');
+    expect(result.status).toBe('completed');
+    expect(result.hits).toEqual([
+      {
+        platform: 'Twitter/X',
+        url: 'https://x.com/john_doe',
+        status: 'hit',
+        category: 'social',
+        bio: 'Developer',
+        followers: '1.2k',
+        verified: true,
+        accountType: 'Personal',
+      },
+      {
+        platform: 'GitHub',
+        url: 'https://github.com/john_doe',
+        status: 'hit',
+        category: 'professional',
+        bio: undefined,
+        followers: undefined,
+        verified: false,
+        accountType: undefined,
+      },
+    ]);
   });
 
   it('rejects invalid usernames before calling the network', async () => {
-    const fetchMock = vi.fn();
-    vi.stubGlobal('fetch', fetchMock);
-
+    const { searchSocialProfiles } = await import('./gemini');
     const { searchUsername } = await import('./socialOsint');
 
-    await expect(searchUsername('bad user name')).rejects.toThrow('INVALID_USERNAME');
-    expect(fetchMock).not.toHaveBeenCalled();
+    await expect(searchUsername('   ')).rejects.toThrow('INVALID_USERNAME');
+    expect(searchSocialProfiles).not.toHaveBeenCalled();
   });
 
   it('surfaces rate-limit failures from the provider', async () => {
-    const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse({ platforms: [] }))
-      .mockResolvedValueOnce(jsonResponse({ error: 'slow down' }, 429));
-
-    vi.stubGlobal('fetch', fetchMock);
+    const { searchSocialProfiles } = await import('./gemini');
+    vi.mocked(searchSocialProfiles).mockRejectedValueOnce(new Error('429 Quota exceeded'));
 
     const { searchUsername } = await import('./socialOsint');
 

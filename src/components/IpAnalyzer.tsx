@@ -6,6 +6,7 @@ import { Wifi, Loader2, ShieldCheck, AlertTriangle, ArrowRight, ShieldAlert, Cpu
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { generateReportPDF } from '../lib/generatePDF';
+import { fetchGeoIp } from '../lib/geoip';
 import MiniHistory from './MiniHistory';
 
 interface ScanResult {
@@ -76,26 +77,22 @@ export default function IpAnalyzer() {
         }
       } catch (e) { console.warn('[IP] ipapi.co failed, trying fallback...'); }
 
-      // API 2: ipwho.is (10000/month free, HTTPS)
+      // API 2: ipwho.is (10000/month free, HTTPS via shared helper)
       if (!geoData) {
         try {
-          const res = await fetch(`https://ipwho.is/${ipToScan.trim()}`);
-          if (res.ok) {
-            const d = await res.json();
-            if (d.success) {
-              geoData = {
-                ip: d.ip || ipToScan,
-                isp: d.connection?.isp || d.connection?.org || 'Unknown ISP',
-                asn: d.connection?.asn ? `AS${d.connection.asn}` : '',
-                country: d.country || '',
-                city: d.city || '',
-                region: d.region || '',
-                lat: d.latitude,
-                lon: d.longitude
-              };
-            } else if (d.message?.toLowerCase().includes('private') || d.message?.toLowerCase().includes('reserved')) {
-              geoData = { ip: ipToScan, isp: '', asn: '', country: '', city: '', region: '', lat: 0, lon: 0, isPrivate: true };
-            }
+          const res = await fetchGeoIp(ipToScan);
+          if (res) {
+            geoData = {
+              ip: res.ip || ipToScan,
+              isp: res.isp,
+              asn: res.as,
+              country: res.country,
+              city: res.city,
+              region: res.region,
+              lat: res.lat,
+              lon: res.lon,
+              isPrivate: res.isPrivate || false,
+            };
           }
         } catch (e) { console.warn('[IP] ipwho.is failed, trying fallback...'); }
       }

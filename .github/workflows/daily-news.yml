@@ -35,14 +35,14 @@ jobs:
       - name: Check for changes
         id: changes
         run: |
-          git diff --quiet src/data/dailyNews.json || echo "changed=true" >> $GITHUB_OUTPUT
+          git diff --quiet public/data/dailyNews.json || echo "changed=true" >> $GITHUB_OUTPUT
 
       - name: Commit new articles
         if: steps.changes.outputs.changed == 'true'
         run: |
           git config user.name "JoeScan Bot"
           git config user.email "bot@joescan.me"
-          git add src/data/dailyNews.json
+          git add public/data/dailyNews.json
           git commit -m "🤖 auto: daily cybersecurity news + 6-lang translation"
           git push
 

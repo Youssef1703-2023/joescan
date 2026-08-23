@@ -6,6 +6,7 @@ import { Fingerprint, Loader2, ShieldCheck, AlertTriangle, ArrowRight, ShieldAle
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { generateReportPDF } from '../lib/generatePDF';
+import { fetchGeoIp } from '../lib/geoip';
 import MiniHistory from './MiniHistory';
 
 interface FingerprintResult {
@@ -125,7 +126,7 @@ export default function BrowserFingerprint() {
       const canvasFp = getCanvasFingerprint();
       const webglFp = getWebGLFingerprint();
 
-      // 2. Fetch Network Data (IP & Geo) using free API
+      // 2. Fetch Network Data (IP & Geo) using HTTPS free API helper
       let networkData = {
         ip: 'Unknown',
         city: 'Unknown',
@@ -135,15 +136,14 @@ export default function BrowserFingerprint() {
       };
 
       try {
-        const res = await fetch('http://ip-api.com/json/');
-        if (res.ok) {
-          const data = await res.json();
+        const geo = await fetchGeoIp();
+        if (geo) {
           networkData = {
-            ip: data.query,
-            city: data.city,
-            country: data.country,
-            isp: data.isp,
-            org: data.org
+            ip: geo.ip || 'Unknown',
+            city: geo.city || 'Unknown',
+            country: geo.country || 'Unknown',
+            isp: geo.isp || 'Unknown',
+            org: geo.org || 'Unknown'
           };
         }
       } catch (err) {

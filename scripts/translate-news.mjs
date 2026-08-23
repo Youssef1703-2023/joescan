@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const NEWS_PATH = path.join(__dirname, '..', 'src', 'data', 'dailyNews.json');
+const NEWS_PATH = path.join(__dirname, '..', 'public', 'data', 'dailyNews.json');
 
 // All target languages (skip 'en' as it's the source)
 const LANGS = ['ar', 'fr', 'de', 'es', 'tr', 'ru'];

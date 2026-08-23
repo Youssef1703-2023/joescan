@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Calendar, Clock, ChevronRight, ArrowRight, Tag, TrendingUp, Shield, AlertTriangle, Eye, Lock, Wifi, X, Zap, Newspaper, Filter, Search, Smartphone, Brain, Baby, Bitcoin, CreditCard, Globe, ExternalLink, Radio, RefreshCw, Link2 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { ARTICLES, CATEGORIES, CATEGORIES_AR, type Article } from '../data/blogArticles';
-import dailyNewsData from '../data/dailyNews.json';
 
 interface DailyNewsTranslation {
   title: string;
@@ -56,6 +55,8 @@ const blogT: Record<string, Record<string, string>> = {
   published: { en: 'Published', ar: 'منشور', fr: 'Publié', de: 'Veröffentlicht', es: 'Publicado', tr: 'Yayınlandı', ru: 'Опубликовано' },
   categories: { en: 'Categories', ar: 'تصنيفات', fr: 'Catégories', de: 'Kategorien', es: 'Categorías', tr: 'Kategoriler', ru: 'Категории' },
   cybersecurity: { en: 'Cybersecurity', ar: 'أمن سيبراني', fr: 'Cybersécurité', de: 'Cybersicherheit', es: 'Ciberseguridad', tr: 'Siber güvenlik', ru: 'Кибербезопасность' },
+  loadingNews: { en: 'Loading latest news...', ar: 'جاري تحميل آخر الأخبار...', fr: 'Chargement des dernières actualités...', de: 'Lade aktuelle Nachrichten...', es: 'Cargando últimas noticias...', tr: 'Son haberler yükleniyor...', ru: 'Загрузка свежих новостей...' },
+  newsLoadError: { en: 'Daily news could not be loaded at this time.', ar: 'تعذر تحميل الأخبار اليومية في الوقت الحالي.', fr: 'Les actualités quotidiennes n\'ont pas pu être chargées pour le moment.', de: 'Tägliche Nachrichten konnten derzeit nicht geladen werden.', es: 'No se pudieron cargar las noticias diarias en este momento.', tr: 'Günlük haberler şu anda yüklenemedi.', ru: 'Не удалось загрузить ежедневные новости.' },
 };
 
 const t = (key: string, lang: string) => blogT[key]?.[lang] || blogT[key]?.en || key;
@@ -92,6 +93,35 @@ export default function Blog() {
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [selectedNews, setSelectedNews] = useState<DailyNewsItem | null>(null);
   const [activeCategory, setActiveCategory] = useState('All');
+  const [dailyNewsPayload, setDailyNewsPayload] = useState<{ lastUpdated?: string; articles?: DailyNewsItem[] } | null>(null);
+  const [isLoadingNews, setIsLoadingNews] = useState(true);
+  const [newsLoadError, setNewsLoadError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/data/dailyNews.json')
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        if (active) {
+          setDailyNewsPayload(data);
+          setIsLoadingNews(false);
+        }
+      })
+      .catch(err => {
+        console.warn('Failed to load daily news:', err);
+        if (active) {
+          setNewsLoadError(true);
+          setIsLoadingNews(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const scrollToTop = () => {
     const main = document.querySelector('main');
@@ -144,13 +174,13 @@ export default function Blog() {
 
   // Sort daily news by date descending (newest first) and only keep last 14 days
   const sortedDailyNews = useMemo(() => {
-    if (!dailyNewsData.articles || !dailyNewsData.articles.length) return [];
+    if (!dailyNewsPayload?.articles || !dailyNewsPayload.articles.length) return [];
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - 14);
-    return [...dailyNewsData.articles]
+    return [...dailyNewsPayload.articles]
       .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .filter((a: any) => new Date(a.date) >= cutoff);
-  }, []);
+  }, [dailyNewsPayload]);
 
   const totalArticleCount = ARTICLES.length + sortedDailyNews.length;
 
@@ -190,7 +220,7 @@ export default function Blog() {
         </div>
         <div className={`text-${isAr ? 'left' : 'right'} shrink-0`}>
           <div className="text-[10px] text-text-dim font-mono">{t('lastUpdated', lang)}</div>
-          <div className="text-xs font-bold text-emerald-400">{dailyNewsData.lastUpdated ? new Date(dailyNewsData.lastUpdated).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}</div>
+          <div className="text-xs font-bold text-emerald-400">{dailyNewsPayload?.lastUpdated ? new Date(dailyNewsPayload.lastUpdated).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : (isLoadingNews ? '...' : '—')}</div>
         </div>
       </div>
 
@@ -344,7 +374,26 @@ export default function Blog() {
             className="space-y-6"
           >
             {/* Daily Auto-Fetched News */}
-            {sortedDailyNews.length > 0 && (
+            {isLoadingNews ? (
+              <div className="bg-gradient-to-br from-cyan-500/5 via-bg-surface to-emerald-500/5 border border-cyan-500/20 rounded-2xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="px-2.5 py-1.5 bg-cyan-500/20 rounded-lg flex items-center gap-1.5">
+                    <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
+                    <span className="text-[10px] sm:text-[11px] font-bold text-cyan-400 uppercase tracking-wider leading-tight">{t('loadingNews', lang)}</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-16 bg-bg-surface/50 border border-border-subtle rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              </div>
+            ) : newsLoadError ? (
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-3 px-4 flex items-center gap-3 text-xs text-text-dim">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>{t('newsLoadError', lang)}</span>
+              </div>
+            ) : sortedDailyNews.length > 0 ? (
               <div className="bg-gradient-to-br from-cyan-500/5 via-bg-surface to-emerald-500/5 border border-cyan-500/20 rounded-2xl p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                   <div className="flex items-center gap-2 max-w-full">
@@ -381,7 +430,7 @@ export default function Blog() {
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
 
             {/* Breaking News Ticker */}
             {newsArticles.length > 0 && (

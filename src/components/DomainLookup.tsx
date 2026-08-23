@@ -6,6 +6,7 @@ import { Globe, Loader2, Search, ShieldCheck, ShieldAlert, AlertTriangle, Downlo
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { generateReportPDF } from '../lib/generatePDF';
+import { fetchGeoIp } from '../lib/geoip';
 import MiniHistory from './MiniHistory';
 
 interface WhoisData {
@@ -194,20 +195,17 @@ export default function DomainLookup() {
       if (aRecord) {
         ip = aRecord.value;
         try {
-          const geoRes = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,city,isp,org,as,lat,lon`);
-          if (geoRes.ok) {
-            const geo = await geoRes.json();
-            if (geo.status === 'success') {
-              ipGeo = {
-                country: geo.country,
-                city: geo.city,
-                isp: geo.isp,
-                org: geo.org,
-                as: geo.as,
-                lat: geo.lat,
-                lon: geo.lon,
-              };
-            }
+          const geo = await fetchGeoIp(ip);
+          if (geo && !geo.isPrivate) {
+            ipGeo = {
+              country: geo.country,
+              city: geo.city,
+              isp: geo.isp,
+              org: geo.org,
+              as: geo.as,
+              lat: geo.lat,
+              lon: geo.lon,
+            };
           }
         } catch (e) { /* skip */ }
       }
