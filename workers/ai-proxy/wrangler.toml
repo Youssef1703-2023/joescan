@@ -10,10 +10,15 @@ FIRESTORE_DATABASE_ID = "ai-studio-13222500-ae8c-4550-8b61-6f7dce0d48f6"
 
 [durable_objects]
 bindings = [
-  { name = "QUOTA_COUNTER", class_name = "QuotaCounter" }
+  { name = "QUOTA_COUNTER", class_name = "QuotaCounter" },
+  { name = "WATCHLIST_MONITOR", class_name = "WatchlistMonitor" }
 ]
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["QuotaCounter"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["WatchlistMonitor"]
 

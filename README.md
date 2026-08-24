@@ -112,7 +112,7 @@ The **History** panel provides a centralized, searchable log of every security s
 
 ## 🎯 Live Threat Watchlist
 
-The **Live Threat Watchlist** is JoeScan's early-warning detection system for continuous infrastructure monitoring.
+The **Live Threat Watchlist** is JoeScan's early-warning detection system for automated infrastructure monitoring.
 
 <div align="center">
   <img src="docs/assets/watchlist.png" alt="Live Threat Watchlist" width="900">
@@ -122,11 +122,12 @@ The **Live Threat Watchlist** is JoeScan's early-warning detection system for co
 
 **What this tool does:**
 
-- **Asset Monitoring:** Map critical assets (IPv4 addresses, domains, email addresses) as persistent targets. Each sweep checks for newly exposed ports, unexpected DNS changes, certificate expirations, and breach appearances.
-- **Sweeps are on-demand, not yet continuous:** Today a sweep runs when you open the Watchlist or press "Sweep All" — nothing is scanned while the tab is closed. Scheduled background sweeps are planned, not shipped. This is stated plainly rather than advertised as 24/7 surveillance.
-- **Asset Types Supported:** IPv4 Addresses, IPv6 Addresses, Domain Names, Email Addresses, and URL endpoints.
-- **Sensor Array:** Each deployed target becomes an active sensor in the array. The "Sweep All" command triggers a simultaneous re-scan of every active sensor, giving you an instant snapshot of your infrastructure's health.
-- **Automated Alerting:** When a watchlisted asset is detected in a new breach database or shows anomalous port activity, the system flags it on the Command Center dashboard.
+- **Scheduled Daily Sweeps:** IP and domain targets are scheduled for automated daily background sweeps powered by Cloudflare Durable Objects, even when the browser tab is closed.
+- **IP Target Sweeps:** Cross-references Shodan InternetDB daily to detect newly opened ports, closed ports, hostname associations, and CVE vulnerability disclosures.
+- **Domain Target Sweeps:** Queries `dns.google` to monitor A, MX, and NS record changes, detects confirmed DNS resolution loss, and checks RDAP registry expiration (alerting within 30 days of expiry).
+- **Email Breach Sweeps:** Run on-demand from the client browser to preserve free-tier rate limits (25/hr, 100/day per IP).
+- **Phone Numbers:** Automated background monitoring is unsupported on the free tier.
+- **Automated In-App Alerts:** When a target exhibits an infrastructure change or newly detected vulnerability, deterministic findings are generated and displayed on the Command Center.
 
 ---
 
@@ -397,8 +398,8 @@ JoeScan offers a three-tier pricing model designed to scale from individual rese
 | Feature | Stealth (Free) | Pro Analyst (50% OFF) | SOC Enterprise (50% OFF) |
 |:--------|:---------------|:----------------------|:-------------------------|
 | **Daily AI Scans** | 10 / Day | 150 / Day | 2,000 / Day |
-| **Watchlist Targets** | 1 Target | 50 Targets | Unlimited Targets |
-| **Watchlist Frequency** | On-Demand | On-Demand | On-Demand |
+| **Watchlist Targets** | 1 Target | 50 Targets | 200 Targets |
+| **Watchlist Frequency** | Daily Scheduled (IP & Domain) | Daily Scheduled (IP & Domain) | Daily Scheduled (IP & Domain) |
 | **PDF Reports** | Standard (Watermarked) | Unbranded White-label | Unbranded White-label |
 | **Device Security** | Unlimited | Unlimited | Unlimited |
 | **Cyber Academy** | ✅ (All Lessons) | ✅ (All Lessons) | ✅ (All Lessons) |

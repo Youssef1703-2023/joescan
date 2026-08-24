@@ -200,9 +200,7 @@ export async function analyzePhoneExposure(
   exactCountry: string = ''
 ) {
   const isArabic = language === 'ar';
-  
-  await new Promise(r => setTimeout(r, 1500));
-  
+
   // Clean phone number
   const cleanNum = phone.replace(/\D/g, '');
   

@@ -1,5 +1,6 @@
 import * as jose from 'jose';
 export { QuotaCounter } from './quota';
+export { WatchlistMonitor } from './watchlist';
 
 export interface Env {
   ENVIRONMENT?: string;
@@ -8,6 +9,7 @@ export interface Env {
   GROQ_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
   QUOTA_COUNTER?: DurableObjectNamespace;
+  WATCHLIST_MONITOR?: DurableObjectNamespace;
 }
 
 const FIREBASE_PROJECT_ID = 'gen-lang-client-0439091084';
@@ -543,6 +545,61 @@ async function peekQuotaUnits(stub: any, day: string): Promise<{ used: number; d
   }
 }
 
+function getWatchlistStub(env: Env, uid: string) {
+  if (!env.WATCHLIST_MONITOR) {
+    throw new Error('WATCHLIST_STORE_UNAVAILABLE');
+  }
+  const id = env.WATCHLIST_MONITOR.idFromName(uid);
+  return env.WATCHLIST_MONITOR.get(id);
+}
+
+async function syncWatchlistDO(stub: any, targets: any[], revision: number, tier: string): Promise<any> {
+  try {
+    if (typeof stub.sync === 'function') {
+      return await stub.sync(targets, revision, tier);
+    }
+    const res = await stub.fetch('https://watchlist/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targets, revision, tier }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('DO sync error:', err);
+    throw new Error('WATCHLIST_STORE_UNAVAILABLE');
+  }
+}
+
+async function getWatchlistStateDO(stub: any): Promise<any> {
+  try {
+    if (typeof stub.getState === 'function') {
+      return await stub.getState();
+    }
+    const res = await stub.fetch('https://watchlist/state');
+    if (!res.ok) throw new Error('WATCHLIST_STORE_UNAVAILABLE');
+    return await res.json();
+  } catch (err) {
+    console.error('DO getState error:', err);
+    throw new Error('WATCHLIST_STORE_UNAVAILABLE');
+  }
+}
+
+async function sweepWatchlistNowDO(stub: any): Promise<any> {
+  try {
+    if (typeof stub.sweepNow === 'function') {
+      return await stub.sweepNow();
+    }
+    const res = await stub.fetch('https://watchlist/sweep-now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('DO sweepNow error:', err);
+    throw new Error('WATCHLIST_STORE_UNAVAILABLE');
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env, ctx?: any): Promise<Response> {
     const corsHeaders = getCorsHeaders(request);
@@ -793,6 +850,151 @@ export default {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
+    }
+
+    // ─── GET /watchlist/state: Get current watchlist runtime state & findings ───
+    if (request.method === 'GET' && (pathname === '/watchlist/state' || pathname === '/api/watchlist/state')) {
+      let stub: any;
+      try {
+        stub = getWatchlistStub(env, uid);
+      } catch {
+        return new Response(
+          JSON.stringify({ code: 'WATCHLIST_STORE_UNAVAILABLE', error: 'Watchlist service unavailable.' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        const state = await getWatchlistStateDO(stub);
+        return new Response(JSON.stringify(state), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ code: 'WATCHLIST_STORE_UNAVAILABLE', error: err?.message || 'Failed to retrieve watchlist state' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // ─── POST /watchlist/sync: Sync watchlist targets with monotonic revision ───
+    if (request.method === 'POST' && (pathname === '/watchlist/sync' || pathname === '/api/watchlist/sync')) {
+      let quotaStub: any;
+      try {
+        quotaStub = getQuotaStub(env, uid);
+        const burstCheck = await checkBurstGuard(quotaStub);
+        if (!burstCheck.ok) {
+          const retryAfter = burstCheck.retryAfter || 60;
+          return new Response(
+            JSON.stringify({ code: 'RATE_LIMIT_EXCEEDED', error: 'Burst rate limit exceeded.', retryAfter }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) } }
+          );
+        }
+      } catch {
+        // Quota counter unavailable, proceed with sync
+      }
+
+      let tierInfo: TierResolution;
+      try {
+        tierInfo = await resolveUserTier(idToken, userPayload, projectId, databaseId);
+      } catch {
+        tierInfo = { tier: 'free', limit: TIER_LIMITS.free };
+      }
+
+      let bodyText = '';
+      try {
+        bodyText = await request.text();
+      } catch {
+        return new Response(JSON.stringify({ error: 'Failed to read request body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (bodyText.length > MAX_BODY_BYTES) {
+        return new Response(JSON.stringify({ error: 'Payload too large (exceeds 32 KB cap)' }), {
+          status: 413,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      let body: any;
+      try {
+        body = JSON.parse(bodyText);
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { targets, revision } = body || {};
+      let stub: any;
+      try {
+        stub = getWatchlistStub(env, uid);
+      } catch {
+        return new Response(
+          JSON.stringify({ code: 'WATCHLIST_STORE_UNAVAILABLE', error: 'Watchlist service unavailable.' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        const syncResult = await syncWatchlistDO(stub, targets, revision, tierInfo.tier);
+        const status = syncResult.ok ? 200 : syncResult.error === 'STALE_REVISION' ? 409 : syncResult.error === 'TARGET_LIMIT_EXCEEDED' ? 403 : 400;
+        return new Response(JSON.stringify(syncResult), {
+          status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ code: 'WATCHLIST_STORE_UNAVAILABLE', error: err?.message || 'Sync failed' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // ─── POST /watchlist/sweep-now: Trigger immediate caller sweep ───
+    if (request.method === 'POST' && (pathname === '/watchlist/sweep-now' || pathname === '/api/watchlist/sweep-now')) {
+      let quotaStub: any;
+      try {
+        quotaStub = getQuotaStub(env, uid);
+        const burstCheck = await checkBurstGuard(quotaStub);
+        if (!burstCheck.ok) {
+          const retryAfter = burstCheck.retryAfter || 60;
+          return new Response(
+            JSON.stringify({ code: 'RATE_LIMIT_EXCEEDED', error: 'Burst rate limit exceeded.', retryAfter }),
+            { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) } }
+          );
+        }
+      } catch {
+        // Quota counter unavailable, proceed with sweep
+      }
+
+      let stub: any;
+      try {
+        stub = getWatchlistStub(env, uid);
+      } catch {
+        return new Response(
+          JSON.stringify({ code: 'WATCHLIST_STORE_UNAVAILABLE', error: 'Watchlist service unavailable.' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      try {
+        const sweepResult = await sweepWatchlistNowDO(stub);
+        const status = sweepResult.ok ? 200 : sweepResult.error === 'SWEEP_IN_PROGRESS' ? 409 : 500;
+        return new Response(JSON.stringify(sweepResult), {
+          status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (err: any) {
+        return new Response(
+          JSON.stringify({ code: 'WATCHLIST_STORE_UNAVAILABLE', error: err?.message || 'Sweep execution failed' }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     if (request.method !== 'POST') {
