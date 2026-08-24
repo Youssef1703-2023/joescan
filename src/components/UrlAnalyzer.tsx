@@ -102,6 +102,7 @@ export default function UrlAnalyzer() {
   const [error, setError] = useState<string | null>(null);
   const [historyKey, setHistoryKey] = useState(0);
   const [scanStage, setScanStage] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   // ━━━ Heuristic checks ━━━
   function checkProtocol(urlObj: URL): CheckResult {
@@ -644,23 +645,30 @@ export default function UrlAnalyzer() {
                         {lang === 'ar' ? `الفحص استغرق ${(result.scanDuration / 1000).toFixed(1)} ثانية` : `Scanned in ${(result.scanDuration / 1000).toFixed(1)}s`}
                       </span>
                       <button
-                        onClick={() => {
-                          const reportLines = result.checks.map(c =>
-                            `[${c.status.toUpperCase()}] ${c.name}: ${lang === 'ar' ? c.detailAr : c.detail}`
-                          ).join('\n');
-                          generateReportPDF({
-                            type: 'url',
-                            target: result.url,
-                            riskLevel: result.verdict === 'dangerous' ? 'High' : result.verdict === 'suspicious' ? 'Medium' : 'Low',
-                            securityScore: 100 - result.riskScore,
-                            reportText: reportLines,
-                            actionPlan: result.checks.filter(c => c.status === 'fail' || c.status === 'warn').map(c => lang === 'ar' ? c.detailAr : c.detail),
-                          }, 'url', lang as 'en' | 'ar');
+                        onClick={async () => {
+                          if (isExporting) return;
+                          setIsExporting(true);
+                          try {
+                            const reportLines = result.checks.map(c =>
+                              `[${c.status.toUpperCase()}] ${c.name}: ${lang === 'ar' ? c.detailAr : c.detail}`
+                            ).join('\n');
+                            await generateReportPDF({
+                              type: 'url',
+                              target: result.url,
+                              riskLevel: result.verdict === 'dangerous' ? 'High' : result.verdict === 'suspicious' ? 'Medium' : 'Low',
+                              securityScore: 100 - result.riskScore,
+                              reportText: reportLines,
+                              actionPlan: result.checks.filter(c => c.status === 'fail' || c.status === 'warn').map(c => lang === 'ar' ? c.detailAr : c.detail),
+                            }, 'url', lang as 'en' | 'ar');
+                          } finally {
+                            setIsExporting(false);
+                          }
                         }}
-                        className="flex items-center gap-2 px-4 py-2 bg-bg-surface/50 border border-border-subtle rounded-lg text-xs font-mono text-text-dim hover:text-accent hover:border-accent/30 transition-colors"
+                        disabled={isExporting}
+                        className="flex items-center gap-2 px-4 py-2 bg-bg-surface/50 border border-border-subtle rounded-lg text-xs font-mono text-text-dim hover:text-accent hover:border-accent/30 transition-colors disabled:opacity-50"
                       >
-                        <Download className="w-3.5 h-3.5" />
-                        PDF
+                        {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" /> : <Download className="w-3.5 h-3.5" />}
+                        {isExporting ? (lang === 'ar' ? 'جاري التصدير...' : 'Exporting...') : 'PDF'}
                       </button>
                     </div>
                   </div>

@@ -640,6 +640,10 @@ export default function AdminDashboard() {
     promo_delete: 'text-orange-400', ticket_create: 'text-cyan-400',
     ticket_reply: 'text-emerald-400', apikey_create: 'text-indigo-400',
     apikey_delete: 'text-rose-400', profile_update: 'text-text-dim',
+    config_update: 'text-amber-400', flag_update: 'text-teal-400',
+    broadcast: 'text-pink-400', user_deleted: 'text-red-500',
+    webhook_create: 'text-teal-400', webhook_delete: 'text-red-400',
+    team_invite: 'text-sky-400', team_remove: 'text-amber-500',
   };
 
   return (

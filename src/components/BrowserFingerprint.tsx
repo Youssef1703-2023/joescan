@@ -191,15 +191,22 @@ export default function BrowserFingerprint() {
     }
   };
 
-  const handleExportPDF = () => {
-    if (!result) return;
-    const scanData = {
-      target: result.hash,
-      type: 'browser_fingerprint',
-      riskLevel: 'Medium' as 'Medium',
-      reportText: `Device Fingerprint Analysis:\n\nOS: ${result.software.os}\nScreen: ${result.hardware.screen}\nTimezone: ${result.software.timezone}\nIP: ${result.network.ip}\nLocation: ${result.network.city}, ${result.network.country}\nISP: ${result.network.isp}\nWebGL: ${result.webgl}`,
-    };
-    generateReportPDF(scanData, 'browser_fingerprint', lang);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportPDF = async () => {
+    if (!result || isExporting) return;
+    setIsExporting(true);
+    try {
+      const scanData = {
+        target: result.hash,
+        type: 'browser_fingerprint',
+        riskLevel: 'Medium' as 'Medium',
+        reportText: `Device Fingerprint Analysis:\n\nOS: ${result.software.os}\nScreen: ${result.hardware.screen}\nTimezone: ${result.software.timezone}\nIP: ${result.network.ip}\nLocation: ${result.network.city}, ${result.network.country}\nISP: ${result.network.isp}\nWebGL: ${result.webgl}`,
+      };
+      await generateReportPDF(scanData, 'browser_fingerprint', lang);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -275,10 +282,11 @@ export default function BrowserFingerprint() {
               </div>
               <button
                 onClick={handleExportPDF}
-                className="px-4 py-2 bg-bg-surface hover:bg-bg-elevated border border-border-subtle hover:border-accent/50 rounded-lg flex items-center gap-2 transition-all font-mono text-sm"
+                disabled={isExporting}
+                className="px-4 py-2 bg-bg-surface hover:bg-bg-elevated border border-border-subtle hover:border-accent/50 rounded-lg flex items-center gap-2 transition-all font-mono text-sm disabled:opacity-50"
               >
-                <Download className="w-4 h-4" />
-                {lang === 'ar' ? 'تصدير PDF' : 'Export PDF'}
+                {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-accent" /> : <Download className="w-4 h-4" />}
+                {lang === 'ar' ? (isExporting ? 'جاري التصدير...' : 'تصدير PDF') : (isExporting ? 'Exporting...' : 'Export PDF')}
               </button>
             </div>
 

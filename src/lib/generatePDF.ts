@@ -1,5 +1,4 @@
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import type { jsPDF } from 'jspdf';
 import type { PlatformHit } from './socialOsint';
 
 interface JsPdfWithAutoTable extends jsPDF {
@@ -20,7 +19,7 @@ function splitList(value: unknown) {
   return [];
 }
 
-function manualDownload(doc: jsPDF, filename: string) {
+function manualDownload(doc: any, filename: string) {
   // Get PDF as base64 data URI string
   const pdfDataUri = doc.output('datauristring', { filename });
   
@@ -38,7 +37,7 @@ function manualDownload(doc: jsPDF, filename: string) {
   });
 }
 
-function safeAutoTable(doc: jsPDF, options: any) {
+function safeAutoTable(doc: any, autoTable: any, options: any) {
   try {
     if (typeof autoTable === 'function') {
       autoTable(doc, options);
@@ -205,8 +204,16 @@ function addFooters(doc: jsPDF) {
   }
 }
 
-export const generateReportPDF = (scanData: any, scanType: string, lang: 'en' | 'ar') => {
+export const generateReportPDF = async (scanData: any, scanType: string, lang: 'en' | 'ar'): Promise<void> => {
+  let jsPDFClass: any;
   try {
+    const [{ default: jsPDF }, autoTableModule] = await Promise.all([
+      import('jspdf'),
+      import('jspdf-autotable'),
+    ]);
+    jsPDFClass = jsPDF;
+    const autoTable = (autoTableModule as any).default || autoTableModule;
+
     const doc = new jsPDF() as JsPdfWithAutoTable;
 
     doc.setProperties({
@@ -234,7 +241,7 @@ export const generateReportPDF = (scanData: any, scanType: string, lang: 'en' | 
     const targetLabel = scanData.target || scanData.emailScanned || 'Unknown';
     const riskColor = getRiskColor(scanData.riskLevel);
 
-    safeAutoTable(doc, {
+    safeAutoTable(doc, autoTable, {
       startY: cursorY,
       theme: 'plain',
       head: [],
@@ -300,7 +307,7 @@ export const generateReportPDF = (scanData: any, scanType: string, lang: 'en' | 
       }
       cursorY = addSectionTitle(doc, 'C. Action Plan', cursorY);
 
-      safeAutoTable(doc, {
+      safeAutoTable(doc, autoTable, {
         startY: cursorY,
         theme: 'plain',
         head: [['#', 'RECOMMENDED ACTION']],
@@ -340,7 +347,7 @@ export const generateReportPDF = (scanData: any, scanType: string, lang: 'en' | 
       }
       cursorY = addSectionTitle(doc, 'D. Score Factors', cursorY);
 
-      safeAutoTable(doc, {
+      safeAutoTable(doc, autoTable, {
         startY: cursorY,
         theme: 'plain',
         head: [['FACTOR']],
@@ -372,7 +379,7 @@ export const generateReportPDF = (scanData: any, scanType: string, lang: 'en' | 
       }
       cursorY = addSectionTitle(doc, 'E. Breach Details', cursorY);
 
-      safeAutoTable(doc, {
+      safeAutoTable(doc, autoTable, {
         startY: cursorY,
         theme: 'plain',
         head: [['BREACH NAME', 'DATE', 'DATA EXPOSED', 'RECORDS']],
@@ -433,7 +440,7 @@ export const generateReportPDF = (scanData: any, scanType: string, lang: 'en' | 
         }
         cursorY = addSectionTitle(doc, 'E. Social Footprint Summary', cursorY);
 
-        safeAutoTable(doc, {
+        safeAutoTable(doc, autoTable, {
           startY: cursorY,
           theme: 'plain',
           head: [['CATEGORY', 'ACCOUNTS FOUND']],
@@ -471,7 +478,7 @@ export const generateReportPDF = (scanData: any, scanType: string, lang: 'en' | 
         }
         cursorY = addSectionTitle(doc, 'F. Platforms Found', cursorY);
 
-        safeAutoTable(doc, {
+        safeAutoTable(doc, autoTable, {
           startY: cursorY,
           theme: 'plain',
           head: [['PLATFORM', 'CATEGORY', 'PROFILE URL']],
@@ -504,7 +511,11 @@ export const generateReportPDF = (scanData: any, scanType: string, lang: 'en' | 
   } catch (err) {
     console.error('PDF generation error:', err);
     try {
-      const fallbackDoc = new jsPDF();
+      if (!jsPDFClass) {
+        const { default: jsPDF } = await import('jspdf');
+        jsPDFClass = jsPDF;
+      }
+      const fallbackDoc = new jsPDFClass();
       fallbackDoc.setFontSize(18);
       fallbackDoc.text('JoeScan Report', 14, 20);
       fallbackDoc.setFontSize(12);

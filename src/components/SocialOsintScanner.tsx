@@ -53,6 +53,7 @@ export default function SocialOsintScanner() {
   const [result, setResult] = useState<SocialOsintResult | null>(null);
   const [aiResult, setAiResult] = useState<AIResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
@@ -657,16 +658,26 @@ export default function SocialOsintScanner() {
                         <div className="text-2xl font-black uppercase tracking-tight">{aiResult.riskLevel} {t('exposure').toUpperCase()}</div>
                       </div>
                       <button
-                        onClick={() => generateReportPDF({
-                          ...aiResult,
-                          target: result.username,
-                          hits: result.hits,
-                          platformExposure: result.hits.map((hit) => hit.platform),
-                          totalPlatformsChecked: result.totalPlatforms,
-                        }, 'social', lang)}
-                        className="flex items-center gap-2 bg-text-main text-bg-base hover:bg-opacity-90 px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-bold transition-all"
+                        onClick={async () => {
+                          if (isExporting) return;
+                          setIsExporting(true);
+                          try {
+                            await generateReportPDF({
+                              ...aiResult,
+                              target: result.username,
+                              hits: result.hits,
+                              platformExposure: result.hits.map((hit) => hit.platform),
+                              totalPlatformsChecked: result.totalPlatforms,
+                            }, 'social', lang);
+                          } finally {
+                            setIsExporting(false);
+                          }
+                        }}
+                        disabled={isExporting}
+                        className="flex items-center gap-2 bg-text-main text-bg-base hover:bg-opacity-90 px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-bold transition-all disabled:opacity-50"
                       >
-                        <Download className="w-4 h-4" /> {t('download_report')}
+                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-accent" /> : <Download className="w-4 h-4" />}
+                        {lang === 'ar' ? (isExporting ? 'جاري التحميل...' : t('download_report')) : (isExporting ? 'Downloading...' : t('download_report'))}
                       </button>
                     </div>
 

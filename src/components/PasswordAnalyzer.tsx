@@ -24,6 +24,7 @@ export default function PasswordAnalyzer() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Generator Settings
   const [showGenSettings, setShowGenSettings] = useState(false);
@@ -420,10 +421,20 @@ export default function PasswordAnalyzer() {
                     <div className="text-3xl font-black uppercase tracking-tight">{result.riskLevel} {t('pwd_exposure')}</div>
                   </div>
                   <button
-                    onClick={() => generateReportPDF({ ...result, target: '••••••••' }, 'password', lang)}
-                    className="flex items-center gap-2 bg-text-main text-bg-base hover:bg-opacity-90 px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-bold transition-all"
+                    onClick={async () => {
+                      if (!result || isExporting) return;
+                      setIsExporting(true);
+                      try {
+                        await generateReportPDF({ ...result, target: '••••••••' }, 'password', lang);
+                      } finally {
+                        setIsExporting(false);
+                      }
+                    }}
+                    disabled={isExporting}
+                    className="flex items-center gap-2 bg-text-main text-bg-base hover:bg-opacity-90 px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-bold transition-all disabled:opacity-50"
                   >
-                    <Download className="w-4 h-4" /> {t('pwd_download_report')}
+                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-accent" /> : <Download className="w-4 h-4" />}
+                    {lang === 'ar' ? (isExporting ? 'جاري التحميل...' : t('pwd_download_report')) : (isExporting ? 'Downloading...' : t('pwd_download_report'))}
                   </button>
                 </div>
 

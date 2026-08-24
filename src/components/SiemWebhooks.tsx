@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Webhook, Plus, Trash2, Zap, CheckCircle, XCircle, Copy, Bell, Shield, Globe, MessageSquare, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
 import { auth, db, logActivity, getUserTier } from '../lib/firebase';
@@ -75,7 +75,7 @@ export default function SiemWebhooks() {
         lastTriggered: null,
         failCount: 0,
       });
-      await logActivity('promo_create', `Created webhook: ${name || preset}`);
+      await logActivity('webhook_create', `Created webhook: ${name || preset}`);
       setName(''); setUrl(''); setSecret(''); setShowForm(false);
       fetchWebhooks();
     } catch (err) {
@@ -87,6 +87,7 @@ export default function SiemWebhooks() {
 
   const handleDelete = async (id: string) => {
     await deleteDoc(doc(db, 'webhooks', id));
+    await logActivity('webhook_delete', `Deleted webhook: ${id}`);
     fetchWebhooks();
   };
 

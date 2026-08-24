@@ -55,6 +55,7 @@ export default function DomainLookup() {
   const [result, setResult] = useState<DomainResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [historyKey, setHistoryKey] = useState(0);
+  const [isExporting, setIsExporting] = useState(false);
 
   const cleanDomain = (input: string): string => {
     let d = input.trim().toLowerCase();
@@ -386,7 +387,9 @@ export default function DomainLookup() {
                   </div>
                 </div>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
+                    if (isExporting) return;
+                    setIsExporting(true);
                     const lines = [
                       `Domain: ${result.whois.domain}`,
                       `Risk: ${result.riskLevel}`,
@@ -398,18 +401,23 @@ export default function DomainLookup() {
                       `ISP: ${result.ipGeo?.isp || 'Unknown'}`,
                       `DNS Records: ${result.dns.length}`,
                     ];
-                    generateReportPDF({
-                      type: 'domain',
-                      target: result.whois.domain,
-                      riskLevel: result.riskLevel,
-                      reportText: lines.join('\n'),
-                      actionPlan: 'Review domain registration and DNS configuration.',
-                    }, 'domain', lang as 'en' | 'ar');
+                    try {
+                      await generateReportPDF({
+                        type: 'domain',
+                        target: result.whois.domain,
+                        riskLevel: result.riskLevel,
+                        reportText: lines.join('\n'),
+                        actionPlan: 'Review domain registration and DNS configuration.',
+                      }, 'domain', lang as 'en' | 'ar');
+                    } finally {
+                      setIsExporting(false);
+                    }
                   }}
-                  className="flex items-center gap-2 px-4 py-2 bg-bg-surface border border-border-subtle rounded-lg text-xs font-mono text-text-dim hover:text-accent hover:border-accent/30 transition-colors"
+                  disabled={isExporting}
+                  className="flex items-center gap-2 px-4 py-2 bg-bg-surface border border-border-subtle rounded-lg text-xs font-mono text-text-dim hover:text-accent hover:border-accent/30 transition-colors disabled:opacity-50"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  {lang === 'ar' ? 'تقرير PDF' : 'Export PDF'}
+                  {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin text-accent" /> : <Download className="w-3.5 h-3.5" />}
+                  {lang === 'ar' ? (isExporting ? 'جاري التصدير...' : 'تقرير PDF') : (isExporting ? 'Exporting...' : 'Export PDF')}
                 </button>
               </div>
             </div>

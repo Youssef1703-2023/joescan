@@ -29,6 +29,7 @@ export default function PhoneAnalyzer() {
   const [deepScan, setDeepScan] = useState(true);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -227,10 +228,20 @@ export default function PhoneAnalyzer() {
                     <div className="text-2xl font-black uppercase tracking-tight">{result.riskLevel} {t('exposure').toUpperCase()}</div>
                   </div>
                   <button
-                    onClick={() => generateReportPDF({ ...result, target: phone }, 'phone', lang)}
-                    className="flex items-center gap-2 bg-text-main text-bg-base hover:bg-opacity-90 px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-bold transition-all"
+                    onClick={async () => {
+                      if (!result || isExporting) return;
+                      setIsExporting(true);
+                      try {
+                        await generateReportPDF({ ...result, target: phone }, 'phone', lang);
+                      } finally {
+                        setIsExporting(false);
+                      }
+                    }}
+                    disabled={isExporting}
+                    className="flex items-center gap-2 bg-text-main text-bg-base hover:bg-opacity-90 px-4 py-2 rounded-lg text-xs uppercase tracking-widest font-bold transition-all disabled:opacity-50"
                   >
-                    <Download className="w-4 h-4" /> Download Report
+                    {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-accent" /> : <Download className="w-4 h-4" />}
+                    {lang === 'ar' ? (isExporting ? 'جاري التحميل...' : 'تحميل التقرير') : (isExporting ? 'Downloading...' : 'Download Report')}
                   </button>
                 </div>
 

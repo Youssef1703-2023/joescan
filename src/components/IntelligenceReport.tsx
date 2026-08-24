@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 import { Shield, ShieldAlert, Cpu, Download, X, Eye, Lock, Globe, FileText, CheckCircle2 } from 'lucide-react';
 import { auth, getUserTier, SubscriptionTier } from '../lib/firebase';
 
@@ -35,6 +33,11 @@ export default function IntelligenceReport({ scan, onClose }: Props) {
       const element = document.getElementById('dossier-report');
       if (!element) return;
       
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import('html2canvas'),
+        import('jspdf'),
+      ]);
+
       // html2canvas works best when the element is visible. It is visible here.
       const canvas = await html2canvas(element, { 
         scale: 2, 

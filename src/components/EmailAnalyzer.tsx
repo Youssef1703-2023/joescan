@@ -379,7 +379,7 @@ export default function EmailAnalyzer() {
     try {
       // Delay slightly for UI to catch up if needed
       await new Promise(resolve => setTimeout(resolve, 500));
-      generateReportPDF(displayScan, 'email', lang);
+      await generateReportPDF(displayScan, 'email', lang);
     } catch (err) {
       console.error("PDF generation failed:", err);
     } finally {

@@ -51,7 +51,7 @@ export default function TeamManagement() {
         invitedAt: new Date().toISOString(),
         joinedAt: null,
       });
-      await logActivity('promo_create', `Invited team member: ${inviteEmail} as ${inviteRole}`);
+      await logActivity('team_invite', `Invited team member: ${inviteEmail} as ${inviteRole}`);
       setInviteEmail('');
       setShowInvite(false);
       fetchTeam();
@@ -61,7 +61,7 @@ export default function TeamManagement() {
 
   const handleRemove = async (id: string, email: string) => {
     await deleteDoc(doc(db, 'teams', id));
-    await logActivity('promo_delete', `Removed team member: ${email}`);
+    await logActivity('team_remove', `Removed team member: ${email}`);
     fetchTeam();
   };
 

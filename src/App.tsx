@@ -1,5 +1,5 @@
-import { useState, useEffect, lazy, Suspense } from 'react';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
 import { auth, db, isUserBanned, logActivity, ADMIN_EMAIL, getUserTier, getUserProfile, ensureUserProfile } from './lib/firebase';
 import { LanguageProvider, useLanguage, LANGUAGE_OPTIONS } from './contexts/LanguageContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -63,6 +63,7 @@ function getTabFromUrl(): TabId {
 function AppContent() {
   const { lang, setLang, theme, setTheme, t } = useLanguage();
   const [user, setUser] = useState(auth.currentUser);
+  const currentUserRef = useRef<User | null>(auth.currentUser);
   const [loading, setLoading] = useState(true);
   const [loginLoading, setLoginLoading] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
@@ -78,6 +79,33 @@ function AppContent() {
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [signupsEnabled, setSignupsEnabled] = useState(true);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
+
+  // Close settings dropdown on click outside or Escape
+  useEffect(() => {
+    if (!isSettingsOpen) return;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setIsSettingsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsSettingsOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isSettingsOpen]);
 
   // URL-based routing: sync URL with active tab
   const setActiveTab = (tab: TabId) => {
@@ -102,14 +130,16 @@ function AppContent() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
-      if (!u || (user && u.uid !== user.uid)) {
+      const prevUser = currentUserRef.current;
+      if (!u || (prevUser && u.uid !== prevUser.uid)) {
         setMfaPassed(false);
-        if (user) localStorage.removeItem(`mfa_verified_${user.uid}`);
+        if (prevUser) localStorage.removeItem(`mfa_verified_${prevUser.uid}`);
       } else if (u) {
         if (localStorage.getItem(`mfa_verified_${u.uid}`) === 'true') {
           setMfaPassed(true);
         }
       }
+      currentUserRef.current = u;
       setUser(u);
       setLoading(false);
       if (u) {
@@ -302,58 +332,66 @@ function AppContent() {
             {/* Right side of header */}
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             {/* Unified Settings Dropdown */}
-            <div className="relative">
+            <div className="relative" ref={settingsRef}>
               <button
-                onClick={() => {
-                  const el = document.getElementById('joescan-settings-dropdown');
-                  if (el) el.classList.toggle('hidden');
-                }}
+                onClick={() => setIsSettingsOpen((prev) => !prev)}
                 title={lang === 'ar' ? 'الإعدادات' : 'Settings'}
+                aria-expanded={isSettingsOpen}
                 className="text-text-dim hover:text-accent transition-all flex items-center justify-center glass-surface p-2 rounded-xl hover:border-accent/30"
               >
                 <BrainCircuit className="w-3.5 h-3.5 md:w-4 md:h-4" />
               </button>
-              <div
-                id="joescan-settings-dropdown"
-                className="hidden absolute top-full mt-2 w-60 bg-bg-base border border-border-subtle rounded-xl shadow-2xl p-3 space-y-3 z-[200] end-0"
-                onMouseLeave={() => document.getElementById('joescan-settings-dropdown')?.classList.add('hidden')}
-              >
-                {/* Theme */}
-                <div>
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-text-dim mb-2">{t('toggle_theme')}</p>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => setTheme('dark')}
-                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${theme === 'dark' ? 'bg-accent text-accent-fg' : 'bg-bg-surface text-text-dim hover:text-text-main'}`}
-                    >
-                      <Moon className="w-3.5 h-3.5" /> Dark
-                    </button>
-                    <button
-                      onClick={() => setTheme('light')}
-                      className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${theme === 'light' ? 'bg-accent text-accent-fg' : 'bg-bg-surface text-text-dim hover:text-text-main'}`}
-                    >
-                      <Sun className="w-3.5 h-3.5" /> Light
-                    </button>
-                  </div>
-                </div>
-
-                {/* Language */}
-                <div>
-                  <p className="text-[10px] font-mono uppercase tracking-widest text-text-dim mb-2">{t('language_label')}</p>
-                  <div className="grid grid-cols-2 gap-1">
-                    {LANGUAGE_OPTIONS.map(opt => (
+              {isSettingsOpen && (
+                <div
+                  id="joescan-settings-dropdown"
+                  className="absolute top-full mt-2 w-60 bg-bg-base border border-border-subtle rounded-xl shadow-2xl p-3 space-y-3 z-[200] end-0"
+                >
+                  {/* Theme */}
+                  <div>
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-text-dim mb-2">{t('toggle_theme')}</p>
+                    <div className="flex gap-1">
                       <button
-                        key={opt.code}
-                        onClick={() => setLang(opt.code as any)}
-                        className={`px-2.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${lang === opt.code ? 'bg-accent text-accent-fg' : 'bg-bg-surface text-text-dim hover:text-text-main'}`}
+                        onClick={() => {
+                          setTheme('dark');
+                          setIsSettingsOpen(false);
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${theme === 'dark' ? 'bg-accent text-accent-fg' : 'bg-bg-surface text-text-dim hover:text-text-main'}`}
                       >
-                        <span>{opt.flag}</span> {opt.label}
+                        <Moon className="w-3.5 h-3.5" /> Dark
                       </button>
-                    ))}
+                      <button
+                        onClick={() => {
+                          setTheme('light');
+                          setIsSettingsOpen(false);
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${theme === 'light' ? 'bg-accent text-accent-fg' : 'bg-bg-surface text-text-dim hover:text-text-main'}`}
+                      >
+                        <Sun className="w-3.5 h-3.5" /> Light
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-              </div>
+                  {/* Language */}
+                  <div>
+                    <p className="text-[10px] font-mono uppercase tracking-widest text-text-dim mb-2">{t('language_label')}</p>
+                    <div className="grid grid-cols-2 gap-1">
+                      {LANGUAGE_OPTIONS.map(opt => (
+                        <button
+                          key={opt.code}
+                          onClick={() => {
+                            setLang(opt.code as any);
+                            setIsSettingsOpen(false);
+                          }}
+                          className={`px-2.5 py-2 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${lang === opt.code ? 'bg-accent text-accent-fg' : 'bg-bg-surface text-text-dim hover:text-text-main'}`}
+                        >
+                          <span>{opt.flag}</span> {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              )}
             </div>
 
             <div className="hidden sm:flex items-center gap-2 border-l border-border-subtle pl-2">
