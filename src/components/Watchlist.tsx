@@ -146,14 +146,12 @@ export default function Watchlist() {
            }
          }
        } catch (e) {
-         // Ignore
+         // Ignore network issues
        }
     } else {
-       // Simulate a random 15% threat discovery for emails/phones during continuous monitoring since we don't have a live DarkWeb websocket
-       if (Math.random() > 0.85) {
-         isThreat = true;
-         details = type === 'email' ? 'New Pastebin breach detected' : 'Carrier signal anomaly found';
-       }
+       // Target checked and active in watchlist; no artificial alarms
+       isThreat = false;
+       details = '';
     }
 
     const newStatus = isThreat ? 'threat_detected' : 'monitoring';

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { serverTimestamp } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Fingerprint, Loader2, ShieldCheck, AlertTriangle, ArrowRight, ShieldAlert, Cpu, Globe, Crosshair, Network, Monitor, Chrome, Laptop, Lock, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -166,11 +167,11 @@ export default function BrowserFingerprint() {
       setResult(finalResult);
       setHistoryKey(k => k + 1);
 
-      // Save to Firebase History
+      // Save to Firebase History and dispatch webhooks
       try {
         const user = auth.currentUser;
         if (user) {
-          await addDoc(collection(db, 'scans'), {
+          await saveScan({
             userId: user.uid,
             type: 'browser_fingerprint',
             target: fingerprintHash,

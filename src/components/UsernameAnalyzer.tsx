@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { serverTimestamp } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { UserSearch, Loader2, Search, Github, Twitter, Facebook, Instagram, Video, ArrowRight, ShieldAlert, AlertTriangle, Monitor, Calendar, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -79,7 +80,7 @@ export default function UsernameAnalyzer() {
       setSearched(true);
 
       if (auth.currentUser) {
-        await addDoc(collection(db, 'scans'), {
+        await saveScan({
           userId: auth.currentUser.uid,
           target: username.trim(),
           type: 'username',
@@ -158,6 +159,16 @@ export default function UsernameAnalyzer() {
             animate={{ opacity: 1, scale: 1 }}
             className="w-full flex flex-col gap-6"
           >
+            {/* AI / OSINT Disclaimer */}
+            <div className="text-[11px] font-mono p-2.5 rounded-lg bg-bg-surface border border-border-subtle text-text-dim flex items-center gap-2">
+              <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+              <span>
+                {lang === 'ar'
+                  ? 'تقييم استخباراتي مبني على الأنماط العامة وقواعد البيانات المفتوحة؛ ليس بحثاً مؤكداً في سجلات حكومية رسمية.'
+                  : 'AI-generated assessment based on public patterns and open-source intelligence; not a verified official database lookup.'}
+              </span>
+            </div>
+
             {/* Breach Intelligence Section */}
             <div className={cn(
               "border rounded-xl overflow-hidden p-6",

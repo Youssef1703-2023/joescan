@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
-import { Webhook, Plus, Trash2, Zap, CheckCircle, XCircle, Copy, Bell, Shield, Globe, MessageSquare, AlertTriangle } from 'lucide-react';
+﻿import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { Webhook, Plus, Trash2, Zap, CheckCircle, XCircle, Copy, Bell, Shield, Globe, MessageSquare, AlertTriangle, Clock, RefreshCw } from 'lucide-react';
 import { auth, db, logActivity, getUserTier } from '../lib/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
+import { dispatchWebhooks } from '../lib/webhooks';
 
 const EVENT_TYPES = [
   { id: 'scan_complete', label: 'Scan Completed', icon: '🔍' },
@@ -24,7 +25,8 @@ const PRESETS = [
 ];
 
 export default function SiemWebhooks() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
+  const isAr = lang === 'ar';
   const [webhooks, setWebhooks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tier, setTier] = useState('free');
@@ -36,7 +38,7 @@ export default function SiemWebhooks() {
   const [preset, setPreset] = useState('Custom SIEM');
   const [creating, setCreating] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
-  const [testResult, setTestResult] = useState<{ id: string; ok: boolean } | null>(null);
+  const [testResult, setTestResult] = useState<{ id: string; ok: boolean; message: string; durationMs?: number } | null>(null);
 
   const fetchWebhooks = async () => {
     if (!auth.currentUser) return;
@@ -46,8 +48,11 @@ export default function SiemWebhooks() {
       setWebhooks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       const t = await getUserTier(auth.currentUser.uid);
       setTier(t);
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) {
+      console.error('[SiemWebhooks] Fetch error:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { fetchWebhooks(); }, []);
@@ -73,8 +78,11 @@ export default function SiemWebhooks() {
       await logActivity('promo_create', `Created webhook: ${name || preset}`);
       setName(''); setUrl(''); setSecret(''); setShowForm(false);
       fetchWebhooks();
-    } catch (err) { console.error(err); }
-    finally { setCreating(false); }
+    } catch (err) {
+      console.error('[SiemWebhooks] Create error:', err);
+    } finally {
+      setCreating(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -85,12 +93,48 @@ export default function SiemWebhooks() {
   const handleTest = async (hook: any) => {
     setTestingId(hook.id);
     setTestResult(null);
-    // Simulate webhook test
-    await new Promise(r => setTimeout(r, 1500));
-    const ok = hook.url.startsWith('https://');
-    setTestResult({ id: hook.id, ok });
-    setTestingId(null);
-    setTimeout(() => setTestResult(null), 4000);
+
+    try {
+      const resp = await dispatchWebhooks({
+        webhookId: hook.id,
+        eventType: 'test_ping',
+        target: 'Webhook Connectivity Verification',
+        riskLevel: 'Low',
+        data: {
+          test: true,
+          endpoint: hook.name || preset,
+          timestamp: new Date().toISOString(),
+        },
+      });
+
+      const outcome = resp.results?.[0];
+      if (outcome) {
+        setTestResult({
+          id: hook.id,
+          ok: outcome.ok,
+          durationMs: outcome.durationMs,
+          message: outcome.ok
+            ? `Webhook delivered successfully (HTTP ${outcome.status}, ${outcome.durationMs}ms)`
+            : `Delivery failed: ${outcome.error || `HTTP ${outcome.status}`}`,
+        });
+      } else {
+        setTestResult({
+          id: hook.id,
+          ok: false,
+          message: 'No response received from dispatcher',
+        });
+      }
+      fetchWebhooks();
+    } catch (testErr: any) {
+      setTestResult({
+        id: hook.id,
+        ok: false,
+        message: testErr?.message || 'Dispatch request failed',
+      });
+    } finally {
+      setTestingId(null);
+      setTimeout(() => setTestResult(null), 6000);
+    }
   };
 
   const toggleEvent = (eventId: string) => {
@@ -100,16 +144,20 @@ export default function SiemWebhooks() {
   const maxHooks = tier === 'enterprise' ? 20 : tier === 'pro' ? 3 : 0;
   const locked = tier === 'free';
 
-  if (loading) return <div className="flex justify-center items-center h-full"><Zap className="w-8 h-8 animate-pulse text-accent" /></div>;
+  if (loading) return <div className="flex justify-center items-center h-full py-20"><Zap className="w-8 h-8 animate-pulse text-accent" /></div>;
 
   if (locked) {
     return (
-      <div className="max-w-2xl mx-auto flex flex-col items-center justify-center text-center py-20 gap-6">
+      <div className="max-w-2xl mx-auto flex flex-col items-center justify-center text-center py-20 gap-6" dir={isAr ? 'rtl' : 'ltr'}>
         <div className="w-20 h-20 rounded-full bg-orange-500/10 border-2 border-orange-500/30 flex items-center justify-center">
           <Webhook className="w-10 h-10 text-orange-400" />
         </div>
         <h1 className="text-2xl font-black uppercase tracking-tight">Enterprise Feature</h1>
-        <p className="text-text-dim text-sm font-mono max-w-md">SIEM & Webhook integrations require a Pro or Enterprise subscription. Upgrade your tier to unlock real-time event forwarding.</p>
+        <p className="text-text-dim text-sm font-mono max-w-md">
+          {isAr
+            ? 'تكاملات SIEM وWebhooks تتطلب اشتراك Pro أو Enterprise. قم بترقية باقتك لإعادة توجيه أحداث الاستخبارات الأمنية فورياً بتوقيع HMAC-SHA256.'
+            : 'SIEM & Webhook integrations require a Pro or Enterprise subscription. Upgrade your tier to enable real-time HMAC-SHA256 signed event forwarding.'}
+        </p>
         <div className="flex gap-2 text-[10px] font-mono uppercase tracking-widest text-text-dim">
           <span className="px-2 py-1 bg-accent/10 text-accent rounded">PRO: 3 hooks</span>
           <span className="px-2 py-1 bg-error/10 text-error rounded">ENTERPRISE: 20 hooks</span>
@@ -119,13 +167,17 @@ export default function SiemWebhooks() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12 w-full">
+    <div className="max-w-5xl mx-auto space-y-6 pb-12 w-full" dir={isAr ? 'rtl' : 'ltr'}>
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
             <Webhook className="w-8 h-8 text-cyan-400" /> {t('siem_title')}
           </h1>
-          <p className="text-text-dim text-sm mt-1 font-mono">{t('siem_desc')}</p>
+          <p className="text-text-dim text-sm mt-1 font-mono">
+            {isAr
+              ? 'إعادة توجيه أحداث الفحوصات الأمنية إلى أنظمة SIEM أو Slack أو Discord بخوادم موثقة وتوقيع HMAC-SHA256.'
+              : 'Forward security scan events and threat alerts to external SIEMs, Slack, Discord, or webhooks with HMAC-SHA256 signatures.'}
+          </p>
         </div>
         <button onClick={() => setShowForm(!showForm)} disabled={webhooks.length >= maxHooks}
           className="flex items-center gap-2 px-4 py-2.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl text-cyan-400 text-xs font-bold uppercase tracking-widest hover:bg-cyan-500/20 transition-all disabled:opacity-40">
@@ -133,9 +185,12 @@ export default function SiemWebhooks() {
         </button>
       </div>
 
-      {/* Quota */}
-      <div className="glass-card p-4 rounded-xl flex items-center justify-between">
-        <span className="text-sm font-bold">{webhooks.length} / {maxHooks} {t('siem_endpoints_active')}</span>
+      {/* Quota & Security Scheme Card */}
+      <div className="glass-card p-4 rounded-xl flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-bold">{webhooks.length} / {maxHooks} {t('siem_endpoints_active')}</span>
+          <span className="text-[11px] font-mono text-text-dim">• Server-side HMAC-SHA256 signatures active</span>
+        </div>
         <span className={`text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded ${tier === 'enterprise' ? 'bg-error/20 text-error' : 'bg-accent/20 text-accent'}`}>{tier}</span>
       </div>
 
@@ -166,6 +221,11 @@ export default function SiemWebhooks() {
             </div>
           </div>
 
+          <div>
+            <label className="text-[10px] font-mono uppercase text-text-dim">Custom HMAC Secret (optional — auto-generated if blank)</label>
+            <input type="text" value={secret} onChange={e => setSecret(e.target.value)} placeholder="whsec_..." className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-3 text-sm mt-1 font-mono text-xs" />
+          </div>
+
           {/* Event Selector */}
           <div>
             <label className="text-[10px] font-mono uppercase text-text-dim mb-2 block">Trigger Events</label>
@@ -193,29 +253,43 @@ export default function SiemWebhooks() {
         {webhooks.map((hook, i) => (
           <motion.div key={hook.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
             className="glass-card p-5 rounded-xl">
-            <div className="flex justify-between items-start mb-3">
+            <div className="flex justify-between items-start mb-3 flex-wrap gap-2">
               <div>
                 <h3 className="font-bold text-text-main flex items-center gap-2">
                   {hook.name}
                   <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-accent/10 text-accent">ACTIVE</span>
+                  {typeof hook.failCount === 'number' && hook.failCount > 0 && (
+                    <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded bg-error/10 text-error">
+                      {hook.failCount} failed
+                    </span>
+                  )}
                 </h3>
                 <p className="text-[10px] font-mono text-text-dim mt-1 truncate max-w-[400px]">{hook.url}</p>
+                {hook.lastTriggered && (
+                  <p className="text-[10px] font-mono text-text-dim/70 mt-1 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Last dispatched: {new Date(hook.lastTriggered).toLocaleString()}
+                  </p>
+                )}
               </div>
               <div className="flex gap-2">
                 <button onClick={() => handleTest(hook)} disabled={testingId === hook.id}
-                  className="text-[10px] px-3 py-1.5 bg-bg-elevated border border-border-subtle rounded-lg font-bold uppercase hover:border-accent/30 transition-all text-text-dim disabled:opacity-50">
-                  {testingId === hook.id ? <Zap className="w-3 h-3 animate-pulse" /> : 'Test'}
+                  className="text-[10px] px-3 py-1.5 bg-bg-elevated border border-border-subtle rounded-lg font-bold uppercase hover:border-accent/30 transition-all text-text-dim disabled:opacity-50 flex items-center gap-1.5">
+                  {testingId === hook.id ? <Zap className="w-3 h-3 animate-pulse text-accent" /> : <RefreshCw className="w-3 h-3" />}
+                  {testingId === hook.id ? 'Dispatching...' : 'Test Dispatch'}
                 </button>
                 <button onClick={() => handleDelete(hook.id)} className="p-1.5 text-text-dim hover:text-error transition-colors rounded-lg hover:bg-error/10">
                   <Trash2 className="w-4 h-4" />
                 </button>
               </div>
             </div>
+
             {testResult?.id === hook.id && (
-              <div className={`text-xs p-2 rounded-lg mb-3 flex items-center gap-2 ${testResult.ok ? 'bg-accent/10 text-accent' : 'bg-error/10 text-error'}`}>
-                {testResult.ok ? <><CheckCircle className="w-3 h-3" /> Webhook responded successfully (200 OK)</> : <><XCircle className="w-3 h-3" /> Connection failed — check your URL</>}
+              <div className={`text-xs p-2.5 rounded-lg mb-3 flex items-center gap-2 ${testResult.ok ? 'bg-accent/10 text-accent border border-accent/20' : 'bg-error/10 text-error border border-error/20'}`}>
+                {testResult.ok ? <CheckCircle className="w-4 h-4 shrink-0" /> : <XCircle className="w-4 h-4 shrink-0" />}
+                <span className="font-mono">{testResult.message}</span>
               </div>
             )}
+
             <div className="flex flex-wrap gap-1.5">
               {hook.events?.map((evt: string) => {
                 const evtInfo = EVENT_TYPES.find(e => e.id === evt);

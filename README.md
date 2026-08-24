@@ -65,8 +65,8 @@ The platform runs entirely at **[joescan.me](https://joescan.me)** with Firebase
 | **People OSINT** | Email Audit, Password Vault Check, Phone Number, OSINT Username |
 | **Network & System** | Suspicious Link Scanner, Message Phishing Detector, IP Scan, Domain WHOIS |
 | **Advanced** | Browser Fingerprint, Device Security, Social OSINT, Live Threat Watchlist |
-| **Intelligence** | Cybersecurity Blog, Automated Daily News, Scan History & Analytics |
-| **Enterprise** | SIEM / Webhooks, Team Management, 3D Threat Globe, Cyber Academy |
+| **Intelligence** | Cybersecurity Blog, Automated Daily News, Scan History & Analytics, Cyber Academy |
+| **Enterprise** | SIEM / Webhooks, Team Management, 3D Threat Globe |
 
 ---
 
@@ -122,7 +122,8 @@ The **Live Threat Watchlist** is JoeScan's early-warning detection system for co
 
 **What this tool does:**
 
-- **Continuous Monitoring:** Map critical assets (IPv4 addresses, domains, email addresses) for around-the-clock surveillance. Once a target is deployed as a "sensor," JoeScan watches for newly exposed ports, unexpected DNS changes, certificate expirations, and breach appearances.
+- **Asset Monitoring:** Map critical assets (IPv4 addresses, domains, email addresses) as persistent targets. Each sweep checks for newly exposed ports, unexpected DNS changes, certificate expirations, and breach appearances.
+- **Sweeps are on-demand, not yet continuous:** Today a sweep runs when you open the Watchlist or press "Sweep All" — nothing is scanned while the tab is closed. Scheduled background sweeps are planned, not shipped. This is stated plainly rather than advertised as 24/7 surveillance.
 - **Asset Types Supported:** IPv4 Addresses, IPv6 Addresses, Domain Names, Email Addresses, and URL endpoints.
 - **Sensor Array:** Each deployed target becomes an active sensor in the array. The "Sweep All" command triggers a simultaneous re-scan of every active sensor, giving you an instant snapshot of your infrastructure's health.
 - **Automated Alerting:** When a watchlisted asset is detected in a new breach database or shows anomalous port activity, the system flags it on the Command Center dashboard.
@@ -349,6 +350,38 @@ The **Blog** features a dual-source content engine: hand-crafted expert articles
 
 ---
 
+---
+
+## 🌐 Threat Map & 3D Threat Visualizer
+
+The **Threat Map** and **3D Threat Visualizer** provide geographic mapping of malicious infrastructure, plotting active and historical Botnet Command & Control (C2) servers.
+
+- **Real Threat Intelligence Feed:** Powered by verified telemetry from **abuse.ch Feodo Tracker**, tracking active botnet nodes, malware families (e.g. Pikabot, QakBot), associated Autonomous Systems (ASNs), and host IP indicators.
+- **Interactive 3D Globe & 2D Projection:** Drag-to-rotate canvas visualization with adjustable zoom, country-centroid plotting, and severity classification (online vs. offline C2s).
+- **Zero Fabricated Data:** Removes simulated artificial attack arcs in favor of verified, actionable host infrastructure telemetry.
+
+---
+
+## 🔌 SIEM & Webhook Forwarding
+
+The **SIEM / Webhooks** system enables security teams to stream scan events and threat alerts directly to external security monitoring stacks.
+
+- **HMAC-SHA256 Signatures:** Dispatches are cryptographically signed server-side by the Cloudflare Worker proxy using custom webhook secrets (`X-JoeScan-Signature: sha256=<hex>`), guaranteeing payload integrity and authenticity.
+- **Preset Integrations:** Pre-configured templates for Splunk, Elastic SIEM, PagerDuty, Slack, Discord, Microsoft Teams, and custom HTTP ingest endpoints.
+- **Reliable Dispatch Engine:** Concurrently dispatches with 5-second timeouts and automatic failure tracking (`lastTriggered` and `failCount`).
+
+---
+
+## 🎓 Cyber Academy
+
+The **Cyber Academy** is an interactive defensive training portal built directly into JoeScan.
+
+- **Practical Defensive Curriculum:** Six comprehensive, bilingual (Arabic & English) modules covering Phishing Recognition, Password & Passphrase Hygiene, MFA & WebAuthn Passkeys, Data Breaches, Safe Browsing & Homograph Attacks, and OSINT Privacy Footprints.
+- **Knowledge Check Quizzes:** Interactive multiple-choice assessments with immediate feedback and detailed explanations at the end of each module.
+- **Progress Tracking:** Synchronizes completed modules with your user profile in Firestore.
+
+---
+
 ## 💎 Pricing & Tiers
 
 JoeScan offers a three-tier pricing model designed to scale from individual researchers to enterprise security operations centers.
@@ -368,8 +401,9 @@ JoeScan offers a three-tier pricing model designed to scale from individual rese
 | **Watchlist Frequency** | Weekly (1 Day/Week) | On-Demand | Continuous 24/7 |
 | **PDF Reports** | Standard (Watermarked) | Unbranded White-label | Unbranded White-label |
 | **Device Security** | Unlimited | Unlimited | Unlimited |
+| **Cyber Academy** | ✅ (All Lessons) | ✅ (All Lessons) | ✅ (All Lessons) |
 | **Dark Web Password Check** | ❌ | ✅ | ✅ |
-| **SIEM / Webhook Integration** | ❌ | ❌ | ✅ |
+| **SIEM / Webhook Integration** | ❌ | ✅ (3 Endpoints) | ✅ (20 Endpoints) |
 | **Team Management** | ❌ | ❌ | ✅ (5 Users) |
 | **3D Threat Map Visualizer** | ❌ | ❌ | ✅ |
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { serverTimestamp } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Link, Loader2, ShieldCheck, ShieldAlert, AlertTriangle, ArrowRight, Globe, Search, Lock, Camera, CheckCircle, XCircle, Info, Download, Server, MapPin, Network, Clock, ExternalLink, Bug, Skull, Eye, Fingerprint } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -490,10 +491,10 @@ export default function UrlAnalyzer() {
       setHistoryKey(k => k + 1);
       setScanStage('');
 
-      // Save to Firestore
+      // Save to Firestore and dispatch webhooks
       if (auth.currentUser) {
         try {
-          await addDoc(collection(db, 'scans'), {
+          await saveScan({
             userId: auth.currentUser.uid,
             target: targetUrl,
             type: 'url',

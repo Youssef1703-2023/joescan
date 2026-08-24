@@ -12,7 +12,7 @@ import { auth, getUserTier, SubscriptionTier, ADMIN_EMAIL } from '../lib/firebas
 import { Sparkles, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'phone' | 'url' | 'username' | 'message' | 'ip' | 'social' | 'domain' | 'fingerprint' | 'device_security' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'siem' | 'team' | 'threat_3d' | 'referral' | 'blog';
+export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'phone' | 'url' | 'username' | 'message' | 'ip' | 'social' | 'domain' | 'fingerprint' | 'device_security' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'siem' | 'team' | 'threat_3d' | 'referral' | 'blog' | 'academy';
 
 // URL path <-> TabId mapping
 export const TAB_TO_PATH: Record<TabId, string> = {
@@ -40,6 +40,7 @@ export const TAB_TO_PATH: Record<TabId, string> = {
   threat_3d: '/threat-3d',
   referral: '/referral',
   blog: '/blog',
+  academy: '/academy',
 };
 
 export const PATH_TO_TAB: Record<string, TabId> = Object.fromEntries(
@@ -105,8 +106,9 @@ export default function Sidebar({ activeTab, setActiveTab, isCollapsed, setIsCol
       ]
     },
     {
-      title: lang === 'ar' ? 'المجتمع' : 'COMMUNITY',
+      title: lang === 'ar' ? 'التعليم والمجتمع' : 'ACADEMY & COMMUNITY',
       items: [
+        { id: 'academy', icon: GraduationCap, label: t('nav_academy') },
         { id: 'blog', icon: BookOpen, label: lang === 'ar' ? 'المدوّنة' : 'Blog' },
         { id: 'referral', icon: Gift, label: lang === 'ar' ? 'ادعِ أصحابك' : 'Refer Friends' },
       ]

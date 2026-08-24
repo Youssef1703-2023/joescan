@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot, doc, deleteDoc, writeBatch } from 'firebase/firestore';
+import { collection, serverTimestamp, query, where, orderBy, onSnapshot, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { analyzeEmailExposure, translateReport } from '../lib/gemini';
 import { ShieldAlert, ShieldCheck, Shield, Loader2, ArrowRight, Check, X, Share2, CheckCircle2, RefreshCw, Download, Twitter, Facebook, Link as LinkIcon, Settings2, SlidersHorizontal, Search, Star, Database, GlobeLock, FileSearch, HardDrive, Trash2, Eye } from 'lucide-react';
@@ -280,7 +281,7 @@ export default function EmailAnalyzer() {
         language: lang
       };
       
-      const docRef = await addDoc(collection(db, 'scans'), newScan);
+      const docRef = await saveScan(newScan);
       // Optimistically set active scan since onSnapshot might take a tick
       setActiveScan({ id: docRef.id, ...newScan } as ScanResult);
       setEmail('');

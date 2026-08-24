@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { serverTimestamp } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { analyzeMessage } from '../lib/gemini';
 import { MessageSquareWarning, Loader2, ShieldCheck, AlertTriangle, ArrowRight, ShieldAlert, BrainCircuit, ScanSearch, Activity, Download } from 'lucide-react';
@@ -41,7 +42,7 @@ export default function MessageAnalyzer() {
       setResult(scanResult);
 
       if (auth.currentUser) {
-        await addDoc(collection(db, 'scans'), {
+        await saveScan({
           userId: auth.currentUser.uid,
           target: message.substring(0, 30) + '...',
           type: 'message',

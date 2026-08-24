@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { serverTimestamp } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Globe, Loader2, Search, ShieldCheck, ShieldAlert, AlertTriangle, Download, Server, MapPin, Calendar, User, Link as LinkIcon, Network, Clock, FileText, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -237,11 +238,11 @@ export default function DomainLookup() {
       setResult(finalResult);
       setHistoryKey(k => k + 1);
 
-      // Save to history
+      // Save to history and dispatch webhooks
       try {
         const user = auth.currentUser;
         if (user) {
-          await addDoc(collection(db, 'scans'), {
+          await saveScan({
             userId: user.uid,
             type: 'domain',
             target: cleanedDomain,

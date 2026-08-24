@@ -232,24 +232,15 @@ export async function analyzePhoneExposure(
     else { carrier = "Saudi Telecom"; phoneType = "Landline/Other"; }
   }
   
-  // 2. Deterministic Spam Probability (hash based on number so it stays consistent)
-  let hash = 0;
-  for (let i = 0; i < cleanNum.length; i++) {
-    hash = ((hash << 5) - hash) + cleanNum.charCodeAt(i);
-    hash |= 0;
-  }
-  // Generate a realistic spam percentage between 0 and 45%
-  const spamPercent = Math.abs(hash) % 45;
-  const spamStr = spamPercent < 15 ? `Low (${spamPercent}%)` : spamPercent < 30 ? `Medium (${spamPercent}%)` : `High (${spamPercent}%)`;
-  
-  const riskLevel = 'Low';
+  // Deterministic prefix identification
+  const riskLevel: 'Low' | 'Medium' | 'High' = 'Low';
 
-  const reportTextEn = `Extensive offline metadata analysis completed for ${phone}. The number is confirmed as a valid ${phoneType} allocation within ${exactCountry || 'its designated region'} operated by **${carrier}**. Use the OSINT links below to verify the true identity.`;
-  
-  const reportTextAr = `تم إكمال الفحص الشامل للبيانات الوصفية للرقم ${phone}. تم التأكد من صلاحية الرقم ونطاق تخصيصه في ${exactCountry || 'المنطقة التابع لها'} كخط ${phoneType === 'Mobile' ? 'موبايل' : 'أرضي'} تابع لشركة **${carrier}**. استخدم روابط البحث أدناه لمعرفة هوية الرقم الحقيقية.`;
+  const reportTextEn = `Number format and prefix analysis for ${phone}. Identified as a ${phoneType} allocation within ${exactCountry || 'its designated region'} typically assigned to ${carrier}. Use the open-source investigative links below to search public directories and verify caller details.`;
 
-  const actionPlanEn = "1. Never share OTP codes over the phone.\\n2. Use standard caller ID blocking if you receive anomalous calls.\\n3. Check the WhatsApp and Truecaller links to verify identity manually.";
-  const actionPlanAr = "1. لا تشارك أبداً رموز التأكيد (OTP) عبر المكالمات.\\n2. استخدم أدوات حظر المكالمات المزعجة (Caller ID) في حال وصول مكالمات مجهولة.\\n3. افحص الرقم عبر خوادم الواتساب وجوجل من الروابط بالأسفل لمعرفة صاحبه.";
+  const reportTextAr = `تحليل التنسيق ومفتاح الاتصال للرقم ${phone}. يطابق نمط خط ${phoneType === 'Mobile' ? 'موبايل' : 'أرضي'} ضمن نطاق ${exactCountry || 'المنطقة التابعة له'} والتابع عادةً لشبكة ${carrier}. استخدم روابط الاستخبارات المفتوحة أدناه للبحث في الدلائل العامة والتحقق من هوية المتصل.`;
+
+  const actionPlanEn = "1. Never share OTP or two-factor authentication codes over phone calls.\n2. Enable carrier-level spam blocking filters if supported.\n3. Cross-reference unknown callers with official directory links provided below.";
+  const actionPlanAr = "1. لا تشارك أبداً رموز التأكيد الثنائية (OTP) عبر المكالمات الهاتفية.\n2. فعّل ميزات حظر الأرقام غير الموثوقة على جهازك.\n3. راجع هوية الأرقام غير المعروفة عبر الروابط الاستخباراتية العامة المرفقة أدناه.";
 
   return {
     riskLevel: riskLevel,
@@ -257,7 +248,7 @@ export async function analyzePhoneExposure(
     actionPlan: isArabic ? actionPlanAr : actionPlanEn,
     carrier: carrier,
     country: exactCountry || "Unknown",
-    thoughtProcess: `Extracted prefix data matching ${carrier} block constraints. Generated OSINT deep-links for manual investigation.`
+    thoughtProcess: `Extracted prefix metadata matching ${carrier} block constraints. Generated OSINT deep-links for manual investigation.`
   };
 }
 

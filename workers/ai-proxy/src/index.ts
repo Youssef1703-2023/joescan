@@ -59,6 +59,250 @@ interface CertCache {
 }
 let memoryCertCache: CertCache | null = null;
 
+// Country Centroids for Threat Feed normalization
+const COUNTRY_CENTROIDS: Record<string, { name: string; lat: number; lng: number }> = {
+  US: { name: 'United States', lat: 37.0902, lng: -95.7129 },
+  CN: { name: 'China', lat: 35.8617, lng: 104.1954 },
+  RU: { name: 'Russia', lat: 61.5240, lng: 105.3188 },
+  DE: { name: 'Germany', lat: 51.1657, lng: 10.4515 },
+  NL: { name: 'Netherlands', lat: 52.1326, lng: 5.2913 },
+  GB: { name: 'United Kingdom', lat: 55.3781, lng: -3.4360 },
+  FR: { name: 'France', lat: 46.2276, lng: 2.2137 },
+  JP: { name: 'Japan', lat: 36.2048, lng: 138.2529 },
+  IN: { name: 'India', lat: 20.5937, lng: 78.9629 },
+  BR: { name: 'Brazil', lat: -14.2350, lng: -51.9253 },
+  EG: { name: 'Egypt', lat: 26.8206, lng: 30.8025 },
+  SA: { name: 'Saudi Arabia', lat: 23.8859, lng: 45.0792 },
+  AE: { name: 'United Arab Emirates', lat: 23.4241, lng: 53.8478 },
+  SG: { name: 'Singapore', lat: 1.3521, lng: 103.8198 },
+  CA: { name: 'Canada', lat: 56.1304, lng: -106.3468 },
+  AU: { name: 'Australia', lat: -25.2744, lng: 133.7751 },
+  KR: { name: 'South Korea', lat: 35.9078, lng: 127.7669 },
+  IT: { name: 'Italy', lat: 41.8719, lng: 12.5674 },
+  ES: { name: 'Spain', lat: 40.4637, lng: -3.7492 },
+  PL: { name: 'Poland', lat: 51.9194, lng: 19.1451 },
+  TR: { name: 'Turkey', lat: 38.9637, lng: 35.2433 },
+  UA: { name: 'Ukraine', lat: 48.3794, lng: 31.1656 },
+  RO: { name: 'Romania', lat: 45.9432, lng: 24.9668 },
+  BG: { name: 'Bulgaria', lat: 42.7339, lng: 25.4858 },
+  CH: { name: 'Switzerland', lat: 46.8182, lng: 8.2275 },
+  SE: { name: 'Sweden', lat: 60.1282, lng: 18.6435 },
+  NO: { name: 'Norway', lat: 60.4720, lng: 8.4689 },
+  FI: { name: 'Finland', lat: 61.9241, lng: 25.7482 },
+  DK: { name: 'Denmark', lat: 56.2639, lng: 9.5018 },
+  IE: { name: 'Ireland', lat: 53.4129, lng: -8.2439 },
+  AT: { name: 'Austria', lat: 47.5162, lng: 14.5501 },
+  BE: { name: 'Belgium', lat: 50.5039, lng: 4.4699 },
+  CZ: { name: 'Czech Republic', lat: 49.8175, lng: 15.4730 },
+  HU: { name: 'Hungary', lat: 47.1625, lng: 19.5033 },
+  PT: { name: 'Portugal', lat: 39.3999, lng: -8.2245 },
+  GR: { name: 'Greece', lat: 39.0742, lng: 21.8243 },
+  IL: { name: 'Israel', lat: 31.0461, lng: 34.8516 },
+  ZA: { name: 'South Africa', lat: -30.5595, lng: 22.9375 },
+  NG: { name: 'Nigeria', lat: 9.0820, lng: 8.6753 },
+  KE: { name: 'Kenya', lat: -1.2921, lng: 36.8219 },
+  MX: { name: 'Mexico', lat: 23.6345, lng: -102.5528 },
+  AR: { name: 'Argentina', lat: -38.4161, lng: -63.6167 },
+  CL: { name: 'Chile', lat: -35.6751, lng: -71.5430 },
+  CO: { name: 'Colombia', lat: 4.5709, lng: -74.2973 },
+  ID: { name: 'Indonesia', lat: -0.7893, lng: 113.9213 },
+  VN: { name: 'Vietnam', lat: 14.0583, lng: 108.2772 },
+  TH: { name: 'Thailand', lat: 15.8700, lng: 100.9925 },
+  MY: { name: 'Malaysia', lat: 4.2105, lng: 101.9758 },
+  PH: { name: 'Philippines', lat: 12.8797, lng: 121.7740 },
+  HK: { name: 'Hong Kong', lat: 22.3193, lng: 114.1694 },
+  TW: { name: 'Taiwan', lat: 23.6978, lng: 120.9605 },
+  IR: { name: 'Iran', lat: 32.4279, lng: 53.6880 },
+  PK: { name: 'Pakistan', lat: 30.3753, lng: 69.3451 },
+  BD: { name: 'Bangladesh', lat: 23.6850, lng: 90.3563 },
+  KZ: { name: 'Kazakhstan', lat: 48.0196, lng: 66.9237 },
+  NZ: { name: 'New Zealand', lat: -40.9006, lng: 174.8860 },
+  MA: { name: 'Morocco', lat: 31.7917, lng: -7.0926 },
+  DZ: { name: 'Algeria', lat: 28.0339, lng: 1.6596 },
+  TN: { name: 'Tunisia', lat: 33.8869, lng: 9.5375 },
+  IQ: { name: 'Iraq', lat: 33.2232, lng: 43.6793 },
+  JO: { name: 'Jordan', lat: 30.5852, lng: 36.2384 },
+  LB: { name: 'Lebanon', lat: 33.8547, lng: 35.8623 },
+  KW: { name: 'Kuwait', lat: 29.3117, lng: 47.4818 },
+  QA: { name: 'Qatar', lat: 25.3548, lng: 51.1839 },
+  BH: { name: 'Bahrain', lat: 26.0667, lng: 50.5577 },
+  OM: { name: 'Oman', lat: 21.4735, lng: 55.9754 },
+};
+
+interface ThreatFeedCache {
+  data: any;
+  expiresAt: number;
+}
+let memoryThreatFeedCache: ThreatFeedCache | null = null;
+const THREAT_FEED_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes cache
+
+async function fetchAndNormalizeThreatFeed(): Promise<any> {
+  const now = Date.now();
+  if (memoryThreatFeedCache && memoryThreatFeedCache.expiresAt > now) {
+    return memoryThreatFeedCache.data;
+  }
+
+  const upstreamUrl = 'https://feodotracker.abuse.ch/downloads/ipblocklist.json';
+  const res = await fetch(upstreamUrl, {
+    headers: {
+      'User-Agent': 'JoeScan-Threat-Proxy/1.0 (+https://joescan.me)',
+      'Accept': 'application/json',
+    },
+  });
+
+  if (!res.ok) {
+    if (memoryThreatFeedCache) {
+      return memoryThreatFeedCache.data;
+    }
+    throw new Error(`Upstream threat intelligence feed returned HTTP ${res.status}`);
+  }
+
+  let rawList: any;
+  try {
+    rawList = await res.json();
+  } catch {
+    if (memoryThreatFeedCache) return memoryThreatFeedCache.data;
+    throw new Error('Failed to parse upstream threat feed JSON');
+  }
+
+  const items = Array.isArray(rawList) ? rawList : (rawList?.entries || []);
+  const indicators = items.slice(0, 200).map((item: any) => {
+    const countryCode = String(item.country || '').toUpperCase();
+    const geo = COUNTRY_CENTROIDS[countryCode] || {
+      name: countryCode || 'Unknown',
+      lat: 20.0,
+      lng: 0.0,
+    };
+    const isOnline = String(item.status || '').toLowerCase() === 'online';
+    return {
+      id: `feodo-${item.ip_address || item.ip || Math.random().toString(36).substring(2, 8)}-${item.port || '0'}`,
+      ip: item.ip_address || item.ip || 'Unknown',
+      port: item.port ? Number(item.port) : null,
+      status: isOnline ? 'online' : 'offline',
+      hostname: item.hostname || null,
+      asNumber: item.as_number ? Number(item.as_number) : null,
+      asName: item.as_name || null,
+      country: countryCode || 'XX',
+      countryName: geo.name,
+      coordinates: [geo.lat, geo.lng] as [number, number],
+      firstSeen: item.first_seen || item.first_seen_utc || new Date().toISOString(),
+      lastOnline: item.last_online || null,
+      malware: item.malware || 'Botnet C2',
+      severity: isOnline ? 'critical' : 'high',
+    };
+  });
+
+  const payload = {
+    source: 'abuse.ch Feodo Tracker',
+    description: 'Active and recently observed Botnet C2 (Command & Control) server infrastructure.',
+    updatedAt: new Date().toISOString(),
+    itemCount: indicators.length,
+    indicators,
+  };
+
+  memoryThreatFeedCache = {
+    data: payload,
+    expiresAt: now + THREAT_FEED_CACHE_TTL_MS,
+  };
+
+  return payload;
+}
+
+interface WebhookDoc {
+  id: string;
+  name: string;
+  url: string;
+  secret: string;
+  events: string[];
+  active: boolean;
+}
+
+async function fetchUserWebhooksFromFirestore(
+  idToken: string,
+  uid: string,
+  projectId: string,
+  databaseId: string
+): Promise<WebhookDoc[]> {
+  const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents:runQuery`;
+
+  const queryBody = {
+    structuredQuery: {
+      from: [{ collectionId: 'webhooks' }],
+      where: {
+        fieldFilter: {
+          field: { fieldPath: 'ownerId' },
+          op: 'EQUAL',
+          value: { stringValue: uid },
+        },
+      },
+    },
+  };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${idToken}`,
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    body: JSON.stringify(queryBody),
+  });
+
+  if (!res.ok) {
+    console.error(`Firestore webhooks query HTTP ${res.status}`);
+    throw new Error(`Failed to query user webhooks from Firestore (HTTP ${res.status})`);
+  }
+
+  const results = (await res.json()) as any[];
+  if (!Array.isArray(results)) return [];
+
+  const webhooks: WebhookDoc[] = [];
+  for (const item of results) {
+    if (!item.document || !item.document.fields) continue;
+    const docPath = item.document.name || '';
+    const id = docPath.split('/').pop() || '';
+    const f = item.document.fields;
+
+    const ownerId = f.ownerId?.stringValue;
+    if (ownerId !== uid) continue;
+
+    const hookUrl = f.url?.stringValue;
+    if (!hookUrl || (!hookUrl.startsWith('http://') && !hookUrl.startsWith('https://'))) continue;
+
+    const secret = f.secret?.stringValue || '';
+    const active = f.active?.booleanValue !== false;
+    const rawEvents = f.events?.arrayValue?.values || [];
+    const events = rawEvents.map((v: any) => v.stringValue).filter(Boolean);
+    const name = f.name?.stringValue || 'Webhook';
+
+    webhooks.push({
+      id,
+      name,
+      url: hookUrl,
+      secret,
+      events,
+      active,
+    });
+  }
+
+  return webhooks;
+}
+
+async function computeHmacSha256Hex(secret: string, data: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signature = await crypto.subtle.sign('HMAC', key, enc.encode(data));
+  return Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
 async function getGooglePublicCerts(forceRefresh: boolean = false): Promise<Record<string, string>> {
   const now = Date.now();
   if (!forceRefresh && memoryCertCache && memoryCertCache.expiresAt > now) {
@@ -404,6 +648,149 @@ export default {
             'X-RateLimit-Remaining': String(Math.max(0, tierInfo.limit - peekResult.used)),
             'X-RateLimit-Reset': String(secondsUntilMidnight),
           },
+        }
+      );
+    }
+
+    // ─── GET /threat-feed: Cached abuse.ch Feodo Tracker botnet C2 feed ───
+    if (request.method === 'GET' && (pathname === '/threat-feed' || pathname === '/api/threat-feed')) {
+      try {
+        const feedData = await fetchAndNormalizeThreatFeed();
+        return new Response(JSON.stringify(feedData), {
+          status: 200,
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+            'Cache-Control': 'public, max-age=900, s-maxage=900',
+          },
+        });
+      } catch (feedErr: any) {
+        console.error('Threat feed fetch error:', feedErr);
+        return new Response(
+          JSON.stringify({
+            error: feedErr?.message || 'Failed to fetch threat feed',
+          }),
+          {
+            status: 502,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+    }
+
+    // ─── POST /webhook-dispatch: SIEM Webhook Dispatch with HMAC-SHA256 ───
+    if (request.method === 'POST' && (pathname === '/webhook-dispatch' || pathname === '/api/webhook-dispatch')) {
+      let dispatchBody: any;
+      try {
+        dispatchBody = await request.json();
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      const { eventType, event, scanId, target, riskLevel, data, webhookId } = dispatchBody || {};
+      const effectiveEventType = eventType || event || 'scan_complete';
+
+      let userWebhooks: WebhookDoc[] = [];
+      try {
+        userWebhooks = await fetchUserWebhooksFromFirestore(idToken, uid, projectId, databaseId);
+      } catch (err: any) {
+        return new Response(JSON.stringify({ error: err?.message || 'Failed to fetch webhook configurations' }), {
+          status: 502,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      // Filter matching active webhooks
+      let matchingHooks = userWebhooks.filter(hook => {
+        if (!hook.active) return false;
+        if (webhookId && hook.id === webhookId) return true;
+        if (effectiveEventType === 'test_ping') return true;
+        return hook.events.includes(effectiveEventType) || hook.events.includes('all');
+      });
+
+      // Bound: max 10 webhooks per dispatch call
+      matchingHooks = matchingHooks.slice(0, 10);
+
+      const timestampSec = Math.floor(Date.now() / 1000);
+      const outboundEventPayload = {
+        event: effectiveEventType,
+        timestamp: timestampSec,
+        scanId: scanId || null,
+        target: target || null,
+        riskLevel: riskLevel || 'Low',
+        data: data || null,
+      };
+      const rawPayloadString = JSON.stringify(outboundEventPayload);
+
+      // Dispatch to each webhook concurrently with 5s timeout
+      const dispatchPromises = matchingHooks.map(async (hook) => {
+        const startTime = Date.now();
+        const signaturePayload = `${timestampSec}.${rawPayloadString}`;
+        let signatureHex = '';
+        try {
+          signatureHex = await computeHmacSha256Hex(hook.secret, signaturePayload);
+        } catch (sigErr) {
+          console.warn('HMAC computation failed for hook', hook.id, sigErr);
+        }
+
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+
+        try {
+          const res = await fetch(hook.url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'User-Agent': 'JoeScan-SIEM-Dispatcher/1.0 (+https://joescan.me)',
+              'X-JoeScan-Timestamp': String(timestampSec),
+              'X-JoeScan-Signature': `sha256=${signatureHex}`,
+              'X-JoeScan-Event': effectiveEventType,
+            },
+            body: rawPayloadString,
+            signal: controller.signal,
+          });
+          clearTimeout(timer);
+          const elapsed = Date.now() - startTime;
+          return {
+            id: hook.id,
+            name: hook.name,
+            url: hook.url,
+            status: res.status,
+            ok: res.ok,
+            durationMs: elapsed,
+            error: res.ok ? null : `HTTP ${res.status}`,
+          };
+        } catch (fetchErr: any) {
+          clearTimeout(timer);
+          const elapsed = Date.now() - startTime;
+          const isTimeout = fetchErr?.name === 'AbortError';
+          return {
+            id: hook.id,
+            name: hook.name,
+            url: hook.url,
+            status: 0,
+            ok: false,
+            durationMs: elapsed,
+            error: isTimeout ? 'Request timed out after 5s' : (fetchErr?.message || 'Connection failed'),
+          };
+        }
+      });
+
+      const dispatchResults = await Promise.all(dispatchPromises);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          event: effectiveEventType,
+          dispatchedCount: dispatchResults.length,
+          results: dispatchResults,
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
     }

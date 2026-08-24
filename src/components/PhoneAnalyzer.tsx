@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { serverTimestamp } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { analyzePhoneExposure } from '../lib/gemini';
 import { Smartphone, Loader2, ShieldCheck, AlertTriangle, ArrowRight, RefreshCw, X, ShieldAlert, Cpu, Network, Globe, MapPin, MessageSquareWarning, Users, ChevronDown, Download } from 'lucide-react';
@@ -70,7 +71,7 @@ export default function PhoneAnalyzer() {
       setResult(scanResult);
 
       if (auth.currentUser) {
-        await addDoc(collection(db, 'scans'), {
+        await saveScan({
           userId: auth.currentUser.uid,
           target: phone,
           type: 'phone',
@@ -231,6 +232,16 @@ export default function PhoneAnalyzer() {
                   >
                     <Download className="w-4 h-4" /> Download Report
                   </button>
+                </div>
+
+                {/* AI / OSINT Disclaimer */}
+                <div className="text-[11px] font-mono p-2.5 rounded-lg bg-bg-base/60 border border-[currentColor]/15 text-text-dim flex items-center gap-2">
+                  <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+                  <span>
+                    {lang === 'ar'
+                      ? 'تقييم مبني على أنماط الذكاء الاصطناعي وخطة الترقيم العامة؛ ليس بحثاً مؤكداً في سجلات اتصالات رسمية.'
+                      : 'AI-generated assessment based on public patterns and numbering plans; not a verified database lookup.'}
+                  </span>
                 </div>
 
                 <div className="text-sm opacity-90 leading-relaxed font-medium">

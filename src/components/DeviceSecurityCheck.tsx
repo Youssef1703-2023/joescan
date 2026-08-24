@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Shield, ShieldAlert, ShieldCheck, Monitor, Network, Wifi, Server, Activity, AlertTriangle, CheckCircle2, ChevronRight, Lock } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { auth, handleFirestoreError, OperationType } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
+import { serverTimestamp } from 'firebase/firestore';
 
 interface ShodanData {
   cpes: string[];
@@ -116,9 +117,9 @@ export default function DeviceSecurityCheck() {
       setStatus('complete');
       setSecurityScore(Math.max(0, currentScore));
       
-      // Save to Firebase
+      // Save to Firebase and dispatch webhooks
       try {
-        await addDoc(collection(db, 'scans'), {
+        await saveScan({
           userId: auth.currentUser?.uid,
           type: 'device_security',
           target: userIp,

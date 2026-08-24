@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { serverTimestamp } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Wifi, Loader2, ShieldCheck, AlertTriangle, ArrowRight, ShieldAlert, Cpu, MapPin, Search, Download, Network, Globe, Crosshair } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -159,7 +160,7 @@ export default function IpAnalyzer() {
       setResult(scanResult);
 
       if (auth.currentUser) {
-        await addDoc(collection(db, 'scans'), {
+        await saveScan({
           userId: auth.currentUser.uid,
           target: ipToScan,
           type: 'ip',

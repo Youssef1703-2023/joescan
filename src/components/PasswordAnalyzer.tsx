@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db, auth } from '../lib/firebase';
+import { serverTimestamp } from 'firebase/firestore';
+import { auth } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { KeyRound, Loader2, ShieldCheck, AlertTriangle, ArrowRight, RefreshCw, X, ShieldAlert, Settings2, Check, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -173,7 +174,7 @@ export default function PasswordAnalyzer() {
       setResult(scanResult);
 
       if (auth.currentUser) {
-        await addDoc(collection(db, 'scans'), {
+        await saveScan({
           userId: auth.currentUser.uid,
           target: password.length > 3 ? password.substring(0, 3) + '...' : '***',
           type: 'password',

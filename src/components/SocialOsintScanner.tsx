@@ -1,7 +1,8 @@
 import type { FormEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { serverTimestamp } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { searchUsername, searchPhoneNumber, SocialOsintResult, PlatformHit, PhoneInfo } from '../lib/socialOsint';
 import { analyzeSocialFootprint } from '../lib/gemini';
@@ -226,7 +227,7 @@ export default function SocialOsintScanner() {
         // Save to Firestore (don't crash if this fails)
         try {
           if (auth.currentUser) {
-            await addDoc(collection(db, 'scans'), {
+            await saveScan({
               userId: auth.currentUser.uid,
               target: trimmedUsername,
               type: 'social_osint',
@@ -667,6 +668,16 @@ export default function SocialOsintScanner() {
                       >
                         <Download className="w-4 h-4" /> {t('download_report')}
                       </button>
+                    </div>
+
+                    {/* AI / OSINT Disclaimer */}
+                    <div className="text-[11px] font-mono p-2.5 rounded-lg bg-bg-base/60 border border-[currentColor]/15 text-text-dim flex items-center gap-2">
+                      <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
+                      <span>
+                        {lang === 'ar'
+                          ? 'تقييم استخباراتي مبني على الأنماط الرقمية العامة؛ ليس بحثاً مؤكداً في قواعد بيانات مغلقة.'
+                          : 'AI-generated assessment based on public patterns; not a verified database lookup.'}
+                      </span>
                     </div>
 
                     <div className="text-sm opacity-90 leading-relaxed font-medium">

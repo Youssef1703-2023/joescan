@@ -35,6 +35,7 @@ const TeamManagement = lazy(() => import('./components/TeamManagement'));
 const ThreatMap3D = lazy(() => import('./components/ThreatMap3D'));
 const ReferralSystem = lazy(() => import('./components/ReferralSystem'));
 const Blog = lazy(() => import('./components/Blog'));
+const CyberAcademy = lazy(() => import('./components/CyberAcademy'));
 import LoadingSkeleton from './components/LoadingSkeleton';
 import ToastContainer from './components/Toast';
 import CommandPalette from './components/CommandPalette';
@@ -421,6 +422,7 @@ function AppContent() {
             { activeTab === 'admin' && auth.currentUser?.email === ADMIN_EMAIL && <AdminDashboard /> }
             { activeTab === 'referral' && <ReferralSystem /> }
             { activeTab === 'blog' && <Blog /> }
+            { activeTab === 'academy' && <CyberAcademy /> }
             </Suspense>
           </motion.div>
           </AnimatePresence>

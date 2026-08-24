@@ -64,6 +64,11 @@ vi.mock('../lib/firebase', () => ({
   db: {},
 }));
 
+vi.mock('../lib/webhooks', () => ({
+  saveScan: mocks.addDoc,
+  dispatchWebhooks: vi.fn().mockResolvedValue({ success: true, results: [] }),
+}));
+
 vi.mock('firebase/firestore', () => ({
   collection: vi.fn(() => 'scans'),
   addDoc: mocks.addDoc,
