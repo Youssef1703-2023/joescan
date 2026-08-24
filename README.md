@@ -396,9 +396,9 @@ JoeScan offers a three-tier pricing model designed to scale from individual rese
 
 | Feature | Stealth (Free) | Pro Analyst (50% OFF) | SOC Enterprise (50% OFF) |
 |:--------|:---------------|:----------------------|:-------------------------|
-| **Daily Scans** | 10 Manual Scans/Day | 150 Scans/Day | Unlimited |
+| **Daily AI Scans** | 10 / Day | 150 / Day | 2,000 / Day |
 | **Watchlist Targets** | 1 Target | 50 Targets | Unlimited Targets |
-| **Watchlist Frequency** | Weekly (1 Day/Week) | On-Demand | Continuous 24/7 |
+| **Watchlist Frequency** | On-Demand | On-Demand | On-Demand |
 | **PDF Reports** | Standard (Watermarked) | Unbranded White-label | Unbranded White-label |
 | **Device Security** | Unlimited | Unlimited | Unlimited |
 | **Cyber Academy** | ✅ (All Lessons) | ✅ (All Lessons) | ✅ (All Lessons) |
