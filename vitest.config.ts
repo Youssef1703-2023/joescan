@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+﻿import { defineConfig, configDefaults } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
@@ -7,5 +7,8 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     globals: false,
+    // Exclude leftover Claude worktree copies - vitest was picking up stale
+    // duplicate test files from .claude/worktrees and failing on them.
+    exclude: [...configDefaults.exclude, '**/.claude/**'],
   },
 });

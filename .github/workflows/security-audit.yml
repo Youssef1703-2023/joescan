@@ -1,0 +1,39 @@
+name: Security audit
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  schedule:
+    # Daily 06:00 UTC — catches new advisories even without pushes
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps
+
+      # Prod dependencies must have zero known vulnerabilities.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=low
+
+      # Dev dependencies allowed to fail build? No — report but non-blocking (advisories in tooling change daily).
+      - name: Audit dev dependencies (non-blocking)
+        run: npm audit --audit-level=critical
+        continue-on-error: true
+
+      - name: Type check
+        run: npm run lint
