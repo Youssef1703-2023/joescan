@@ -27,7 +27,7 @@ const ScanHistory = lazy(() => import('./components/ScanHistory'));
 const ProfileSettings = lazy(() => import('./components/ProfileSettings'));
 const ApiSettingsModal = lazy(() => import('./components/ApiSettingsModal'));
 const Pricing = lazy(() => import('./components/Pricing'));
-const MfaGuard = lazy(() => import('./components/MfaGuard'));
+const MfaGate = lazy(() => import('./components/MfaGate'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const ThreatMap = lazy(() => import('./components/ThreatMap'));
 const SiemWebhooks = lazy(() => import('./components/SiemWebhooks'));
@@ -133,11 +133,6 @@ function AppContent() {
       const prevUser = currentUserRef.current;
       if (!u || (prevUser && u.uid !== prevUser.uid)) {
         setMfaPassed(false);
-        if (prevUser) localStorage.removeItem(`mfa_verified_${prevUser.uid}`);
-      } else if (u) {
-        if (localStorage.getItem(`mfa_verified_${u.uid}`) === 'true') {
-          setMfaPassed(true);
-        }
       }
       currentUserRef.current = u;
       setUser(u);
@@ -222,9 +217,6 @@ function AppContent() {
   };
 
   const handleLogout = () => {
-    if (user) {
-      localStorage.removeItem(`mfa_verified_${user.uid}`);
-    }
     auth.signOut();
   };
 
@@ -241,10 +233,7 @@ function AppContent() {
   }
 
   if (!mfaPassed) {
-    return <MfaGuard user={user} onVerified={() => {
-      localStorage.setItem(`mfa_verified_${user.uid}`, 'true');
-      setMfaPassed(true);
-    }} onLogout={handleLogout} />;
+    return <MfaGate user={user} onVerified={() => setMfaPassed(true)} onLogout={handleLogout} />;
   }
 
   // Maintenance mode — block non-admin users

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { updateProfile, deleteUser, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail } from 'firebase/auth';
+import { updateProfile, deleteUser, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail, multiFactor, TotpMultiFactorGenerator } from 'firebase/auth';
 import { auth, db, getUserProfile, updateUserProfile } from '../lib/firebase';
 import { doc, getDoc, setDoc, deleteField } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -51,22 +51,25 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // MFA State
+  // MFA State (real Firebase Auth TOTP enrollment)
   const [mfaEnabled, setMfaEnabled] = useState<boolean | null>(null);
   const [mfaToggling, setMfaToggling] = useState(false);
 
-  // Load MFA status
+  // Load MFA status from Firebase Auth (server-side truth)
   useEffect(() => {
     if (!user) return;
-    getDoc(doc(db, 'users', user.uid)).then(snap => {
-      if (snap.exists()) {
-        const data = snap.data();
-        // MFA is enabled if mfaSecret exists and mfaSkipped is not true
-        setMfaEnabled(!!data.mfaSecret && data.mfaSkipped !== true);
-      } else {
-        setMfaEnabled(false);
+    let cancelled = false;
+    (async () => {
+      try {
+        await user.reload();
+        const current = auth.currentUser;
+        if (cancelled || !current) return;
+        setMfaEnabled(multiFactor(current).enrolledFactors.length > 0);
+      } catch {
+        if (!cancelled) setMfaEnabled(false);
       }
-    }).catch(() => setMfaEnabled(false));
+    })();
+    return () => { cancelled = true; };
   }, [user]);
 
   if (!user) return null;
@@ -515,21 +518,18 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
                       setSuccess(null);
                       try {
                         if (mfaEnabled) {
-                          // Disable MFA: set mfaSkipped=true, clear mfaSecret
-                          await setDoc(doc(db, 'users', user.uid), {
-                            mfaSkipped: true,
-                            mfaSecret: deleteField(),
-                          }, { merge: true });
+                          // Disable MFA: unenroll the TOTP factor in Firebase Auth
+                          const current = auth.currentUser;
+                          if (!current) throw new Error("Not signed in");
+                          const factors = multiFactor(current).enrolledFactors;
+                          const totpFactor = factors.find(f => f.factorId === TotpMultiFactorGenerator.FACTOR_ID);
+                          if (!totpFactor) throw new Error("No authenticator factor found on this account.");
+                          await multiFactor(current).unenroll(totpFactor);
                           setMfaEnabled(false);
                           setSuccess('Two-Factor Authentication has been disabled. You can re-enable it anytime.');
                         } else {
-                          // Enable MFA: remove mfaSkipped so next login triggers setup
-                          await setDoc(doc(db, 'users', user.uid), {
-                            mfaSkipped: deleteField(),
-                            mfaSecret: deleteField(),
-                          }, { merge: true });
-                          setMfaEnabled(false);
-                          setSuccess('Two-Factor Authentication will be set up on your next login. Please log out and log back in to configure it.');
+                          // Enable MFA: sign out and back in to run the enrollment flow
+                          setSuccess('To protect your account, enrollment runs at sign-in. Please log out and log back in to set up your authenticator.');
                         }
                       } catch (err: any) {
                         setError(err.message || 'Failed to update MFA settings.');

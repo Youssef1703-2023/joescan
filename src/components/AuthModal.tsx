@@ -15,6 +15,8 @@ import { auth, db } from '../lib/firebase';
 import { doc, setDoc, getDoc, getDocs, collection, query, where } from 'firebase/firestore';
 import { useLanguage } from '../contexts/LanguageContext';
 import { isDisposableEmail } from '../utils/disposableDomains';
+import { isMfaRequiredError, MfaChallenge } from './MfaGuard';
+import type { MultiFactorError } from 'firebase/auth';
 
 type AuthMode = 'login' | 'signup' | 'forgot_password';
 
@@ -33,6 +35,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [mfaError, setMfaError] = useState<MultiFactorError | null>(null);
   
   // Username validation state
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
@@ -154,7 +157,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       } else if (mode === 'login') {
         // Resolve username or email
         const resolvedEmail = await resolveUsernameToEmail(username);
-        await signInWithEmailAndPassword(auth, resolvedEmail, password);
+        try {
+          await signInWithEmailAndPassword(auth, resolvedEmail, password);
+        } catch (loginErr: any) {
+          if (isMfaRequiredError(loginErr)) {
+            setMfaError(loginErr);
+            return;
+          }
+          throw loginErr;
+        }
         
       } else if (mode === 'forgot_password') {
         // For forgot password, resolve username to email first
@@ -191,7 +202,16 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
+      let cred: Awaited<ReturnType<typeof signInWithPopup>>;
+      try {
+        cred = await signInWithPopup(auth, provider);
+      } catch (popupErr: any) {
+        if (isMfaRequiredError(popupErr)) {
+          setMfaError(popupErr);
+          return;
+        }
+        throw popupErr;
+      }
       
       // Always save email + name to Firestore on Google login
       if (cred.user) {
@@ -226,6 +246,26 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   }
 
   if (!isOpen) return null;
+
+  // Real Firebase MFA sign-in challenge
+  if (mfaError) {
+    return (
+      <AnimatePresence>
+        <MfaChallenge
+          error={mfaError}
+          onResolved={() => {
+            setMfaError(null);
+            onClose();
+          }}
+          onCancel={() => {
+            setMfaError(null);
+            setError(null);
+            setLoading(false);
+          }}
+        />
+      </AnimatePresence>
+    );
+  }
 
   const getUsernameIcon = () => {
     switch (usernameStatus) {
