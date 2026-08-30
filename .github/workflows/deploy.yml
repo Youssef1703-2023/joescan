@@ -32,7 +32,7 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
-          VITE_AI_PROXY_URL: ${{ vars.VITE_AI_PROXY_URL }}
+          VITE_AI_PROXY_URL: ${{ vars.VITE_AI_PROXY_URL || 'https://joescan-ai-proxy.goet900.workers.dev' }}
 
       - name: Copy index.html to 404.html (SPA routing)
         run: cp dist/index.html dist/404.html
