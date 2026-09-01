@@ -663,26 +663,14 @@ export default {
         );
       }
 
-      let peekResult: { used: number; day: string };
+      // Degraded mode: DO unavailable -> report unknown usage instead of 503,
+      // so the UI quota meter degrades gracefully rather than erroring.
+      let peekResult: { used: number; day: string } = { used: -1, day: cairoDay };
       try {
         const stub = getQuotaStub(env, uid);
         peekResult = await peekQuotaUnits(stub, cairoDay);
-      } catch {
-        return new Response(
-          JSON.stringify({
-            code: 'QUOTA_STORE_UNAVAILABLE',
-            error: 'Quota service temporarily unavailable. Please retry shortly.',
-            retryAfter: 30,
-          }),
-          {
-            status: 503,
-            headers: {
-              ...corsHeaders,
-              'Content-Type': 'application/json',
-              'Retry-After': '30',
-            },
-          }
-        );
+      } catch (err) {
+        console.error('QUOTA_PEEK_FAILED uid=' + uid, err instanceof Error ? err.message : err);
       }
 
       const resetsAt = new Date(Date.now() + secondsUntilMidnight * 1000).toISOString();
@@ -1124,63 +1112,45 @@ export default {
     }
 
     // 3. Burst Guard Check before Firestore read (§8)
-    let quotaStub: any;
+    // Durable Object availability is best-effort: a brief DO outage must not
+    // block the chat. Fail open — provider caps (max_tokens, timeout) and the
+    // auth layer still protect the endpoint. Metering resumes when DO recovers.
+    let quotaStub: any = null;
     try {
       quotaStub = getQuotaStub(env, uid);
-    } catch {
-      return new Response(
-        JSON.stringify({
-          code: 'QUOTA_STORE_UNAVAILABLE',
-          error: 'Quota service temporarily unavailable. Please retry shortly.',
-          retryAfter: 30,
-        }),
-        {
-          status: 503,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-            'Retry-After': '30',
-          },
-        }
-      );
+    } catch (err) {
+      console.error('QUOTA_DO_BINDING_FAILED uid=' + uid, err instanceof Error ? err.message : err);
+      quotaStub = null;
     }
 
-    try {
-      const burstCheck = await checkBurstGuard(quotaStub);
-      if (!burstCheck.ok) {
-        const retryAfter = burstCheck.retryAfter || 60;
-        return new Response(
-          JSON.stringify({
-            code: 'RATE_LIMIT_EXCEEDED',
-            error: 'Burst rate limit exceeded. Please slow down and try again shortly.',
-            retryAfter,
-          }),
-          {
-            status: 429,
-            headers: {
-              ...corsHeaders,
-              'Content-Type': 'application/json',
-              'Retry-After': String(retryAfter),
-            },
-          }
-        );
-      }
-    } catch {
-      return new Response(
-        JSON.stringify({
-          code: 'QUOTA_STORE_UNAVAILABLE',
-          error: 'Rate limiter temporarily unavailable. Please retry shortly.',
-          retryAfter: 30,
-        }),
-        {
-          status: 503,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-            'Retry-After': '30',
-          },
+    let quotaDegraded = false;
+    if (quotaStub) {
+      try {
+        const burstCheck = await checkBurstGuard(quotaStub);
+        if (!burstCheck.ok) {
+          const retryAfter = burstCheck.retryAfter || 60;
+          return new Response(
+            JSON.stringify({
+              code: 'RATE_LIMIT_EXCEEDED',
+              error: 'Burst rate limit exceeded. Please slow down and try again shortly.',
+              retryAfter,
+            }),
+            {
+              status: 429,
+              headers: {
+                ...corsHeaders,
+                'Content-Type': 'application/json',
+                'Retry-After': String(retryAfter),
+              },
+            }
+          );
         }
-      );
+      } catch (err) {
+        console.error('BURST_CHECK_FAILED uid=' + uid, err instanceof Error ? err.message : err);
+        quotaDegraded = true; // fail open
+      }
+    } else {
+      quotaDegraded = true;
     }
 
     // 4. Resolve Effective Tier & Limit (§1, §2)
@@ -1206,25 +1176,20 @@ export default {
     }
 
     // 5. Reserve Quota BEFORE Provider Call (§4, §5)
+    // DO unavailable -> fail open (serve the request), mark quota-degraded.
+    // Metering resumes automatically when the DO recovers.
     let reserveResult: { ok: boolean; used: number; limit: number };
-    try {
-      reserveResult = await reserveQuotaUnit(quotaStub, tierInfo.limit, cairoDay);
-    } catch {
-      return new Response(
-        JSON.stringify({
-          code: 'QUOTA_STORE_UNAVAILABLE',
-          error: 'Quota reservation service unavailable. Please retry shortly.',
-          retryAfter: 30,
-        }),
-        {
-          status: 503,
-          headers: {
-            ...corsHeaders,
-            'Content-Type': 'application/json',
-            'Retry-After': '30',
-          },
-        }
-      );
+    if (quotaStub) {
+      try {
+        reserveResult = await reserveQuotaUnit(quotaStub, tierInfo.limit, cairoDay);
+      } catch (err) {
+        console.error('QUOTA_RESERVE_FAILED uid=' + uid, err instanceof Error ? err.message : err);
+        quotaDegraded = true;
+        reserveResult = { ok: true, used: -1, limit: tierInfo.limit };
+      }
+    } else {
+      quotaDegraded = true;
+      reserveResult = { ok: true, used: -1, limit: tierInfo.limit };
     }
 
     if (!reserveResult.ok) {
@@ -1251,11 +1216,14 @@ export default {
       );
     }
 
-    const rateLimitHeaders = {
+    const rateLimitHeaders: Record<string, string> = {
       'X-RateLimit-Limit': String(reserveResult.limit),
       'X-RateLimit-Remaining': String(Math.max(0, reserveResult.limit - reserveResult.used)),
       'X-RateLimit-Reset': String(secondsUntilMidnight),
     };
+    if (quotaDegraded) {
+      rateLimitHeaders['X-Quota-Degraded'] = 'true';
+    }
 
     // 6. Forward Request to Upstream AI Provider
     const controller = new AbortController();
