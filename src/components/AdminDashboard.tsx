@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import {
+import { Wrench,
   ShieldAlert, Users, Tag, Trash2, Plus, Zap, Ban, Activity, BarChart3,
   Ticket, Clock, CheckCircle, XCircle, MessageSquare, TrendingUp, Eye,
   Mail, Shield, AlertTriangle, RefreshCw, DollarSign, Server, Radio,
@@ -47,7 +47,7 @@ export default function AdminDashboard() {
     push_notifications: true, team_management: true, siem_webhooks: true
   });
   const [platformSettings, setPlatformSettings] = useState({
-    rateLimitPerMin: 30, maxScansDaily: 100, maintenanceMode: false, signupsEnabled: true
+    rateLimitPerMin: 30, maxScansDaily: 100, maintenanceMode: false, signupsEnabled: true, aiMaintenanceMode: false
   });
   const [broadcasts, setBroadcasts] = useState<any[]>([]);
   const [settingsSaving, setSettingsSaving] = useState(false);
@@ -148,7 +148,8 @@ export default function AdminDashboard() {
           rateLimitPerMin: data.rateLimitPerMin ?? 30,
           maxScansDaily: data.maxScansDaily ?? 100,
           maintenanceMode: data.maintenanceMode ?? false,
-          signupsEnabled: data.signupsEnabled ?? true
+          signupsEnabled: data.signupsEnabled ?? true,
+          aiMaintenanceMode: data.aiMaintenanceMode ?? false
         });
       }
 
@@ -1545,6 +1546,18 @@ export default function AdminDashboard() {
                     <button onClick={() => togglePlatformSetting('signupsEnabled')}
                       className={`${platformSettings.signupsEnabled ? 'text-accent' : 'text-text-dim'}`}>
                       {platformSettings.signupsEnabled ? <ToggleRight className="w-7 h-7" /> : <ToggleLeft className="w-7 h-7" />}
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-orange-400/5 border border-orange-400/25 rounded-xl text-xs">
+                    <div>
+                      <div className="font-bold text-orange-300 uppercase flex items-center gap-2">
+                        <Wrench className="w-3.5 h-3.5" /> AI Maintenance Mode
+                      </div>
+                      <div className="text-[10px] text-text-dim">Show "AI under maintenance" banner & disable AI chat</div>
+                    </div>
+                    <button onClick={() => togglePlatformSetting('aiMaintenanceMode')}
+                      className={`${platformSettings.aiMaintenanceMode ? 'text-orange-400' : 'text-text-dim'}`}>
+                      {platformSettings.aiMaintenanceMode ? <ToggleRight className="w-7 h-7" /> : <ToggleLeft className="w-7 h-7" />}
                     </button>
                   </div>
                 </div>

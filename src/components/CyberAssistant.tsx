@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Bot, X, Send, Sparkles, Trash2, Shield, Mail, KeyRound, Globe, Wifi, ChevronDown, Zap } from 'lucide-react';
+import { Bot, X, Send, Sparkles, Trash2, Shield, Mail, KeyRound, Globe, Wifi, ChevronDown, Zap, Wrench, Hammer } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { auth } from '../lib/firebase';
+import { auth, db } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { AiQuotaExceededError } from '../lib/gemini';
 
 // ─── Types ───
@@ -28,6 +29,17 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'openai/gpt-oss-120b';
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODEL = 'openai/gpt-oss-120b:free';
+
+// ─── AI Maintenance banner texts (7 languages, matches site languages) ───
+const maintTexts: Record<string, { title: string; body: string; eta: string }> = {
+  en: { title: 'AI is under maintenance', body: 'Our AI assistant is temporarily offline for an upgrade. All other tools are fully operational — we will be back shortly!', eta: 'ETA: soon' },
+  ar: { title: 'الذكاء الاصطناعي تحت الصيانة', body: 'مساعدنا الذكي متوقف مؤقتاً للترقية والتطوير. كل الأدوات الأخرى تعمل بشكل كامل — وسنعود إليكم قريباً!', eta: 'العودة: قريباً' },
+  fr: { title: 'IA en maintenance', body: 'Notre assistant IA est temporairement hors ligne pour une mise à niveau. Tous les autres outils fonctionnent normalement — nous revenons bientôt !', eta: 'Retour : bientôt' },
+  de: { title: 'KI in Wartung', body: 'Unser KI-Assistent ist für ein Upgrade vorübergehend offline. Alle anderen Tools funktionieren vollständig — wir sind bald zurück!', eta: 'Rückkehr: bald' },
+  es: { title: 'IA en mantenimiento', body: 'Nuestro asistente de IA está temporalmente fuera de línea por una mejora. Las demás herramientas funcionan con normalidad — ¡volveremos pronto!', eta: 'Regreso: pronto' },
+  tr: { title: 'Yapay zekâ bakımda', body: 'Yapay zekâ asistanımız yükseltme için geçici olarak çevrimdışı. Diğer tüm araçlar tamamen çalışıyor — yakında geri döneceğiz!', eta: 'Dönüş: yakında' },
+  ru: { title: 'ИИ на обслуживании', body: 'Наш ИИ-ассистент временно отключён для обновления. Все остальные инструменты полностью работают — скоро вернёмся!', eta: 'Возврат: скоро' },
+};
 
 // Custom user-supplied key from settings (D2). Groq is preferred; an OpenRouter
 // key is still honored for users who already configured one.
@@ -271,6 +283,27 @@ export default function CyberAssistant() {
   const [isTyping, setIsTyping] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
+  const [aiMaintenance, setAiMaintenance] = useState(false);
+
+  // Listen for AI maintenance flag from adminConfig (fetched by App + polled here)
+  useEffect(() => {
+    let cancelled = false;
+    const readFlag = async () => {
+      try {
+        const snap = await getDoc(doc(db, 'adminConfig', 'platformSettings'));
+        if (!cancelled && snap.exists()) {
+          setAiMaintenance(!!snap.data().aiMaintenanceMode);
+        }
+      } catch {
+        // config unreadable -> keep previous state
+      }
+    };
+    readFlag();
+    const interval = setInterval(readFlag, 60000); // refresh every 60s
+    const onUsage = () => readFlag();
+    window.addEventListener('joescan_ai_usage_updated', onUsage);
+    return () => { cancelled = true; clearInterval(interval); window.removeEventListener('joescan_ai_usage_updated', onUsage); };
+  }, []);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -342,6 +375,15 @@ export default function CyberAssistant() {
 
   // ─── Send Message ───
   const sendMessage = async (content: string) => {
+    if (aiMaintenance) {
+      setMessages(prev => [...prev, {
+        id: `maint_${Date.now()}`,
+        role: 'assistant',
+        content: isRtl ? '🛠️ الذكاء الاصطناعي تحت الصيانة حالياً. كل الأدوات الأخرى تعمل بشكل كامل — وسنعود قريباً!' : '🛠️ The AI assistant is under maintenance right now. All other tools are fully operational — we will be back soon!',
+        timestamp: Date.now(),
+      }]);
+      return;
+    }
     if (!content.trim() || isTyping) return;
 
     const userMsg: ChatMessage = {
@@ -467,15 +509,15 @@ export default function CyberAssistant() {
                     <div className="w-9 h-9 rounded-xl bg-accent/15 border border-accent/30 flex items-center justify-center">
                       <Bot className="w-5 h-5 text-accent" />
                     </div>
-                    {/* Online indicator */}
-                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-accent border-2 border-bg-base animate-pulse" />
+                    {/* Status indicator */}
+                    <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-bg-base ${aiMaintenance ? 'bg-orange-400' : 'bg-accent animate-pulse'}`} />
                   </div>
                   <div>
                     <h3 className="text-sm font-bold text-text-main font-mono tracking-wide">
                       JoeScan AI
                     </h3>
-                    <p className="text-[10px] text-accent font-mono uppercase tracking-widest">
-                      {isRtl ? 'مساعد أمني • متصل' : 'Cyber Assistant • Online'}
+                    <p className={`text-[10px] font-mono uppercase tracking-widest ${aiMaintenance ? 'text-orange-400' : 'text-accent'}`}>
+                      {aiMaintenance ? (isRtl ? 'مساعد أمني • صيانة' : 'Cyber Assistant • Maintenance') : (isRtl ? 'مساعد أمني • متصل' : 'Cyber Assistant • Online')}
                     </p>
                   </div>
                 </div>
@@ -503,8 +545,33 @@ export default function CyberAssistant() {
                 ref={chatContainerRef}
                 className="flex-1 overflow-y-auto px-4 py-3 space-y-3 scrollbar-hide"
               >
+                {/* AI Maintenance Banner (admin-controlled) */}
+                {aiMaintenance && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex flex-col items-center justify-center py-8 text-center px-2"
+                  >
+                    <motion.div
+                      animate={{ rotate: [0, -6, 6, 0] }}
+                      transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                      className="w-16 h-16 rounded-2xl bg-orange-400/10 border border-orange-400/30 flex items-center justify-center mb-4 shadow-[0_0_30px_rgba(251,146,60,0.25)]"
+                    >
+                      <Hammer className="w-8 h-8 text-orange-400" />
+                    </motion.div>
+                    <h4 className="text-base font-bold text-text-main mb-2">
+                      {maintTexts[lang].title}
+                    </h4>
+                    <p className="text-xs text-text-dim max-w-[280px] leading-relaxed mb-4">
+                      {maintTexts[lang].body}
+                    </p>
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-orange-400/80 border border-orange-400/30 rounded-full px-3 py-1 bg-orange-400/5">
+                      {maintTexts[lang].eta}
+                    </span>
+                  </motion.div>
+                )}
                 {/* Welcome message if empty */}
-                {messages.length === 0 && (
+                {messages.length === 0 && !aiMaintenance && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -554,7 +621,7 @@ export default function CyberAssistant() {
                 )}
 
                 {/* Chat Messages */}
-                {messages.map((msg, i) => (
+                {!aiMaintenance && messages.map((msg, i) => (
                   <motion.div
                     key={msg.id}
                     initial={{ opacity: 0, y: 8 }}
@@ -585,7 +652,7 @@ export default function CyberAssistant() {
                 ))}
 
                 {/* Typing Indicator */}
-                {isTyping && (
+                {isTyping && !aiMaintenance && (
                   <motion.div
                     initial={{ opacity: 0, y: 5 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -631,15 +698,21 @@ export default function CyberAssistant() {
 
               {/* ── Input Area ── */}
               <form onSubmit={handleSubmit} className="px-3 py-3 border-t border-accent/10 bg-bg-base/50">
+                {aiMaintenance && (
+                  <div className="mb-2 flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-400/10 border border-orange-400/25 text-[11px] text-orange-300">
+                    <Wrench className="w-3.5 h-3.5 shrink-0" />
+                    <span>{maintTexts[lang].title} — {maintTexts[lang].eta}</span>
+                  </div>
+                )}
                 <div className="flex items-end gap-2">
                   <textarea
                     ref={inputRef}
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    placeholder={isRtl ? 'اكتب سؤالك هنا...' : 'Ask anything about security...'}
+                    placeholder={aiMaintenance ? (isRtl ? 'الذكاء الاصطناعي تحت الصيانة...' : 'AI under maintenance...') : (isRtl ? 'اكتب سؤالك هنا...' : 'Ask anything about security...')}
                     rows={1}
-                    disabled={isTyping}
+                    disabled={isTyping || aiMaintenance}
                     className="flex-1 resize-none bg-bg-elevated border border-border-subtle rounded-xl px-4 py-2.5 text-sm text-text-main placeholder:text-text-dim/50 focus:border-accent/40 focus:ring-1 focus:ring-accent/20 outline-none font-sans transition-colors scrollbar-hide disabled:opacity-50"
                     style={{
                       maxHeight: '120px',
@@ -653,7 +726,7 @@ export default function CyberAssistant() {
                   />
                   <button
                     type="submit"
-                    disabled={!input.trim() || isTyping}
+                    disabled={!input.trim() || isTyping || aiMaintenance}
                     className="shrink-0 w-10 h-10 rounded-xl bg-accent text-accent-fg flex items-center justify-center hover:shadow-[0_0_20px_var(--accent-glow)] transition-all disabled:opacity-30 disabled:shadow-none active:scale-95"
                   >
                     {isTyping ? (
@@ -687,8 +760,8 @@ export default function CyberAssistant() {
         {/* Pulse rings */}
         {!isOpen && (
           <>
-            <span className="absolute inset-0 rounded-full bg-accent/20 animate-ping" style={{ animationDuration: '3s' }} />
-            <span className="absolute inset-[-4px] rounded-full border-2 border-accent/10 animate-pulse" />
+            <span className={`absolute inset-0 rounded-full animate-ping ${aiMaintenance ? 'bg-orange-400/20' : 'bg-accent/20'}`} style={{ animationDuration: '3s' }} />
+            <span className={`absolute inset-[-4px] rounded-full border-2 animate-pulse ${aiMaintenance ? 'border-orange-400/15' : 'border-accent/10'}`} />
           </>
         )}
         
@@ -696,8 +769,16 @@ export default function CyberAssistant() {
         <div className={`relative w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 shadow-[0_4px_25px_rgba(0,0,0,0.3)] ${
           isOpen
             ? 'bg-bg-elevated border border-border-subtle'
+            : aiMaintenance
+            ? 'bg-orange-400/90 shadow-[0_0_30px_rgba(251,146,60,0.4),0_4px_25px_rgba(0,0,0,0.3)]'
             : 'bg-accent shadow-[0_0_30px_var(--accent-glow),0_4px_25px_rgba(0,0,0,0.3)]'
         }`}>
+          {/* Maintenance wrench badge */}
+          {aiMaintenance && !isOpen && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-bg-base border border-orange-400/50 flex items-center justify-center">
+              <Wrench className="w-3 h-3 text-orange-400" />
+            </span>
+          )}
           <AnimatePresence mode="wait">
             {isOpen ? (
               <motion.div
