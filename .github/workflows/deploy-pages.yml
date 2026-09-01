@@ -42,7 +42,11 @@ jobs:
           NODE_ENV: production
           VITE_AI_PROXY_URL: ${{ vars.VITE_AI_PROXY_URL || 'https://joescan-ai-proxy.goet900.workers.dev' }}
 
-      # Deploy dist as-is (404.html intentionally absent so Pages auto-SPA works)
+      # Pre-render blog/academy SEO pages + extend sitemap (42 static pages)
+      - name: Pre-render SEO pages
+        run: node scripts/prerender-seo.mjs
+
+      # Deploy dist as-is (no 404.html — Pages auto-SPA handles routes)
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
