@@ -283,19 +283,25 @@ export default function CyberAssistant() {
   const [isTyping, setIsTyping] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
-  const [aiMaintenance, setAiMaintenance] = useState(false);
+  // Start CLOSED for maintenance: the assistant is only open when the admin
+  // explicitly writes aiMaintenanceMode=false to adminConfig/platformSettings.
+  const [aiMaintenance, setAiMaintenance] = useState(true);
 
-  // Listen for AI maintenance flag from adminConfig (fetched by App + polled here)
+  // Poll the admin flag (60s) — flips everyone open the moment the admin sets
+  // aiMaintenanceMode=false, and closes everyone if it is set back to true.
   useEffect(() => {
     let cancelled = false;
     const readFlag = async () => {
       try {
         const snap = await getDoc(doc(db, 'adminConfig', 'platformSettings'));
-        if (!cancelled && snap.exists()) {
-          setAiMaintenance(!!snap.data().aiMaintenanceMode);
+        if (!cancelled) {
+          if (snap.exists()) {
+            setAiMaintenance(snap.data().aiMaintenanceMode !== false);
+          }
+          // snap missing/unreadable -> stay in maintenance (fail closed)
         }
       } catch {
-        // config unreadable -> keep previous state
+        // config unreadable -> stay closed (fail closed)
       }
     };
     readFlag();
