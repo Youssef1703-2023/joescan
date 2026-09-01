@@ -1,8 +1,10 @@
 ﻿name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: [ main ]
+  # AUTO-RUN DISABLED: migrating to Cloudflare Pages (deploy-pages.yml).
+  # To re-enable GH Pages auto-deploy, uncomment the push trigger below.
+  # push:
+  #   branches: [ main ]
   workflow_dispatch:
 
 permissions:
