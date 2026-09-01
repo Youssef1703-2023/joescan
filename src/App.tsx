@@ -453,6 +453,14 @@ function AppContent() {
             </Suspense>
           </motion.div>
           </AnimatePresence>
+          {/* Legal footer */}
+          <footer className="w-full max-w-6xl mx-auto px-4 pb-6 pt-2 text-center text-[11px] text-text-dim/70 font-mono shrink-0">
+            <a href="/privacy.html" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Privacy</a>
+            <span className="mx-2 opacity-40">·</span>
+            <a href="/terms.html" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Terms</a>
+            <span className="mx-2 opacity-40">·</span>
+            <a href="/security.en.html" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Security</a>
+          </footer>
         </main>
       </div>
 

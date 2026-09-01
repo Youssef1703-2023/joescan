@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>security.txt | JoeScan</title>
+<style>
+  body{margin:0;background:#0b0f14;color:#dbe4ee;font-family:Consolas,monospace;line-height:1.9;font-size:14px;padding:40px 24px}
+  pre{background:#0e141d;border:1px solid #1f2b3a;border-radius:12px;padding:24px;display:inline-block}
+  a{color:#4cc9f0}
+</style>
+</head>
+<body>
+<pre>Contact: mailto:joetech.dev.systems@gmail.com
+Expires: 2027-09-01T00:00:00.000Z
+Preferred-Languages: ar, en
+Canonical: https://joescan.me/.well-known/security.txt
+Policy: https://joescan.me/security.html</pre>
+</body>
+</html>

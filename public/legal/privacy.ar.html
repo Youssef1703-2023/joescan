@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy | JoeScan</title>
+<style>
+  :root{--bg:#0b0f14;--panel:#111823;--line:#1f2b3a;--txt:#dbe4ee;--dim:#8ba0b5;--accent:#00ff88;--accent2:#4cc9f0}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:"Segoe UI",Tahoma,Arial,sans-serif;line-height:1.9;font-size:15px}
+  .wrap{max-width:860px;margin:0 auto;padding:40px 20px 80px}
+  h1{color:#fff;font-size:26px;border-bottom:2px solid var(--accent);padding-bottom:12px}
+  h2{color:#fff;font-size:19px;margin-top:36px;border-right:4px solid var(--accent);padding-right:12px}
+  h3{color:#eaf2fa;font-size:16px}
+  a{color:var(--accent2)}
+  .meta{color:var(--dim);font-size:13px;margin-bottom:30px}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th{background:#0e141d;color:var(--dim);text-align:right;padding:9px 12px;border:1px solid var(--line)}
+  td{padding:9px 12px;border:1px solid var(--line)}
+  .note{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:16px 0}
+  .badge{display:inline-block;background:#0d2f1c;color:#63e6a5;border:1px solid #1c5c37;border-radius:999px;padding:2px 14px;font-size:12.5px;margin-left:6px}
+  ul{padding-right:22px}
+  li{margin:6px 0}
+  .lang-switch{margin-top:50px;border-top:1px solid var(--line);padding-top:16px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>سياسة الخصوصية</h1>
+<p class="meta">آخر تحديث: 1 سبتمبر 2026 · تنطبق على منصة <b>JoeScan</b> (joescan.me وجميع نطاقاتها الفرعية)</p>
+
+<div class="note">
+نؤمن أن أداة الخصوصية يجب أن تحمي خصوصيتك أولاً. هذه الصفحة تشرح بالتفصيل ما يحدث لبياناتك عند استخدام JoeScan — بما في ذلك البيانات التي تُرسل لخدمات خارجية عند فحص معين، لأننا نفضّل الشفافية الكاملة على العبارات العامة.
+</div>
+
+<h2>1) ما نجمعه وما لا نجمعه</h2>
+<h3>لا نجمع ولا نخزّن:</h3>
+<ul>
+  <li><b>كلمات المرور التي تفحصها:</b> تُحلَّل داخل متصفحك فقط، وللبحث في قواعد التسريبات نستخدم أسلوب <a href="https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange">k-anonymity</a> — يُرسل 5 أحرف فقط من بصمة SHA-1 الخاصة بكلمة المرور، ولا تُرسل كلمة المرور نفسها أبداً.</li>
+  <li><b>الرسائل/الروابط التي تحللها محلياً:</b> محللات كثيرة تعمل بالكامل في متصفحك بدون أي إرسال.</li>
+</ul>
+<h3>ما قد يُرسل لخدمة خارجية عند فحص معين (بطلبك):</h3>
+<table>
+  <tr><th>الفحص</th><th>ما يُرسل</th><th>الجهة المستقبلة</th></tr>
+  <tr><td>فحص تسريبات البريد</td><td>البريد الإلكتروني المُدخل</td><td>XposedOrNot (قاعدة تسريبات عامة)</td></tr>
+  <tr><td>فحص الرابط المشبوه</td><td>الـ URL المُدخل</td><td>URLhaus (abuse.ch)</td></tr>
+  <tr><td>فحص IP</td><td>عنوان IP المُدخل</td><td>ipapi.co / freeipapi / ipwho.is</td></tr>
+  <tr><td>فحص الدومين</td><td>اسم الدومين</td><td>Google DNS (dns.google)</td></tr>
+  <tr><td>فحص أمان الجهاز</td><td>عنوان IP العام لجهازك (لإظهارك ما يراه الخارج)</td><td>Shodan InternetDB / ipify</td></tr>
+  <tr><td>الذكاء الاصطناعي (عند توفره)</td><td>نص الطلب / نتيجة الفحص المختصرة</td><td>مزوّد النموذج عبر وسيطنا المشفّر</td></tr>
+</table>
+<p>هذه الخدمات تعالج المدخل لإعطائك النتيجة فقط. لا نبيع بياناتك ولا نشاركها مع أي طرف لأغراض تسويقية أو إعلانية.</p>
+
+<h2>2) بيانات حسابك (عند التسجيل)</h2>
+<ul>
+  <li><b>ما نخزّن:</b> البريد الإلكتروني، الاسم المعروض (اختياري)، صورة العرض (اختيارية)، سجل الفحوصات، تقدمك في الأكاديمية، والإعدادات. تُخزَّن في Firebase (Google Cloud) بأمان قياسي.</li>
+  <li><b>المصادقة الثنائية:</b> عند تفعيلها، تُدار أسرار TOTP بواسطة بنية Firebase Auth نفسها ولا تُخزَّن في قواعد بياناتنا القابلة للقراءة.</li>
+  <li><b>مفاتيح API الشخصية:</b> إن أدخلت مفتاحاً خاصاً بك في الإعدادات، يُخزَّن في متصفحك أنت فقط (localStorage) ولا يصل إلينا مطلقاً.</li>
+</ul>
+
+<h2>3) الكوكيز والتخزين المحلي</h2>
+<p>نستخدم التخزين المحلي للمتصفح (localStorage) لحفظ: لغة الواجهة، الثيم، سجل المحادثة مع المساعد، ومعرّف جهاز مجهول لمنع إساءة الاستخدام. لا نستخدم كوكيز إعلانية أو تتبع عبر المواقع. Firebase App Check (reCAPTCHA v3) يُستخدم للحماية من الاستخدام الآلي فقط.</p>
+
+<h2>4) مدة الاحتفاظ والحذف</h2>
+<ul>
+  <li>سجل الفحوصات: يبقى حتى تحذفه بنفسك (متاح من صفحة السجل).</li>
+  <li>حسابك بالكامل: يمكنك حذفه من الإعدادات → الأمان → حذف الحساب، أو بطلب عبر الدعم وسيُنفَّذ خلال 30 يوماً كحد أقصى.</li>
+</ul>
+
+<h2>5) حقوقك</h2>
+<p>لك الحق في الوصول إلى بياناتك، تصحيحها، حذفها، وسحب موافقتك في أي وقت (بحذف الحساب). للتمارين المتعلقة بالخصوصية راسلنا عبر نظام التذاكر داخل المنصة أو على <a href="mailto:joetech.dev.systems@gmail.com">joetech.dev.systems@gmail.com</a>.</p>
+
+<h2>6) الأطفال</h2>
+<p>الخدمة غير موجهة لمن هم دون 13 عاماً، ولا نجمع بياناتهم بشكل متعمد.</p>
+
+<h2>7) تعديلات هذه السياسة</h2>
+<p>قد نحدّث هذه الصفحة مع تطور المنصة، وسيظهر تاريخ "آخر تحديث" في الأعلى. التعديلات الجوهرية ستُعلن داخل التطبيق.</p>
+
+<div class="lang-switch">
+  English version: <a href="/privacy.en.html">Privacy Policy (English)</a>
+</div>
+
+</div>
+</body>
+</html>

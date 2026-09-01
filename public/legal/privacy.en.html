@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy | JoeScan</title>
+<style>
+  :root{--bg:#0b0f14;--panel:#111823;--line:#1f2b3a;--txt:#dbe4ee;--dim:#8ba0b5;--accent:#00ff88;--accent2:#4cc9f0}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:"Segoe UI",Tahoma,Arial,sans-serif;line-height:1.8;font-size:15px}
+  .wrap{max-width:860px;margin:0 auto;padding:40px 20px 80px}
+  h1{color:#fff;font-size:26px;border-bottom:2px solid var(--accent);padding-bottom:12px}
+  h2{color:#fff;font-size:19px;margin-top:36px;border-left:4px solid var(--accent);padding-left:12px}
+  h3{color:#eaf2fa;font-size:16px}
+  a{color:var(--accent2)}
+  .meta{color:var(--dim);font-size:13px;margin-bottom:30px}
+  table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14px}
+  th{background:#0e141d;color:var(--dim);text-align:left;padding:9px 12px;border:1px solid var(--line)}
+  td{padding:9px 12px;border:1px solid var(--line)}
+  .note{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:16px 0}
+  ul{padding-left:22px}
+  li{margin:6px 0}
+  .lang-switch{margin-top:50px;border-top:1px solid var(--line);padding-top:16px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Privacy Policy</h1>
+<p class="meta">Last updated: September 1, 2026 · Applies to the <b>JoeScan</b> platform (joescan.me and all subdomains)</p>
+
+<div class="note">
+A privacy tool should protect your privacy first. This page explains exactly what happens to your data when you use JoeScan — including what is sent to third-party services during specific scans — because we prefer full transparency over vague statements.
+</div>
+
+<h2>1) What we collect — and what we don't</h2>
+<h3>We do NOT collect or store:</h3>
+<ul>
+  <li><b>Passwords you scan:</b> analyzed entirely in your browser. To check breach databases we use <a href="https://haveibeenpwned.com/API/v3#SearchingPwnedPasswordsByRange">k-anonymity</a> — only the first 5 characters of the password's SHA-1 hash are sent. The password itself never leaves your device.</li>
+  <li><b>Messages/URLs analyzed locally:</b> many analyzers run 100% client-side with zero network calls.</li>
+</ul>
+<h3>What may be sent to an external service for a specific scan (at your request):</h3>
+<table>
+  <tr><th>Scan</th><th>Data sent</th><th>Recipient</th></tr>
+  <tr><td>Email breach check</td><td>The email address you enter</td><td>XposedOrNot (public breach database)</td></tr>
+  <tr><td>Suspicious URL check</td><td>The URL you enter</td><td>URLhaus (abuse.ch)</td></tr>
+  <tr><td>IP scan</td><td>The IP address you enter</td><td>ipapi.co / freeipapi / ipwho.is</td></tr>
+  <tr><td>Domain lookup</td><td>The domain name</td><td>Google DNS (dns.google)</td></tr>
+  <tr><td>Device security check</td><td>Your device's public IP (to show you what outsiders see)</td><td>Shodan InternetDB / ipify</td></tr>
+  <tr><td>AI assistant (when enabled)</td><td>Your prompt / a condensed scan result</td><td>The model provider via our encrypted proxy</td></tr>
+</table>
+<p>These services process the input solely to return your result. We never sell your data or share it with any party for marketing or advertising.</p>
+
+<h2>2) Your account data (if you register)</h2>
+<ul>
+  <li><b>What we store:</b> email, display name (optional), avatar (optional), scan history, academy progress, and settings — hosted on Firebase (Google Cloud) with industry-standard security.</li>
+  <li><b>Two-factor authentication:</b> when enabled, TOTP secrets are managed by Firebase Auth infrastructure itself and are not stored in our readable databases.</li>
+  <li><b>Personal API keys:</b> if you add your own key in Settings, it is stored only in your browser (localStorage) and never reaches us.</li>
+</ul>
+
+<h2>3) Cookies and local storage</h2>
+<p>We use browser localStorage for: interface language, theme, assistant chat history, and an anonymous device identifier for abuse prevention. No advertising cookies or cross-site tracking. Firebase App Check (reCAPTCHA v3) is used solely for bot protection.</p>
+
+<h2>4) Retention and deletion</h2>
+<ul>
+  <li>Scan history: kept until you delete it yourself (available from the History page).</li>
+  <li>Your entire account: deletable from Settings → Security → Delete Account, or by request through support — executed within 30 days at most.</li>
+</ul>
+
+<h2>5) Your rights</h2>
+<p>You have the right to access, correct, and delete your data, and to withdraw consent at any time (by deleting your account). For privacy-related requests, contact us via the in-app support ticket system or at <a href="mailto:joetech.dev.systems@gmail.com">joetech.dev.systems@gmail.com</a>.</p>
+
+<h2>6) Children</h2>
+<p>The service is not directed at children under 13, and we do not knowingly collect their data.</p>
+
+<h2>7) Changes to this policy</h2>
+<p>We may update this page as the platform evolves; the "last updated" date above will change. Material changes will be announced inside the app.</p>
+
+<div class="lang-switch">
+  العربية: <a href="/privacy.html">سياسة الخصوصية (عربي)</a>
+</div>
+
+</div>
+</body>
+</html>

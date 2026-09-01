@@ -46,6 +46,10 @@ jobs:
       - name: Pre-render SEO pages
         run: node scripts/prerender-seo.mjs
 
+      # Copy legal/trust pages (privacy, terms, security.txt)
+      - name: Copy legal pages
+        run: node scripts/copy-legal.mjs
+
       # Deploy dist as-is (no 404.html — Pages auto-SPA handles routes)
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
