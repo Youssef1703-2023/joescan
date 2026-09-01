@@ -9,11 +9,9 @@ export function hasMfaEnrolled(user: User): boolean {
 }
 
 /**
- * During an active sign-in session Firebase exposes the mfaPendingCredential
- * on the resolver only, so this lightweight flag mirrors the auth flow in
- * AuthModal/App: after sign-in completes without MFA challenge, an unenrolled
- * user is "pending enrollment", an enrolled user passed the challenge already
- * (resolveSignIn succeeded).
+ * Per-device dismissal of the enrollment offer. NOTE: dismissal only skips the
+ * offer UI — if the admin enforces MFA in Firebase, the challenge still runs
+ * at sign-in regardless of this flag.
  */
 const MFA_DISMISS_KEY = 'joescan_mfa_dismissed';
 
