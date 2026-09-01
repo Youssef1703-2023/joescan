@@ -262,6 +262,66 @@ for (const l of lessons) {
   );
 }
 
+
+// ─── Hub pages: /blog and /academy (indexable listings) ───
+const blogHubArticles = articles
+  .map((a) => `
+    <article style="border:1px solid #1f2b3a;border-radius:12px;padding:16px 20px;margin:12px 0">
+      <h2 style="margin:0 0 6px"><a href="${SITE}/blog/article-${a.id}.html">${a.title}</a></h2>
+      <p style="margin:0 0 8px;color:#8ba0b5">${a.summary}</p>
+      <div><span class="badge">${a.category}</span><span class="badge">${a.date}</span><span class="badge">${a.readTime}</span>
+      <a href="${SITE}/blog/article-${a.id}.ar.html" hreflang="ar" style="font-size:12.5px">العربية ↗</a></div>
+    </article>`)
+  .join('\n');
+const blogHub = shell({
+  lang: 'en',
+  title: `Cybersecurity Blog & News | ${BRAND}`,
+  description: 'Latest cybersecurity news, breach analysis, phishing defense, and OSINT guides — bilingual English/Arabic coverage from the JoeScan research team.',
+  canonical: `${SITE}/blog`,
+  alternates: [
+    { lang: 'en', href: `${SITE}/blog` },
+    { lang: 'ar', href: `${SITE}/blog` },
+  ],
+  jsonLd: {
+    '@context': 'https://schema.org', '@type': 'Blog',
+    name: 'JoeScan Cybersecurity Blog',
+    url: `${SITE}/blog`,
+    publisher: { '@type': 'Organization', name: BRAND, url: SITE },
+  },
+  bodyHtml: `<h1>Cybersecurity Blog &amp; News</h1><p class="meta">Threat analysis and practical defense guides — updated daily. <a href="${SITE}/blog?lang=ar">العربية</a></p>${blogHubArticles}`,
+  appUrl: `${SITE}/blog`,
+});
+writeFileSync(join(DIST, 'blog', 'index.html'), blogHub);
+
+const academyHubLessons = lessons
+  .map((l) => `
+    <article style="border:1px solid #1f2b3a;border-radius:12px;padding:16px 20px;margin:12px 0">
+      <h2 style="margin:0 0 6px"><a href="${SITE}/academy/lesson-${l.id}.html">${l.title}</a></h2>
+      <p style="margin:0 0 8px;color:#8ba0b5">${l.summary}</p>
+      <div><a href="${SITE}/academy/lesson-${l.id}.ar.html" hreflang="ar" style="font-size:12.5px">العربية ↗</a></div>
+    </article>`)
+  .join('\n');
+const academyHub = shell({
+  lang: 'en',
+  title: `Cyber Academy — Free Security Lessons | ${BRAND}`,
+  description: 'Free interactive cybersecurity lessons: phishing recognition, password hygiene, MFA, data breaches, safe browsing, and OSINT privacy — with quizzes.',
+  canonical: `${SITE}/academy`,
+  alternates: [
+    { lang: 'en', href: `${SITE}/academy` },
+    { lang: 'ar', href: `${SITE}/academy` },
+  ],
+  jsonLd: {
+    '@context': 'https://schema.org', '@type': 'Course',
+    name: 'JoeScan Cyber Academy',
+    description: 'Interactive cybersecurity lessons with quizzes',
+    provider: { '@type': 'Organization', name: BRAND, url: SITE },
+  },
+  bodyHtml: `<h1>Cyber Academy</h1><p class="meta">Free interactive security lessons with quizzes. <a href="${SITE}/academy?lang=ar">العربية</a></p>${academyHubLessons}`,
+  appUrl: `${SITE}/academy`,
+});
+writeFileSync(join(DIST, 'academy', 'index.html'), academyHub);
+console.log('hub pages written: /blog/index.html, /academy/index.html');
+
 // ─── Update sitemap.xml with the new URLs ───
 const sitemapPath = join(DIST, 'sitemap.xml');
 const today = new Date().toISOString().slice(0, 10);
