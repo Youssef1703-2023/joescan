@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { serverTimestamp } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 import { saveScan } from '../lib/webhooks';
+import { PASSWORD_SCAN_TARGET } from '../lib/scanLabels';
 import { useLanguage } from '../contexts/LanguageContext';
 import { KeyRound, Loader2, ShieldCheck, AlertTriangle, ArrowRight, RefreshCw, X, ShieldAlert, Settings2, Check, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -177,7 +178,7 @@ export default function PasswordAnalyzer() {
       if (auth.currentUser) {
         await saveScan({
           userId: auth.currentUser.uid,
-          target: password.length > 3 ? password.substring(0, 3) + '...' : '***',
+          target: PASSWORD_SCAN_TARGET,
           type: 'password',
           riskLevel: scanResult.riskLevel,
           securityScore: scanResult.securityScore,

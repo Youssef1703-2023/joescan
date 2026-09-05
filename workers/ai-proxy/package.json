@@ -5,7 +5,9 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "dry-run": "wrangler deploy --dry-run --outdir dist-worker"
+    "dry-run": "wrangler deploy --dry-run --outdir dist-worker",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "jose": "^5.9.6"

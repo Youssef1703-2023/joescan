@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
+import { PASSWORD_SCAN_TARGET } from '../lib/scanLabels';
 import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
@@ -47,7 +48,7 @@ export default function ScanHistory() {
         return {
           id: snapshotDoc.id,
           type: data.type || 'email',
-          target: data.target || data.emailScanned || 'Unknown',
+          target: data.type === 'password' ? PASSWORD_SCAN_TARGET : data.target || data.emailScanned || 'Unknown',
           riskLevel: data.riskLevel,
           securityScore: data.securityScore,
           createdAt: data.createdAt?.toDate() || new Date(),

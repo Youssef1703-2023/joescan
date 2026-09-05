@@ -10,6 +10,15 @@ export interface Env {
   OPENROUTER_API_KEY?: string;
   QUOTA_COUNTER?: DurableObjectNamespace;
   WATCHLIST_MONITOR?: DurableObjectNamespace;
+  // ─── S03 webhook dispatch policy (required; see wrangler.toml) ───
+  /** Comma-separated allowlist of destination hosts, e.g. "siem.example.com, *.hooks.example.net". Absent/empty -> dispatch fails closed (503). */
+  WEBHOOK_ALLOWED_HOSTS?: string;
+  /** Optional hourly override for the project-wide dispatch limit (default 300). */
+  WEBHOOK_PROJECT_HOURLY_LIMIT?: string;
+  /** Optional hourly override for the per-account dispatch limit (default 20). */
+  WEBHOOK_ACCOUNT_HOURLY_LIMIT?: string;
+  /** Optional hourly override for the per-hook delivery limit (default 10). */
+  WEBHOOK_HOOK_HOURLY_LIMIT?: string;
 }
 
 const FIREBASE_PROJECT_ID = 'gen-lang-client-0439091084';
@@ -54,6 +63,58 @@ const DEFAULT_MAX_TOKENS = 1024;
 const MAX_BODY_BYTES = 32 * 1024;
 const MAX_MESSAGES = 50;
 const MAX_TOTAL_CHARS = 20000;
+
+// ─── S03: Webhook dispatch hardening limits (explicit, bounded) ───
+/** Max inbound dispatch request body; enforced before any Firestore lookup. */
+const MAX_DISPATCH_BODY_BYTES = 16 * 1024;
+/** Max serialized outbound event payload sent to a webhook destination. */
+const MAX_DISPATCH_PAYLOAD_BYTES = 8 * 1024;
+/** Max webhooks dispatched per request (pre-existing bound, now a constant). */
+const MAX_HOOKS_PER_DISPATCH = 10;
+/** Max webhook docs inspected from the owner query per request. */
+const MAX_WEBHOOK_DOCS_PER_QUERY = 100;
+/** Fixed rate-limit window for dispatch controls. */
+const WEBHOOK_RATE_WINDOW_SEC = 3600;
+const WEBHOOK_DEFAULT_PROJECT_HOURLY_LIMIT = 300;
+const WEBHOOK_DEFAULT_ACCOUNT_HOURLY_LIMIT = 20;
+const WEBHOOK_DEFAULT_HOOK_HOURLY_LIMIT = 10;
+const WEBHOOK_LIMIT_ENV_MAX = 100000;
+
+const WEBHOOK_EVENT_TYPE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
+const WEBHOOK_ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+const CONTROL_CHARS_PATTERN = /[\u0000-\u001F\u007F]/;
+
+type DispatchSkipReason =
+  | 'INVALID_URL'
+  | 'HTTPS_REQUIRED'
+  | 'URL_CREDENTIALS_REJECTED'
+  | 'PORT_NOT_ALLOWED'
+  | 'HOST_NOT_ALLOWED'
+  | 'HOOK_RATE_LIMITED'
+  | 'SIGNING_FAILED';
+
+interface SkippedHook {
+  id: string;
+  name?: string;
+  reason: DispatchSkipReason;
+  retryAfter?: number;
+}
+
+/** Outbound delivery timeout, retained from the pre-S03 behavior. */
+const WEBHOOK_DELIVERY_TIMEOUT_MS = 5000;
+// Hostname suffixes that are never resolvable public endpoints. Combined with
+// single-label (dot-less) hostnames this is the "obviously local hostname" rule.
+const WEBHOOK_LOCAL_HOSTNAME_SUFFIXES = [
+  '.localhost',
+  '.local',
+  '.internal',
+  '.home.arpa',
+  '.lan',
+  '.intranet',
+  '.localdomain',
+  '.corp',
+  '.home',
+];
 
 interface CertCache {
   certs: Record<string, string>;
@@ -219,12 +280,320 @@ interface WebhookDoc {
   active: boolean;
 }
 
+// ─── S03: destination policy (fail closed) ───
+
+/**
+ * Parses WEBHOOK_ALLOWED_HOSTS into a normalized allowlist.
+ * Returns null when the variable is absent/empty — dispatch must then fail
+ * closed instead of silently allowing arbitrary hosts.
+ * Entry forms: "siem.example.com" (exact match) or "*.example.com"
+ * (any-depth subdomain of example.com, not the apex itself).
+ */
+function parseAllowedHosts(raw: string | undefined): string[] | null {
+  const trimmed = (raw || '').trim();
+  if (!trimmed) return null;
+  const list = trimmed
+    .split(',')
+    .map(entry => entry.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, 64);
+  return list.length > 0 ? list : null;
+}
+
+function hostIsAllowed(host: string, allowedHosts: string[]): boolean {
+  for (const entry of allowedHosts) {
+    if (entry.startsWith('*.')) {
+      const suffix = entry.slice(1); // ".example.com"
+      if (host.length > suffix.length && host.endsWith(suffix)) return true;
+    } else if (host === entry) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Textual inspection only: no DNS resolution is ever performed. IP literals
+// are evaluated after strict URL parsing, so non-canonical spellings
+// (hex/octal/decimal IPv4, unicode dots) have already been normalized by the
+// URL parser and cannot smuggle a private address past these checks.
+
+function isBlockedIPv4Octets(octets: number[]): boolean {
+  const a = octets[0];
+  const b = octets[1];
+  const c = octets[2];
+  if (a === 0 || a === 10 || a === 127) return true;               // this-network, private, loopback
+  if (a === 100 && b >= 64 && b <= 127) return true;               // CGNAT 100.64.0.0/10
+  if (a === 169 && b === 254) return true;                         // link-local 169.254.0.0/16
+  if (a === 172 && b >= 16 && b <= 31) return true;                // private 172.16.0.0/12
+  if (a === 192 && b === 168) return true;                         // private 192.168.0.0/16
+  if (a === 192 && b === 0) return true;                           // IETF protocol assignments + TEST-NET-1
+  if (a === 198 && (b === 18 || b === 19)) return true;            // benchmarking 198.18.0.0/15
+  if (a === 198 && b === 51 && c === 100) return true;             // TEST-NET-2
+  if (a === 203 && b === 0 && c === 113) return true;              // TEST-NET-3
+  return a >= 224;                                                 // multicast, reserved, broadcast
+}
+
+function isBlockedIPv6(host: string): boolean {
+  if (host === '') return true;
+  let v6 = host.toLowerCase();
+  let embeddedV4: number[] | null = null;
+
+  const lastColon = v6.lastIndexOf(':');
+  const tail = v6.slice(lastColon + 1);
+  if (tail.includes('.')) {
+    // Embedded IPv4 (e.g. ::ffff:10.0.0.1 or 64:ff9b::192.0.2.33).
+    const parts = tail.split('.');
+    if (parts.length !== 4) return true;
+    const octets: number[] = [];
+    for (const part of parts) {
+      if (!/^\d{1,3}$/.test(part)) return true;
+      const octet = Number(part);
+      if (octet > 255) return true;
+      octets.push(octet);
+    }
+    embeddedV4 = octets;
+    v6 = v6.slice(0, lastColon + 1) + '0:0';
+  }
+
+  if (v6.includes(':::')) return true;
+  const halves = v6.split('::');
+  if (halves.length > 2) return true;
+  const left = halves[0] === '' ? [] : halves[0].split(':');
+  const right = halves.length === 2 && halves[1] !== '' ? halves[1].split(':') : [];
+  const missing = 8 - left.length - right.length;
+  if (missing < 0) return true;
+  if (halves.length === 1 && missing !== 0) return true;           // full form must have exactly 8 groups
+  if (halves.length === 2 && missing === 0) return true;           // '::' must replace at least one group
+
+  const hextets: number[] = [];
+  for (const group of [...left, ...Array<string>(missing).fill('0'), ...right]) {
+    if (!/^[0-9a-f]{1,4}$/.test(group)) return true;
+    hextets.push(parseInt(group, 16));
+  }
+
+  const first = hextets[0];
+  const second = hextets[1];
+  if (first === 0) {
+    if (hextets.every(h => h === 0)) return true;                  // unspecified ::
+    if (hextets[7] === 1 && hextets.slice(0, 7).every(h => h === 0)) return true; // loopback ::1
+    if (hextets[5] === 0xffff) return true;                        // IPv4-mapped ::ffff:0:0/96
+    if (hextets.slice(0, 6).every(h => h === 0)) return true;      // deprecated IPv4-compatible
+  }
+  if (first >= 0xfc00 && first <= 0xfdff) return true;             // fc00::/7 unique local
+  if (first >= 0xfe80 && first <= 0xfebf) return true;             // fe80::/10 link-local
+  if (first >= 0xff00) return true;                                // ff00::/8 multicast
+  if (first === 0x0100) return true;                               // 100::/64 discard-only
+  if (first === 0x2001 && second === 0x0000) return true;          // Teredo tunneling
+  if (first === 0x2001 && second === 0x0db8) return true;          // documentation
+  if (first === 0x2002) return true;                               // deprecated 6to4 tunneling
+  if (first === 0x0064 && second === 0xff9b) return true;          // NAT64 64:ff9b::/96 (incl. local-use /48)
+
+  if (embeddedV4 && isBlockedIPv4Octets(embeddedV4)) return true;
+  return false;
+}
+
+function isLocalWebhookHostname(hostname: string): boolean {
+  if (!hostname.includes('.')) return true;                        // single-label hosts resolve locally
+  if (hostname === 'localhost' || hostname.endsWith('.localhost')) return true;
+  return WEBHOOK_LOCAL_HOSTNAME_SUFFIXES.some(suffix => hostname.endsWith(suffix));
+}
+
+/**
+ * S03 destination policy for webhook delivery targets. Applied to every hook
+ * URL — including URLs loaded from Firestore documents — so invalid or
+ * dangerous hooks can never dispatch.
+ *
+ * Policy, in order: bounded length, strict URL parsing, https only, no
+ * username/password credentials in the URL, default/443 port only, no
+ * loopback/private/link-local/reserved IP literals, no obviously local
+ * hostnames, and finally the configured hostname allowlist (fail closed when
+ * the allowlist is absent).
+ */
+function validateWebhookDestination(
+  rawUrl: unknown,
+  allowedHosts: string[]
+): { ok: true; url: URL } | { ok: false; reason: DispatchSkipReason } {
+  if (typeof rawUrl !== 'string' || rawUrl.length === 0 || rawUrl.length > 2048) {
+    return { ok: false, reason: 'INVALID_URL' };
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return { ok: false, reason: 'INVALID_URL' };
+  }
+
+  if (parsed.protocol !== 'https:') {
+    return { ok: false, reason: 'HTTPS_REQUIRED' };
+  }
+
+  if (parsed.username !== '' || parsed.password !== '') {
+    return { ok: false, reason: 'URL_CREDENTIALS_REJECTED' };
+  }
+
+  if (parsed.port !== '' && parsed.port !== '443') {
+    return { ok: false, reason: 'PORT_NOT_ALLOWED' };
+  }
+
+  // Normalize a trailing root dot ("example.com." is the same DNS name).
+  const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
+  if (host === '') {
+    return { ok: false, reason: 'INVALID_URL' };
+  }
+
+  if (host.startsWith('[')) {
+    // IPv6 literal (URL parser keeps the brackets in hostname).
+    if (!host.endsWith(']') || isBlockedIPv6(host.slice(1, -1))) {
+      return { ok: false, reason: 'HOST_NOT_ALLOWED' };
+    }
+  } else if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host)) {
+    const octets = host.split('.').map(octet => Number(octet));
+    if (octets.some(octet => !Number.isInteger(octet) || octet < 0 || octet > 255) || isBlockedIPv4Octets(octets)) {
+      return { ok: false, reason: 'HOST_NOT_ALLOWED' };
+    }
+  }
+
+  if (isLocalWebhookHostname(host) || !hostIsAllowed(host, allowedHosts)) {
+    return { ok: false, reason: 'HOST_NOT_ALLOWED' };
+  }
+
+  return { ok: true, url: parsed };
+}
+
+function containsControlChars(value: string): boolean {
+  return CONTROL_CHARS_PATTERN.test(value);
+}
+
+interface DispatchBody {
+  eventType: string;
+  webhookId?: string;
+  scanId: string | null;
+  target: string | null;
+  riskLevel: string;
+  data: Record<string, unknown> | null;
+}
+
+/**
+ * Validates the hostile client-supplied dispatch body. Only well-typed,
+ * size-bounded fields ever reach the outbound payload.
+ */
+function validateDispatchBody(body: unknown): { ok: true; value: DispatchBody } | { ok: false; error: string } {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return { ok: false, error: 'Invalid request body: expected a JSON object' };
+  }
+  const b = body as Record<string, unknown>;
+
+  const rawEventType = b.eventType ?? b.event;
+  let eventType = 'scan_complete';
+  if (rawEventType !== undefined && rawEventType !== null) {
+    if (typeof rawEventType !== 'string' || !WEBHOOK_EVENT_TYPE_PATTERN.test(rawEventType)) {
+      return { ok: false, error: 'Invalid eventType' };
+    }
+    eventType = rawEventType;
+  }
+
+  let webhookId: string | undefined;
+  if (b.webhookId !== undefined && b.webhookId !== null) {
+    if (typeof b.webhookId !== 'string' || !WEBHOOK_ID_PATTERN.test(b.webhookId)) {
+      return { ok: false, error: 'Invalid webhookId' };
+    }
+    webhookId = b.webhookId;
+  }
+
+  let scanId: string | null = null;
+  if (b.scanId !== undefined && b.scanId !== null) {
+    if (typeof b.scanId !== 'string' || b.scanId.length === 0 || b.scanId.length > 256 || containsControlChars(b.scanId)) {
+      return { ok: false, error: 'Invalid scanId' };
+    }
+    scanId = b.scanId;
+  }
+
+  let target: string | null = null;
+  if (b.target !== undefined && b.target !== null) {
+    if (typeof b.target !== 'string' || b.target.length === 0 || b.target.length > 2048 || containsControlChars(b.target)) {
+      return { ok: false, error: 'Invalid target' };
+    }
+    target = b.target;
+  }
+
+  let riskLevel = 'Low';
+  if (b.riskLevel !== undefined && b.riskLevel !== null) {
+    if (typeof b.riskLevel !== 'string' || b.riskLevel.length === 0 || b.riskLevel.length > 32 || containsControlChars(b.riskLevel)) {
+      return { ok: false, error: 'Invalid riskLevel' };
+    }
+    riskLevel = b.riskLevel;
+  }
+
+  let data: Record<string, unknown> | null = null;
+  if (b.data !== undefined && b.data !== null) {
+    if (typeof b.data !== 'object' || Array.isArray(b.data)) {
+      return { ok: false, error: 'Invalid data: expected a JSON object' };
+    }
+    data = b.data as Record<string, unknown>;
+  }
+
+  return { ok: true, value: { eventType, webhookId, scanId, target, riskLevel, data } };
+}
+
+function readBoundedIntEnv(raw: string | undefined, fallback: number): number {
+  if (!raw) return fallback;
+  const parsed = parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, WEBHOOK_LIMIT_ENV_MAX);
+}
+
+interface DispatchRateLimits {
+  project: number;
+  account: number;
+  hook: number;
+}
+
+function dispatchRateLimits(env: Env): DispatchRateLimits {
+  return {
+    project: readBoundedIntEnv(env.WEBHOOK_PROJECT_HOURLY_LIMIT, WEBHOOK_DEFAULT_PROJECT_HOURLY_LIMIT),
+    account: readBoundedIntEnv(env.WEBHOOK_ACCOUNT_HOURLY_LIMIT, WEBHOOK_DEFAULT_ACCOUNT_HOURLY_LIMIT),
+    hook: readBoundedIntEnv(env.WEBHOOK_HOOK_HOURLY_LIMIT, WEBHOOK_DEFAULT_HOOK_HOURLY_LIMIT),
+  };
+}
+
+function getDispatchRateStub(env: Env, doName: string) {
+  if (!env.QUOTA_COUNTER) {
+    throw new Error('RATE_LIMITER_UNAVAILABLE');
+  }
+  return env.QUOTA_COUNTER.get(env.QUOTA_COUNTER.idFromName(doName));
+}
+
+async function reserveDispatchWindow(
+  stub: any,
+  key: string,
+  limit: number,
+  windowSec: number
+): Promise<{ ok: boolean; count: number; limit: number; retryAfter?: number }> {
+  try {
+    if (typeof stub.reserveWindow === 'function') {
+      return await stub.reserveWindow(key, limit, windowSec);
+    }
+    const res = await stub.fetch('https://quota/window', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, limit, windowSec }),
+    });
+    if (!res.ok) throw new Error('RATE_LIMITER_UNAVAILABLE');
+    return await res.json();
+  } catch (err) {
+    console.error('Dispatch rate limiter error:', err instanceof Error ? err.message : err);
+    throw new Error('RATE_LIMITER_UNAVAILABLE');
+  }
+}
+
 async function fetchUserWebhooksFromFirestore(
   idToken: string,
   uid: string,
   projectId: string,
-  databaseId: string
-): Promise<WebhookDoc[]> {
+  databaseId: string,
+  allowedHosts: string[]
+): Promise<{ hooks: WebhookDoc[]; rejected: SkippedHook[] }> {
   const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents:runQuery`;
 
   const queryBody = {
@@ -256,38 +625,63 @@ async function fetchUserWebhooksFromFirestore(
   }
 
   const results = (await res.json()) as any[];
-  if (!Array.isArray(results)) return [];
+  if (!Array.isArray(results)) return { hooks: [], rejected: [] };
 
-  const webhooks: WebhookDoc[] = [];
-  for (const item of results) {
+  const hooks: WebhookDoc[] = [];
+  const rejected: SkippedHook[] = [];
+
+  // Bound the amount of hostile document data processed per request.
+  for (const item of results.slice(0, MAX_WEBHOOK_DOCS_PER_QUERY)) {
     if (!item.document || !item.document.fields) continue;
     const docPath = item.document.name || '';
     const id = docPath.split('/').pop() || '';
+    if (!id || id.length > 512) continue;
     const f = item.document.fields;
 
+    // Ownership: only string-valued ownerId exactly equal to the caller's uid.
     const ownerId = f.ownerId?.stringValue;
     if (ownerId !== uid) continue;
 
+    // Hostile-doc field validation: every field is type-checked before use.
     const hookUrl = f.url?.stringValue;
-    if (!hookUrl || (!hookUrl.startsWith('http://') && !hookUrl.startsWith('https://'))) continue;
+    const destination = validateWebhookDestination(hookUrl, allowedHosts);
+    const name =
+      typeof f.name?.stringValue === 'string' && f.name.stringValue.length <= 128 && !containsControlChars(f.name.stringValue)
+        ? f.name.stringValue
+        : 'Webhook';
+    if (!destination.ok) {
+      rejected.push({ id, name, reason: destination.reason });
+      continue;
+    }
 
-    const secret = f.secret?.stringValue || '';
+    // Secret must be a string; an absent/empty secret can never be signed and
+    // is skipped explicitly at delivery time (never delivered unsigned).
+    const secret = typeof f.secret?.stringValue === 'string' ? f.secret.stringValue : '';
+    if (secret.length > 512) {
+      rejected.push({ id, name, reason: 'SIGNING_FAILED' });
+      continue;
+    }
+
     const active = f.active?.booleanValue !== false;
-    const rawEvents = f.events?.arrayValue?.values || [];
-    const events = rawEvents.map((v: any) => v.stringValue).filter(Boolean);
-    const name = f.name?.stringValue || 'Webhook';
 
-    webhooks.push({
+    // events must be an array of bounded strings; non-strings are dropped.
+    const rawEvents = f.events?.arrayValue?.values || [];
+    const events = rawEvents
+      .map((v: any) => (v && typeof v.stringValue === 'string' ? v.stringValue : null))
+      .filter((v: any): v is string => typeof v === 'string' && v.length <= 64 && !containsControlChars(v))
+      .slice(0, 32);
+
+    hooks.push({
       id,
       name,
-      url: hookUrl,
+      url: hookUrl as string,
       secret,
       events,
       active,
     });
   }
 
-  return webhooks;
+  return { hooks, rejected };
 }
 
 async function computeHmacSha256Hex(secret: string, data: string): Promise<string> {
@@ -304,6 +698,10 @@ async function computeHmacSha256Hex(secret: string, data: string): Promise<strin
     .map(b => b.toString(16).padStart(2, '0'))
     .join('');
 }
+
+// ─── S03 webhook destination policy ───
+// (The IPv4/IPv6/local-hostname helpers below are consumed by
+// validateWebhookDestination above.)
 
 async function getGooglePublicCerts(forceRefresh: boolean = false): Promise<Record<string, string>> {
   const now = Date.now();
@@ -328,6 +726,126 @@ async function getGooglePublicCerts(forceRefresh: boolean = false): Promise<Reco
     expiresAt: now + ttlSec * 1000,
   };
   return certs;
+}
+
+// ─── Admin & Ban Gate (S02) ───
+// Admin is decided from claims already verified inside the ID token, so a
+// banned admin account can still administer the platform (mirrors the
+// Firestore rules, which exempt admins from the ban predicate).
+function tokenIsAdmin(userPayload: jose.JWTPayload): boolean {
+  return userPayload.admin === true ||
+    (userPayload.email === ADMIN_EMAIL && userPayload.email_verified === true);
+}
+
+type BanStatus = 'ok' | 'banned' | 'unavailable';
+
+/**
+ * Look up the caller's `bannedUsers/{uid}` document over the Firestore REST
+ * API using their verified ID token. Only the `active` field is projected, so
+ * the ban reason never reaches the Worker, logs, or responses.
+ *
+ * Distinguishes three outcomes:
+ *  - 'ok':          no ban document exists (404), or it exists without
+ *                   `active == true` (unban writes `active: false`);
+ *  - 'banned':      the document exists and `active` is true;
+ *  - 'unavailable': the ban store could not be reached or answered with an
+ *                   unexpected error — callers must fail closed (503).
+ */
+async function fetchCallerBanStatus(
+  idToken: string,
+  uid: string,
+  projectId: string,
+  databaseId: string
+): Promise<BanStatus> {
+  const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents/bannedUsers/${encodeURIComponent(uid)}?mask.fieldPaths=active`;
+
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      headers: {
+        'Authorization': `Bearer ${idToken}`,
+        'Accept': 'application/json',
+      },
+    });
+  } catch (err) {
+    console.error('Ban status network error:', err instanceof Error ? err.message : err);
+    return 'unavailable';
+  }
+
+  // A missing ban document means the account is not banned — this is the
+  // normal case for every user and must not be treated as a failure.
+  if (res.status === 404) {
+    return 'ok';
+  }
+
+  if (!res.ok) {
+    console.error(`Ban status fetch returned HTTP ${res.status}`);
+    return 'unavailable';
+  }
+
+  let docData: any;
+  try {
+    docData = await res.json();
+  } catch {
+    return 'unavailable';
+  }
+
+  const fields = docData?.fields || {};
+  return fields.active?.booleanValue === true ? 'banned' : 'ok';
+}
+
+/**
+ * Enforce the ban gate before any authenticated endpoint performs work.
+ * Returns a Response to send immediately, or null when the caller may proceed.
+ */
+async function enforceBanGate(
+  idToken: string,
+  uid: string,
+  userPayload: jose.JWTPayload,
+  projectId: string,
+  databaseId: string,
+  corsHeaders: Record<string, string>
+): Promise<Response | null> {
+  if (tokenIsAdmin(userPayload)) {
+    return null;
+  }
+
+  const banStatus = await fetchCallerBanStatus(idToken, uid, projectId, databaseId);
+
+  if (banStatus === 'banned') {
+    // Deliberately uniform across every endpoint; never includes the reason.
+    return new Response(
+      JSON.stringify({
+        code: 'ACCOUNT_BANNED',
+        error: 'Account suspended. Contact support if you believe this is a mistake.',
+      }),
+      {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      }
+    );
+  }
+
+  if (banStatus === 'unavailable') {
+    // Fail closed: without a trustworthy ban verdict no endpoint may run.
+    return new Response(
+      JSON.stringify({
+        code: 'BAN_STATUS_UNAVAILABLE',
+        error: 'Account status verification is temporarily unavailable. Please retry shortly.',
+        retryAfter: 30,
+      }),
+      {
+        status: 503,
+        headers: {
+          ...corsHeaders,
+          'Content-Type': 'application/json',
+          'Retry-After': '30',
+        },
+      }
+    );
+  }
+
+  return null;
 }
 
 async function verifyFirebaseIdToken(idToken: string, projectId: string = FIREBASE_PROJECT_ID): Promise<jose.JWTPayload> {
@@ -423,10 +941,7 @@ async function resolveUserTier(
   projectId: string,
   databaseId: string
 ): Promise<TierResolution> {
-  const isAdmin = userPayload.admin === true ||
-    (userPayload.email === ADMIN_EMAIL && userPayload.email_verified === true);
-
-  if (isAdmin) {
+  if (tokenIsAdmin(userPayload)) {
     return { tier: 'enterprise', limit: TIER_LIMITS.enterprise };
   }
 
@@ -513,6 +1028,12 @@ async function checkBurstGuard(stub: any): Promise<{ ok: boolean; retryAfter?: n
   }
 }
 
+/**
+ * S03: dispatch rate-limit reservations reuse the shared QuotaCounter Durable
+ * Object via getDispatchRateStub/reserveDispatchWindow (defined above). Unlike
+ * the AI path, these checks are fail-closed: callers translate a thrown error
+ * into a 503 instead of dispatching unmetered.
+ */
 async function reserveQuotaUnit(stub: any, limit: number, day: string): Promise<{ ok: boolean; used: number; limit: number }> {
   try {
     if (typeof stub.reserve === 'function') {
@@ -637,6 +1158,16 @@ export default {
     }
 
     const uid = userPayload.sub as string;
+
+    // ─── Ban gate (S02): runs before EVERY authenticated endpoint ───
+    // Quota, threat-feed, webhook dispatch, watchlist, and AI provider paths
+    // all sit below this point, so a banned account can never trigger
+    // provider, Durable Object, or webhook work.
+    const banRejection = await enforceBanGate(idToken, uid, userPayload, projectId, databaseId, corsHeaders);
+    if (banRejection) {
+      return banRejection;
+    }
+
     const cairoDay = getCairoDay();
     const secondsUntilMidnight = getSecondsUntilCairoMidnight();
 
@@ -724,10 +1255,55 @@ export default {
     }
 
     // ─── POST /webhook-dispatch: SIEM Webhook Dispatch with HMAC-SHA256 ───
+    // S03 hardened pipeline (each stage fails closed before the next):
+    //   1. payload size caps (before ANY Firestore lookup or delivery)
+    //   2. strict body/field validation (hostile input never reaches delivery)
+    //   3. destination policy must be configured (fail closed when absent)
+    //   4. active Enterprise subscription at dispatch time (admin bypass)
+    //   5. project-level then per-account request limits (429 + Retry-After),
+    //      enforced fail-closed via the QuotaCounter Durable Object
+    //   6. Firestore webhook lookup with hostile-document validation
+    //   7. per-hook delivery limits before any outbound fetch
+    //   8. HMAC signing must succeed or the payload is never delivered
+    //   9. outbound fetch: policy-validated HTTPS destination,
+    //      redirect:'manual' (any 3xx is a failed delivery), 5s timeout
     if (request.method === 'POST' && (pathname === '/webhook-dispatch' || pathname === '/api/webhook-dispatch')) {
-      let dispatchBody: any;
+      // (1) Reject oversized dispatch payloads before reading or looking anything up.
+      const contentLengthRaw = request.headers.get('Content-Length');
+      const contentLength = contentLengthRaw ? parseInt(contentLengthRaw, 10) : NaN;
+      if (Number.isFinite(contentLength) && contentLength > MAX_DISPATCH_BODY_BYTES) {
+        return new Response(
+          JSON.stringify({
+            code: 'PAYLOAD_TOO_LARGE',
+            error: `Dispatch payload too large (exceeds ${MAX_DISPATCH_BODY_BYTES} byte cap)`,
+          }),
+          { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      let dispatchBodyText = '';
       try {
-        dispatchBody = await request.json();
+        dispatchBodyText = await request.text();
+      } catch {
+        return new Response(JSON.stringify({ error: 'Failed to read request body' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (dispatchBodyText.length > MAX_DISPATCH_BODY_BYTES) {
+        return new Response(
+          JSON.stringify({
+            code: 'PAYLOAD_TOO_LARGE',
+            error: `Dispatch payload too large (exceeds ${MAX_DISPATCH_BODY_BYTES} byte cap)`,
+          }),
+          { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      let dispatchBody: unknown;
+      try {
+        dispatchBody = JSON.parse(dispatchBodyText);
       } catch {
         return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
           status: 400,
@@ -735,54 +1311,233 @@ export default {
         });
       }
 
-      const { eventType, event, scanId, target, riskLevel, data, webhookId } = dispatchBody || {};
-      const effectiveEventType = eventType || event || 'scan_complete';
+      // (2) Validate the hostile request body before it can influence delivery.
+      const validated = validateDispatchBody(dispatchBody);
+      if (!validated.ok) {
+        return new Response(JSON.stringify({ error: validated.error }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      const { eventType: effectiveEventType, webhookId, scanId, target, riskLevel, data } = validated.value;
 
-      let userWebhooks: WebhookDoc[] = [];
+      // (3) Destination policy is mandatory — without it, fail closed.
+      const allowedHosts = parseAllowedHosts(env.WEBHOOK_ALLOWED_HOSTS);
+      if (!allowedHosts) {
+        return new Response(
+          JSON.stringify({
+            code: 'WEBHOOK_POLICY_UNCONFIGURED',
+            error: 'Webhook dispatch is unavailable because the destination policy is not configured.',
+          }),
+          { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // (4) Active Enterprise subscription at dispatch time (admins keep their
+      // elevated behavior, consistent with the rest of the Worker's policy).
+      let tierInfo: TierResolution;
       try {
-        userWebhooks = await fetchUserWebhooksFromFirestore(idToken, uid, projectId, databaseId);
-      } catch (err: any) {
-        return new Response(JSON.stringify({ error: err?.message || 'Failed to fetch webhook configurations' }), {
+        tierInfo = await resolveUserTier(idToken, userPayload, projectId, databaseId);
+      } catch {
+        return new Response(
+          JSON.stringify({
+            code: 'TIER_STORE_UNAVAILABLE',
+            error: 'Subscription verification is temporarily unavailable. Please retry shortly.',
+            retryAfter: 30,
+          }),
+          {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '30' },
+          }
+        );
+      }
+
+      if (tierInfo.tier !== 'enterprise') {
+        return new Response(
+          JSON.stringify({
+            code: 'SUBSCRIPTION_REQUIRED',
+            error: 'Webhook dispatch requires an active Enterprise subscription.',
+          }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // (5) Project-level and per-account request limits — reserved BEFORE the
+      // Firestore lookup and any outbound delivery. Fail closed when the
+      // enforcement store is missing or failing.
+      const limits = dispatchRateLimits(env);
+      try {
+        const projectStub = getDispatchRateStub(env, `webhook:project:${projectId}`);
+        const projectRes = await reserveDispatchWindow(projectStub, `project:${projectId}`, limits.project, WEBHOOK_RATE_WINDOW_SEC);
+        if (!projectRes.ok) {
+          const retryAfter = projectRes.retryAfter ?? WEBHOOK_RATE_WINDOW_SEC;
+          return new Response(
+            JSON.stringify({
+              code: 'RATE_LIMIT_EXCEEDED',
+              error: 'Project webhook dispatch limit exceeded. Please retry later.',
+              retryAfter,
+            }),
+            {
+              status: 429,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
+            }
+          );
+        }
+
+        const accountStub = getDispatchRateStub(env, `webhook:acct:${uid}`);
+        const accountRes = await reserveDispatchWindow(accountStub, `acct:${uid}`, limits.account, WEBHOOK_RATE_WINDOW_SEC);
+        if (!accountRes.ok) {
+          const retryAfter = accountRes.retryAfter ?? WEBHOOK_RATE_WINDOW_SEC;
+          return new Response(
+            JSON.stringify({
+              code: 'RATE_LIMIT_EXCEEDED',
+              error: 'Account webhook dispatch limit exceeded. Please retry later.',
+              retryAfter,
+            }),
+            {
+              status: 429,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(retryAfter) },
+            }
+          );
+        }
+      } catch {
+        return new Response(
+          JSON.stringify({
+            code: 'RATE_LIMITER_UNAVAILABLE',
+            error: 'Webhook dispatch is temporarily unavailable. Please retry shortly.',
+            retryAfter: 30,
+          }),
+          {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '30' },
+          }
+        );
+      }
+
+      // (6) Firestore webhook lookup with hostile-document validation. Only
+      // reached once every gate above has passed.
+      let lookup: { hooks: WebhookDoc[]; rejected: SkippedHook[] };
+      try {
+        lookup = await fetchUserWebhooksFromFirestore(idToken, uid, projectId, databaseId, allowedHosts);
+      } catch {
+        return new Response(JSON.stringify({ error: 'Failed to fetch webhook configurations' }), {
           status: 502,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
 
-      // Filter matching active webhooks
-      let matchingHooks = userWebhooks.filter(hook => {
+      const skippedHooks: SkippedHook[] = [...lookup.rejected];
+
+      // Filter matching active webhooks. An explicit webhookId is an exclusive
+      // selector (exactly that hook, when active); otherwise the pre-existing
+      // event-type matching semantics apply (test_ping matches all hooks).
+      let matchingHooks = lookup.hooks.filter(hook => {
         if (!hook.active) return false;
-        if (webhookId && hook.id === webhookId) return true;
+        if (webhookId) return hook.id === webhookId;
         if (effectiveEventType === 'test_ping') return true;
         return hook.events.includes(effectiveEventType) || hook.events.includes('all');
       });
 
-      // Bound: max 10 webhooks per dispatch call
-      matchingHooks = matchingHooks.slice(0, 10);
+      // Bound: max webhooks per dispatch call
+      matchingHooks = matchingHooks.slice(0, MAX_HOOKS_PER_DISPATCH);
 
       const timestampSec = Math.floor(Date.now() / 1000);
       const outboundEventPayload = {
         event: effectiveEventType,
         timestamp: timestampSec,
-        scanId: scanId || null,
-        target: target || null,
-        riskLevel: riskLevel || 'Low',
-        data: data || null,
+        scanId,
+        target,
+        riskLevel,
+        data,
       };
       const rawPayloadString = JSON.stringify(outboundEventPayload);
 
-      // Dispatch to each webhook concurrently with 5s timeout
-      const dispatchPromises = matchingHooks.map(async (hook) => {
-        const startTime = Date.now();
+      // Outbound payload cap — a validated body can still serialize too large.
+      if (rawPayloadString.length > MAX_DISPATCH_PAYLOAD_BYTES) {
+        return new Response(
+          JSON.stringify({
+            code: 'PAYLOAD_TOO_LARGE',
+            error: `Serialized event payload too large (exceeds ${MAX_DISPATCH_PAYLOAD_BYTES} byte cap)`,
+          }),
+          { status: 413, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // (7) Per-hook delivery limits — reserved before any outbound fetch.
+      const deliverableHooks: WebhookDoc[] = [];
+      for (const hook of matchingHooks) {
+        try {
+          const hookStub = getDispatchRateStub(env, `webhook:hook:${hook.id}`);
+          const hookRes = await reserveDispatchWindow(hookStub, `hook:${hook.id}`, limits.hook, WEBHOOK_RATE_WINDOW_SEC);
+          if (hookRes.ok) {
+            deliverableHooks.push(hook);
+          } else {
+            skippedHooks.push({
+              id: hook.id,
+              name: hook.name,
+              reason: 'HOOK_RATE_LIMITED',
+              retryAfter: hookRes.retryAfter ?? WEBHOOK_RATE_WINDOW_SEC,
+            });
+          }
+        } catch {
+          return new Response(
+            JSON.stringify({
+              code: 'RATE_LIMITER_UNAVAILABLE',
+              error: 'Webhook dispatch is temporarily unavailable. Please retry shortly.',
+              retryAfter: 30,
+            }),
+            {
+              status: 503,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': '30' },
+            }
+          );
+        }
+      }
+
+      // If every matched hook was withheld by its delivery limit, answer 429
+      // before any outbound delivery has happened.
+      const firstHookRetryAfter = skippedHooks.find(s => s.reason === 'HOOK_RATE_LIMITED')?.retryAfter;
+      if (deliverableHooks.length === 0 && firstHookRetryAfter !== undefined && matchingHooks.length > 0) {
+        return new Response(
+          JSON.stringify({
+            code: 'RATE_LIMIT_EXCEEDED',
+            error: 'Webhook delivery limit exceeded for the selected webhook(s). Please retry later.',
+            retryAfter: firstHookRetryAfter,
+            skippedHooks,
+          }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json', 'Retry-After': String(firstHookRetryAfter) },
+          }
+        );
+      }
+
+      // (8) + (9) Sign, then deliver. A payload that cannot be signed is never
+      // delivered — no empty-signature fallback. dispatchedCount reflects
+      // hooks for which an outbound delivery was actually attempted; skipped
+      // hooks appear in results/skippedHooks with the reason.
+      let deliveryAttempts = 0;
+      const dispatchPromises = deliverableHooks.map(async (hook): Promise<Record<string, unknown>> => {
+        if (!hook.secret) {
+          return { id: hook.id, name: hook.name, url: hook.url, status: 0, ok: false, durationMs: 0, error: 'Delivery skipped: signing failed' };
+        }
+
         const signaturePayload = `${timestampSec}.${rawPayloadString}`;
         let signatureHex = '';
         try {
           signatureHex = await computeHmacSha256Hex(hook.secret, signaturePayload);
-        } catch (sigErr) {
-          console.warn('HMAC computation failed for hook', hook.id, sigErr);
+        } catch {
+          console.warn('HMAC computation failed for hook', hook.id);
+          return { id: hook.id, name: hook.name, url: hook.url, status: 0, ok: false, durationMs: 0, error: 'Delivery skipped: signing failed' };
+        }
+        if (!signatureHex) {
+          return { id: hook.id, name: hook.name, url: hook.url, status: 0, ok: false, durationMs: 0, error: 'Delivery skipped: signing failed' };
         }
 
+        deliveryAttempts++;
+        const startTime = Date.now();
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 5000);
+        const timer = setTimeout(() => controller.abort(), WEBHOOK_DELIVERY_TIMEOUT_MS);
 
         try {
           const res = await fetch(hook.url, {
@@ -796,22 +1551,27 @@ export default {
             },
             body: rawPayloadString,
             signal: controller.signal,
+            // S03: redirects are never followed (redirect:'manual') — every
+            // hop would bypass the destination/port policy. Any 3xx answer is
+            // reported below as a failed delivery, never retried or followed.
+            redirect: 'manual',
           });
           clearTimeout(timer);
           const elapsed = Date.now() - startTime;
+          const isRedirect = res.status >= 300 && res.status < 400;
           return {
             id: hook.id,
             name: hook.name,
             url: hook.url,
             status: res.status,
-            ok: res.ok,
+            ok: !isRedirect && res.ok,
             durationMs: elapsed,
-            error: res.ok ? null : `HTTP ${res.status}`,
+            error: isRedirect ? `Redirect not followed (HTTP ${res.status})` : (res.ok ? null : `HTTP ${res.status}`),
           };
-        } catch (fetchErr: any) {
+        } catch {
           clearTimeout(timer);
           const elapsed = Date.now() - startTime;
-          const isTimeout = fetchErr?.name === 'AbortError';
+          const isTimeout = controller.signal.aborted;
           return {
             id: hook.id,
             name: hook.name,
@@ -819,7 +1579,7 @@ export default {
             status: 0,
             ok: false,
             durationMs: elapsed,
-            error: isTimeout ? 'Request timed out after 5s' : (fetchErr?.message || 'Connection failed'),
+            error: isTimeout ? 'Request timed out after 5s' : 'Connection failed',
           };
         }
       });
@@ -830,8 +1590,9 @@ export default {
         JSON.stringify({
           success: true,
           event: effectiveEventType,
-          dispatchedCount: dispatchResults.length,
+          dispatchedCount: deliveryAttempts,
           results: dispatchResults,
+          ...(skippedHooks.length > 0 ? { skippedHooks } : {}),
         }),
         {
           status: 200,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Shield, ShieldAlert, Cpu, Download, X, Eye, Lock, Globe, FileText, CheckCircle2 } from 'lucide-react';
 import { auth, getUserTier, SubscriptionTier } from '../lib/firebase';
+import { PASSWORD_SCAN_TARGET } from '../lib/scanLabels';
 
 interface ScanHistory {
   id: string;
@@ -20,6 +21,7 @@ interface Props {
 export default function IntelligenceReport({ scan, onClose }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [userTier, setUserTier] = useState<SubscriptionTier>('free');
+  const isPasswordScan = scan.type === 'password';
 
   useEffect(() => {
     if (auth.currentUser) {
@@ -50,7 +52,10 @@ export default function IntelligenceReport({ scan, onClose }: Props) {
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
       
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`joescan_dossier_${scan.target.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.pdf`);
+      const exportName = isPasswordScan
+        ? PASSWORD_SCAN_TARGET.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+        : scan.target.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      pdf.save(`joescan_dossier_${exportName}.pdf`);
     } catch (err) {
       console.error('PDF Generation failed:', err);
     } finally {
@@ -172,7 +177,9 @@ export default function IntelligenceReport({ scan, onClose }: Props) {
                    <div className="absolute top-4 left-4 border-l-2 border-[#00ff00] pl-4 space-y-3">
                      <div><span className="text-white">Timestamp:</span> {scan.createdAt.toISOString()}</div>
                      <div><span className="text-white">Query Vector:</span> OSINT_DEEP_SEARCH_{scan.type.toUpperCase()}</div>
-                     <div><span className="text-white">Target Hash:</span> {btoa(scan.target).substring(0,20).toUpperCase()}</div>
+                     {!isPasswordScan && (
+                       <div><span className="text-white">Target Hash:</span> {btoa(scan.target).substring(0,20).toUpperCase()}</div>
+                     )}
                      <div><span className="text-white">Status Flags:</span> SCANNED, CORRELATED, ARCHIVED</div>
                      
                      <div className="mt-6 text-[#555]">

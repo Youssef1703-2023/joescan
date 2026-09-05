@@ -7,6 +7,24 @@ compatibility_flags = ["nodejs_compat"]
 ENVIRONMENT = "production"
 PROJECT_ID = "gen-lang-client-0439091084"
 FIRESTORE_DATABASE_ID = "ai-studio-13222500-ae8c-4550-8b61-6f7dce0d48f6"
+# ─── S03 webhook dispatch policy (audit 2026-09-05) ───
+# WEBHOOK_ALLOWED_HOSTS is REQUIRED for POST /webhook-dispatch to serve
+# requests. It is deliberately NOT set here: while absent, dispatch fails
+# closed with 503 WEBHOOK_POLICY_UNCONFIGURED instead of allowing arbitrary
+# destinations. To enable webhook dispatch, deploy with an explicit,
+# comma-separated destination allowlist, e.g. (illustrative only — use the
+# real customer SIEM endpoints, never wildcards broader than one domain):
+#   WEBHOOK_ALLOWED_HOSTS = "siem.example.com, *.hooks.example.net"
+# Entry forms: "host.example.com" (exact match) or "*.example.com"
+# (any-depth subdomain). Dispatch always enforces: HTTPS only, no credentials
+# in the URL, port 443 only, no IP-literal/private/local destinations,
+# redirect:'manual' (3xx is a failed delivery), 5s delivery timeout,
+# 16 KB request / 8 KB payload caps, active Enterprise subscription, and
+# rate limits below.
+# Optional hourly limit overrides (bounded 1..100000):
+#   WEBHOOK_PROJECT_HOURLY_LIMIT = "300"   # requests, whole project (default 300)
+#   WEBHOOK_ACCOUNT_HOURLY_LIMIT = "20"    # requests, per account   (default 20)
+#   WEBHOOK_HOOK_HOURLY_LIMIT    = "10"    # deliveries, per webhook (default 10)
 
 [durable_objects]
 bindings = [

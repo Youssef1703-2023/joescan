@@ -1,5 +1,6 @@
 ﻿import { auth, db } from './firebase';
 import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
+import { PASSWORD_SCAN_TARGET } from './scanLabels';
 
 export interface WebhookDispatchResult {
   id: string;
@@ -95,10 +96,15 @@ export async function dispatchWebhooks(params: WebhookDispatchParams): Promise<W
  * trigger SIEM webhook dispatch in the background.
  */
 export async function saveScan(scanData: any) {
-  const docRef = await addDoc(collection(db, 'scans'), scanData);
+  const isPasswordScan = scanData?.type === 'password';
+  const persistedScan = isPasswordScan ? { ...scanData, target: PASSWORD_SCAN_TARGET } : scanData;
+
+  const docRef = await addDoc(collection(db, 'scans'), persistedScan);
 
   // Background SIEM webhook dispatch (non-blocking)
-  const target = scanData.target || scanData.emailScanned || scanData.urlScanned || scanData.ipScanned || '';
+  const target = isPasswordScan
+    ? PASSWORD_SCAN_TARGET
+    : scanData.target || scanData.emailScanned || scanData.urlScanned || scanData.ipScanned || '';
   const riskLevel = scanData.riskLevel || 'Low';
   const isThreat = String(riskLevel).toLowerCase() === 'high' || String(riskLevel).toLowerCase() === 'critical';
 

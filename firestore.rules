@@ -80,29 +80,45 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tier == 'enterprise';
     }
 
+    // ─── Server-side ban predicate (S02) ───
+    // A user is banned only when their bannedUsers/{uid} document exists AND
+    // has active == true. A missing document means "not banned" (exists() is
+    // false), so unbanned users — the overwhelming common case — pass without
+    // a second document read. Unban keeps the document with active == false,
+    // which also passes. Admins bypass this predicate at every call site so
+    // they can administer the platform regardless of their own ban record.
+    // Reads/writes are denied for banned users on every product resource
+    // below; list queries are denied the same way as single-document reads.
+    function isNotBanned() {
+      return !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/bannedUsers/$(request.auth.uid))
+          .data.get('active', false) != true;
+    }
+
     // ─── Users ───
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin();
+      allow read: if isAdmin() || (isNotBanned() && isOwner(userId));
       allow list: if isAdmin();
-      allow create: if isOwner(userId)
+      allow create: if isOwner(userId) && isNotBanned()
         && isValidUser()
         && uidUnchanged()
         && userCreateKeysOk()
         && (!('tier' in request.resource.data) || request.resource.data.tier == 'free');
       allow update: if isAdmin() && isValidUser();
-      allow update: if isOwner(userId) && isValidUser()
+      allow update: if isOwner(userId) && isNotBanned() && isValidUser()
         && userOwnerKeysOk() && entitlementFieldsUnchanged();
       allow delete: if isAdmin();
     }
 
     // ─── Usernames (unique username registry) ───
     // Per-username `get` must stay public: login resolves a username to an email
-    // before the user is authenticated. `list` is denied — the documents carry
-    // uid + email, so listing would expose every user's address to anyone.
+    // before the user is authenticated, so the ban predicate (which requires an
+    // authenticated caller) cannot apply here. `list` is denied — the documents
+    // carry uid + email, so listing would expose every user's address to anyone.
     match /usernames/{usernameId} {
       allow get: if true;
       allow list: if isAdmin();
-      allow create: if isAuthenticated()
+      allow create: if isAuthenticated() && isNotBanned()
         && request.resource.data.keys().hasOnly(['uid','email','username','createdAt'])
         && request.resource.data.uid == request.auth.uid;
       allow update, delete: if isAdmin();
@@ -110,34 +126,34 @@ service cloud.firestore {
 
     // ─── Admin Config (platform settings, feature flags) ───
     match /adminConfig/{configId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && isNotBanned();
       allow write: if isAdmin();
     }
 
     // ─── Broadcasts ───
     match /broadcasts/{broadcastId} {
-      allow read: if isAuthenticated();
+      allow read: if isAuthenticated() && isNotBanned();
       allow create: if isAdmin();
       allow update, delete: if isAdmin();
     }
 
     // ─── Notifications ───
     match /notifications/{notifId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
       // The app creates in-app notifications for the signed-in user
       // (NotificationContext); admin fan-out creates them for others.
       allow create: if isAdmin() ||
-        (isAuthenticated() && request.resource.data.userId == request.auth.uid);
+        (isAuthenticated() && isNotBanned() && request.resource.data.userId == request.auth.uid);
       // Owner may only flip the read flag, not rewrite the content.
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid
+      allow update: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
+      allow list: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
     }
 
     // ─── Promo Codes ───
     match /promoCodes/{codeId} {
-      allow get: if isAuthenticated();
+      allow get: if isAuthenticated() && isNotBanned();
       allow list: if isAdmin();
       allow write: if isAdmin();
     }
@@ -145,29 +161,37 @@ service cloud.firestore {
     // ─── Activity Log ───
     match /activityLog/{logId} {
       allow read: if isAdmin();
-      allow create: if isAuthenticated()
+      allow create: if isAuthenticated() && isNotBanned()
         && request.resource.data.userId == request.auth.uid;
       allow update, delete: if false;
     }
 
-    // ─── Banned Users ───
-    match /bannedUsers/{odId} {
-      allow read: if isAuthenticated();
+    // ─── Banned Users (S02) ───
+    // Ban state is a server-side enforcement record, and the `reason` field is
+    // sensitive. Non-admins may only `get` their OWN document (the UI ban
+    // banner and the Worker's REST ban lookup both depend on this — note it is
+    // deliberately NOT gated by isNotBanned(), otherwise a banned user could
+    // never retrieve the verdict about themselves). Listing the collection or
+    // reading another user's record is admin-only. Absent documents are simply
+    // unreadable; this block grants nothing to unauthenticated callers.
+    match /bannedUsers/{banUid} {
+      allow get: if isAdmin() || isOwner(banUid);
+      allow list: if isAdmin();
       allow write: if isAdmin();
     }
 
     // ─── Support Tickets ───
     match /supportTickets/{ticketId} {
-      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow read: if isAdmin() || (isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isNotBanned() && request.resource.data.userId == request.auth.uid;
       // The ticket owner may append a reply or close the ticket; everything else
       // is admin-only. Without this the app's own reply button was denied.
       allow update: if isAdmin() ||
-        (isAuthenticated() && resource.data.userId == request.auth.uid
+        (isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid
           && request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly(['replies','status']));
       allow delete: if false;
-      allow list: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin() || (isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid);
     }
 
     // ─── API Keys ───
@@ -175,50 +199,50 @@ service cloud.firestore {
     // is shown to the user once at creation and never persisted, so a future leak
     // of this collection discloses nothing usable.
     match /apiKeys/{keyId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated()
+      allow read: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isNotBanned()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.keys().hasOnly(
              ['userId','email','name','keyHash','last4','createdAt','lastUsed','requestCount'])
         && !('key' in request.resource.data);
       allow update: if false;
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow list: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
+      allow list: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
     }
 
     // ─── Scans ───
     match /scans/{scanId} {
-      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated() && isValidScan();
+      allow read: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isNotBanned() && isValidScan();
       // Scan history is append-only; nothing in the app edits a scan after the
       // fact, and an immutable log is worth more than an editable one.
       allow update: if false;
-      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
     }
 
     // ─── Webhooks / SIEM ───
     match /webhooks/{hookId} {
-      allow read, delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow read, delete: if isAuthenticated() && isNotBanned() && resource.data.ownerId == request.auth.uid;
       // Enterprise-only feature: enforce the entitlement here, not just in the UI.
-      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid
+      allow create: if isAuthenticated() && isNotBanned() && request.resource.data.ownerId == request.auth.uid
         && (isAdmin() || tierIsEnterprise());
-      allow update: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
-      allow list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow update: if isAuthenticated() && isNotBanned() && resource.data.ownerId == request.auth.uid;
+      allow list: if isAuthenticated() && isNotBanned() && resource.data.ownerId == request.auth.uid;
     }
 
     // ─── Teams ───
     match /teams/{teamId} {
-      allow read, list: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow read, list: if isAuthenticated() && isNotBanned() && resource.data.ownerId == request.auth.uid;
       // Enterprise-only feature: enforce the entitlement here, not just in the UI.
-      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid
+      allow create: if isAuthenticated() && isNotBanned() && request.resource.data.ownerId == request.auth.uid
         && (isAdmin() || tierIsEnterprise());
-      allow update, delete: if isAuthenticated() && resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && isNotBanned() && resource.data.ownerId == request.auth.uid;
     }
 
     // ─── Watchlist ───
     match /watchlist/{itemId} {
-      allow read, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
-      allow create: if isAuthenticated()
+      allow read, delete: if isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isNotBanned()
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.keys().hasOnly(
              ['userId', 'type', 'value', 'createdAt', 'lastConfirmedAt', 'schedule'])
@@ -232,7 +256,7 @@ service cloud.firestore {
                 && request.resource.data.schedule.keys().hasOnly(['frequency', 'time', 'day'])
                 && (!('frequency' in request.resource.data.schedule)
                     || request.resource.data.schedule.frequency in ['daily', 'weekly'])));
-      allow update: if isAuthenticated()
+      allow update: if isAuthenticated() && isNotBanned()
         && resource.data.userId == request.auth.uid
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(
@@ -250,19 +274,19 @@ service cloud.firestore {
 
     // ─── Notification Preferences ───
     match /notifPrefs/{userId} {
-      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      allow read, write: if isAuthenticated() && isNotBanned() && request.auth.uid == userId;
     }
 
     // ─── Referrals ───
     match /referrals/{userId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.uid == userId
+      allow read: if isAuthenticated() && isNotBanned();
+      allow create: if isAuthenticated() && isNotBanned() && request.auth.uid == userId
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.referralCount == 0
         && request.resource.data.claimedTiers.size() == 0;
       allow delete: if isAdmin();
       // Owner: everything except the privileged counters (unchanged from a95ff15).
-      allow update: if isAuthenticated() && request.auth.uid == userId
+      allow update: if isAuthenticated() && isNotBanned() && request.auth.uid == userId
         && !request.resource.data.diff(resource.data).affectedKeys()
              .hasAny(['referralCount','claimedTiers','userId']);
       // Admin: may move the counters. This is the necessary, narrow exception.
@@ -271,17 +295,17 @@ service cloud.firestore {
 
     // ─── Referral Signups ───
     match /referralSignups/{signupId} {
-      allow read: if isAdmin() || (isAuthenticated() && resource.data.referrerUid == request.auth.uid);
+      allow read: if isAdmin() || (isAuthenticated() && isNotBanned() && resource.data.referrerUid == request.auth.uid);
       allow create: if isAdmin() && request.resource.data.newUid == signupId;
       allow update, delete: if false;   // markers are permanent
     }
 
     // ─── Tier Requests ───
     match /tierRequests/{reqId} {
-      allow get:  if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
-      allow list: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow get:  if isAdmin() || (isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid);
+      allow list: if isAdmin() || (isAuthenticated() && isNotBanned() && resource.data.userId == request.auth.uid);
 
-      allow create: if isAuthenticated()
+      allow create: if isAuthenticated() && isNotBanned()
         && reqId == request.auth.uid + '_' + request.resource.data.kind
         && reqOwnerId() == request.auth.uid
         && request.resource.data.status == 'pending'
@@ -323,9 +347,9 @@ service cloud.firestore {
 
     // ─── Referral Claims ───
     match /referralClaims/{claimId} {
-      allow get:  if isAdmin() || (isAuthenticated() && claimId == request.auth.uid);
+      allow get:  if isAdmin() || (isAuthenticated() && isNotBanned() && claimId == request.auth.uid);
       allow list: if isAdmin();
-      allow create: if isAuthenticated()
+      allow create: if isAuthenticated() && isNotBanned()
         && claimId == request.auth.uid
         && request.resource.data.keys().hasOnly(['newUid','code','status','createdAt'])
         && request.resource.data.keys().hasAll(['newUid','code','status','createdAt'])
