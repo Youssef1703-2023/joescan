@@ -7,6 +7,8 @@ export async function boundedJson(body: ReadableStream<Uint8Array> | null, maxBy
   return JSON.parse(new TextDecoder().decode(bytes));
 }
 export function publicLeakCheckResult(data: any) {
+  // The public service uses this exact envelope for a successful no-match lookup.
+  if (data?.success === false && data?.error === 'Not found') data = {success:true,found:0,sources:[],fields:[]};
   if (data?.success !== true || !Number.isSafeInteger(data.found) || data.found < 0 || !Array.isArray(data.sources) || !Array.isArray(data.fields)) throw new Error('INVALID_PROVIDER_RESPONSE');
   if (data.sources.length > 2000 || data.fields.length > 100) throw new Error('PROVIDER_RESPONSE_TOO_LARGE');
   const sources: {name:string;date:string}[] = []; const seen = new Set<string>();
