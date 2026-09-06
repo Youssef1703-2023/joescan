@@ -213,22 +213,22 @@ export default function PasswordAnalyzer() {
   };
 
   return (
-    <div className="w-full flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="w-full max-w-6xl mx-auto min-w-0 flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-bg-base border border-border-subtle p-6 md:p-8 rounded-xl shadow-lg relative overflow-hidden flex flex-col gap-6"
+        className="scan-hero bg-bg-base border border-border-subtle p-6 md:p-8 rounded-xl shadow-lg relative overflow-hidden flex flex-col gap-6"
       >
         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
           <KeyRound className="w-48 h-48 -mt-8 -mr-8" />
         </div>
         
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 relative z-10">
+        <div className="scan-heading-group relative z-10 gap-4">
           <div>
-            <h2 className="text-2xl font-bold font-mono tracking-tight uppercase mb-2 text-text-main flex items-center gap-3">
+            <h2 className="scan-title text-2xl font-bold font-mono tracking-tight uppercase mb-2 text-text-main flex items-center gap-3">
               <KeyRound className="w-6 h-6 text-accent" /> {t('pwd_vault_title')}
             </h2>
-            <p className="text-text-dim text-sm max-w-xl leading-relaxed">
+            <p className="scan-description text-text-dim text-sm max-w-xl leading-relaxed">
               {t('pwd_vault_desc')}
             </p>
           </div>

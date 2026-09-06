@@ -169,7 +169,7 @@ export default function SiemWebhooks() {
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12 w-full" dir={isAr ? 'rtl' : 'ltr'}>
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="workspace-heading flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
             <Webhook className="w-8 h-8 text-cyan-400" /> {t('siem_title')}

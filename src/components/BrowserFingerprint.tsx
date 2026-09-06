@@ -214,15 +214,15 @@ export default function BrowserFingerprint() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-6 md:p-8 flex flex-col gap-6 relative overflow-hidden"
+        className="scan-hero flex flex-col gap-6"
       >
         <div className="absolute top-0 right-0 w-64 h-64 bg-accent/5 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/3" />
         
-        <div className="flex flex-col gap-2">
+        <div className="scan-heading-group gap-2">
           <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center mb-2 border border-accent/20 shadow-[0_0_15px_rgba(var(--accent-rgb),0.2)]">
             <Fingerprint className="w-6 h-6 text-accent" />
           </div>
-          <h2 className="text-2xl font-bold font-mono tracking-tight">
+          <h2 className="scan-title text-2xl font-bold font-mono tracking-tight">
             {lang === 'ar' ? 'بصمة المتصفح (Browser Fingerprint)' : 'Browser Fingerprinting'}
           </h2>
           <p className="text-text-dim text-sm max-w-2xl leading-relaxed">

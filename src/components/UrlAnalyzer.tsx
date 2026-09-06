@@ -567,13 +567,13 @@ export default function UrlAnalyzer() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-bg-base border border-border-subtle p-6 rounded-xl shadow-lg relative overflow-hidden"
+        className="scan-hero bg-bg-base border border-border-subtle p-6 rounded-xl shadow-lg relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
           <Link className="w-32 h-32" />
         </div>
 
-        <h2 className="text-xl font-bold font-mono tracking-tight uppercase mb-2 text-text-main flex items-center gap-2">
+        <h2 className="scan-title text-xl font-bold font-mono tracking-tight uppercase mb-2 text-text-main flex items-center gap-2">
           <Link className="w-5 h-5 text-accent" /> {t('url_title')}
         </h2>
         <p className="text-text-dim mb-6 text-sm">

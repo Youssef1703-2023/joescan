@@ -104,7 +104,7 @@ export default function TeamManagement() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 pb-12 w-full">
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="workspace-heading flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
             <Users className="w-8 h-8 text-purple-400" /> {t('team_title')}

@@ -655,7 +655,7 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12 w-full p-4">
       {/* Header */}
-      <div className="border-b border-border-subtle pb-4">
+      <div className="workspace-heading">
         <h1 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3 text-text-main">
           <ShieldAlert className="w-8 h-8 text-error" />
           {t('admin_title')}

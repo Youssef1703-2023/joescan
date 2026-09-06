@@ -1,3 +1,4 @@
+import './styles/workspace.css';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
 import { auth, db, isUserBanned, logActivity, ADMIN_EMAIL, getUserTier, getUserProfile, ensureUserProfile } from './lib/firebase';
@@ -429,7 +430,8 @@ function AppContent() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="w-full flex-1 flex flex-col max-w-7xl"
+            className="workspace-page w-full flex-1 flex flex-col max-w-6xl"
+            data-page={activeTab}
           >
             <Suspense fallback={<PageLoader />}>
             <SEOHead path={TAB_TO_PATH[activeTab] || '/'} />

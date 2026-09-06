@@ -149,9 +149,9 @@ export default function DeviceSecurityCheck() {
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Header */}
-      <div className="glass-card p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 justify-between relative overflow-hidden">
+      <div className="workspace-heading overflow-hidden">
         <div className="absolute right-0 top-0 w-64 h-64 bg-accent/10 blur-[100px] rounded-full pointer-events-none" />
-        <div className="relative z-10 flex items-center gap-6 text-center md:text-left rtl:md:text-right">
+        <div className="scan-heading-group relative z-10 gap-5">
           <div className="w-20 h-20 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center shrink-0 shadow-[0_0_30px_rgba(0,255,0,0.15)] relative">
             <Monitor className="w-10 h-10 text-accent animate-pulse" />
             {loading && (

@@ -264,7 +264,7 @@ export default function CyberAcademy() {
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-16 w-full" dir={isAr ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="workspace-heading flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
             <GraduationCap className="w-8 h-8 text-cyan-400" /> {t('nav_academy')}

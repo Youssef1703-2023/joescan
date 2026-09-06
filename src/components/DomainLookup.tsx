@@ -305,7 +305,7 @@ export default function DomainLookup() {
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="flex items-center gap-3 mb-2">
+      <div className="workspace-heading">
         <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center">
           <Globe className="w-5 h-5 text-cyan-400" />
         </div>
@@ -322,7 +322,7 @@ export default function DomainLookup() {
       </div>
 
       {/* Search */}
-      <div className="glass-card p-5">
+      <div className="domain-search glass-card p-5">
         <div className="flex gap-3">
           <div className="flex-1 relative">
             <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />

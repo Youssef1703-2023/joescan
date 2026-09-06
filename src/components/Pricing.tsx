@@ -146,7 +146,7 @@ export default function Pricing() {
         </motion.div>
       )}
 
-      <div className="text-center space-y-4 pt-8">
+      <div className="workspace-heading">
         <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight">{t('pricing_title')}</h1>
         <p className="text-text-dim max-w-2xl mx-auto text-lg">
           {t('pricing_subtitle')}

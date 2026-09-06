@@ -250,7 +250,7 @@ export default function ThreatMap3D() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-12 w-full" dir={isAr ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-4">
+      <div className="workspace-heading flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
             <Globe className="w-8 h-8 text-cyan-400" /> {t('threat_title')}

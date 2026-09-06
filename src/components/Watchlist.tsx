@@ -380,9 +380,9 @@ export default function Watchlist() {
   return (
     <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="glass-card p-6 md:p-10 flex flex-col md:flex-row items-center gap-6 justify-between relative overflow-hidden">
+      <div className="workspace-heading overflow-hidden">
         <div className="absolute right-0 top-0 w-64 h-64 bg-error/10 blur-[100px] rounded-full pointer-events-none" />
-        <div className="relative z-10 flex items-center gap-6">
+        <div className="scan-heading-group relative z-10 gap-5">
           <div className="w-20 h-20 rounded-2xl bg-bg-surface border border-border-subtle flex items-center justify-center shrink-0 relative">
             <div className="absolute inset-0 rounded-2xl border border-error/50 animate-pulse-glow" style={{ animationDuration: '3s' }} />
             <Target className="w-10 h-10 text-error" />

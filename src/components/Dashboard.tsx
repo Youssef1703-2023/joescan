@@ -263,6 +263,7 @@ export default function Dashboard({ onNavigate }: { onNavigate: (tab: TabId) => 
 
   return (
     <div className="w-full flex flex-col gap-6 relative" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <div className="workspace-heading"><h1>{lang === 'ar' ? 'مركز التحكم الأمني' : 'Your security workspace'}</h1><p>{lang === 'ar' ? 'راجع نشاطك ونتائج الفحص، واختر الأداة المناسبة لخطوتك التالية.' : 'Review your activity and scan results, then choose the right tool for your next check.'}</p></div>
       <SocTrialBanner />
       <div className="cyber-scanner-overlay" />
       <motion.div

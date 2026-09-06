@@ -156,7 +156,7 @@ export default function ScanHistory() {
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="glass-card p-6 md:p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
+        className="workspace-heading"
       >
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-3">
