@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Link, Loader2, ShieldCheck, ShieldAlert, AlertTriangle, ArrowRight, Globe, Search, Lock, Camera, CheckCircle, XCircle, Info, Download, Server, MapPin, Network, Clock, ExternalLink, Bug, Skull, Eye, Fingerprint } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
 import { generateReportPDF } from '../lib/generatePDF';
 import { fetchGeoIp } from '../lib/geoip';
 import MiniHistory from './MiniHistory';
@@ -303,6 +304,16 @@ export default function UrlAnalyzer() {
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!url.trim()) return;
+
+    try {
+      consumeScanAttempt();
+    } catch (rateLimitError) {
+      if (rateLimitError instanceof ScanRateLimitError) {
+        setError(`Temporary scan limit reached. Try again in ${rateLimitError.retryAfterSeconds} seconds.`);
+        return;
+      }
+      throw rateLimitError;
+    }
 
     setLoading(true);
     setError(null);
@@ -678,6 +689,17 @@ export default function UrlAnalyzer() {
                     <div className="flex items-center gap-2">
                       <Globe className="w-4 h-4 text-text-dim" />
                       <span className="font-mono text-sm text-text-main" dir="ltr">{result.hostname}</span>
+                    </div>
+                    <div className={cn(
+                      'flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-medium',
+                      result.url.toLowerCase().startsWith('https://')
+                        ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
+                        : 'border-red-400/30 bg-red-400/10 text-red-300'
+                    )} title={lang === 'ar' ? 'يؤكد بروتوكول الرابط فقط؛ لا يضمن موثوقية الموقع.' : 'Confirms the URL protocol only; it does not guarantee the site is trustworthy.'}>
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>{result.url.toLowerCase().startsWith('https://')
+                        ? (lang === 'ar' ? 'HTTPS ظاهر في الرابط' : 'HTTPS detected')
+                        : (lang === 'ar' ? 'HTTP غير مشفّر' : 'Unencrypted HTTP')}</span>
                     </div>
                     {result.dns.ip && (
                       <div className="flex items-center gap-2">

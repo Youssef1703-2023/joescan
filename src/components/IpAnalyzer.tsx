@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { serverTimestamp } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 import { saveScan } from '../lib/webhooks';
+import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Wifi, Loader2, ShieldCheck, AlertTriangle, ArrowRight, ShieldAlert, Cpu, MapPin, Search, Download, Network, Globe, Crosshair } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -47,6 +48,16 @@ export default function IpAnalyzer() {
 
   const performScan = async (ipToScan: string) => {
     if (!ipToScan.trim()) return;
+
+    try {
+      consumeScanAttempt();
+    } catch (rateLimitError) {
+      if (rateLimitError instanceof ScanRateLimitError) {
+        setError('Temporary scan limit reached. Please wait one minute and try again.');
+        return;
+      }
+      throw rateLimitError;
+    }
 
     setLoading(true);
     setError(null);

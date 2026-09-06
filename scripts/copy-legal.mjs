@@ -1,6 +1,6 @@
 /**
  * Copy static legal/trust pages into dist/ after build.
- * Pages: privacy (ar/en), terms (ar/en), security (en/ar), security.txt
+ * Pages: privacy (ar/en), terms (ar/en), security (en/ar), about (ar/en), security.txt
  * Called after prerender-seo.mjs in the deploy workflow.
  */
 import { copyFileSync, mkdirSync, existsSync } from 'fs';
@@ -13,12 +13,14 @@ const DIST = join(ROOT, 'dist');
 
 const pages = [
   // [source, destination-in-dist]
-  ['privacy.ar.html', 'privacy.html'],
+  ['privacy.en.html', 'privacy.html'],
   ['privacy.en.html', 'privacy.en.html'],
   ['terms.ar.html', 'terms.html'],
   ['terms.en.html', 'terms.en.html'],
   ['security.ar.html', 'security.html'],
   ['security.en.html', 'security.en.html'],
+  ['about.en.html', 'about.html'],
+  ['about.en.html', 'about.en.html'],
 ];
 
 for (const [src, dest] of pages) {
@@ -30,6 +32,9 @@ for (const [src, dest] of pages) {
   const destPath = join(DIST, dest);
   mkdirSync(dirname(destPath), { recursive: true });
   copyFileSync(srcPath, destPath);
+  const routePath = join(DIST, dest.replace(/\.html$/, ''), 'index.html');
+  mkdirSync(dirname(routePath), { recursive: true });
+  copyFileSync(srcPath, routePath);
   console.log('copied', src, '->', dest);
 }
 

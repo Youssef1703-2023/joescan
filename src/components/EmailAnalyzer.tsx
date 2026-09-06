@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, serverTimestamp, query, where, orderBy, onSnapshot, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { saveScan } from '../lib/webhooks';
+import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
 import { useLanguage } from '../contexts/LanguageContext';
 import { analyzeEmailExposure, translateReport } from '../lib/gemini';
 import { ShieldAlert, ShieldCheck, Shield, Loader2, ArrowRight, Check, X, Share2, CheckCircle2, RefreshCw, Download, Twitter, Facebook, Link as LinkIcon, Settings2, SlidersHorizontal, Search, Star, Database, GlobeLock, FileSearch, HardDrive, Trash2, Eye } from 'lucide-react';
@@ -238,7 +239,17 @@ export default function EmailAnalyzer() {
       setError(t('email_invalid_format'));
       return;
     }
-    
+
+    try {
+      consumeScanAttempt();
+    } catch (rateLimitError) {
+      if (rateLimitError instanceof ScanRateLimitError) {
+        setError('Temporary scan limit reached. Please wait one minute and try again.');
+        return;
+      }
+      throw rateLimitError;
+    }
+
     setLoading(true);
     setError(null);
     setShowScanSettings(false);

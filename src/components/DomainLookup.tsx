@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { serverTimestamp } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 import { saveScan } from '../lib/webhooks';
+import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Globe, Loader2, Search, ShieldCheck, ShieldAlert, AlertTriangle, Download, Server, MapPin, Calendar, User, Link as LinkIcon, Network, Clock, FileText, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -70,6 +71,16 @@ export default function DomainLookup() {
     if (!cleanedDomain || !cleanedDomain.includes('.')) {
       setError(lang === 'ar' ? 'أدخل دومين صحيح (مثل: google.com)' : 'Enter a valid domain (e.g. google.com)');
       return;
+    }
+
+    try {
+      consumeScanAttempt();
+    } catch (rateLimitError) {
+      if (rateLimitError instanceof ScanRateLimitError) {
+        setError('Temporary scan limit reached. Please wait one minute and try again.');
+        return;
+      }
+      throw rateLimitError;
     }
 
     setLoading(true);

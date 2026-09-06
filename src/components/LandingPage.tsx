@@ -257,11 +257,31 @@ export default function LandingPage({ loading }: LandingPageProps) {
         </motion.div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative z-10 border-t border-border-subtle px-6 py-6 text-center">
-        <div className="font-mono text-[11px] text-text-dim/60 uppercase tracking-widest">
-          {t('footer_encryption')}
+      {/* ===== ABOUT & PRIVACY ===== */}
+      <section className="relative z-10 w-full max-w-5xl mx-auto px-6 pb-16" dir="ltr" lang="en">
+        <div className="glass-card grid grid-cols-1 md:grid-cols-2 gap-8 p-7 md:p-9">
+          <div>
+            <p className="text-xs font-mono tracking-widest text-accent mb-3">ABOUT / JOETECH</p>
+            <h2 className="text-xl font-bold text-text-main mb-3">Built by JoeTech. Made for people.</h2>
+            <p className="text-sm text-text-dim leading-relaxed mb-5">JoeScan brings cybersecurity and OSINT tools together to help you understand your exposure and decide what to do next.</p>
+            <a href="/about" className="text-sm font-semibold text-accent hover:underline">About JoeScan →</a>
+          </div>
+          <div className="border-t md:border-t-0 md:border-l border-border-subtle pt-7 md:pt-0 md:pl-8">
+            <p className="text-xs font-mono tracking-widest text-accent mb-3">PRIVACY &amp; DATA</p>
+            <h2 className="text-xl font-bold text-text-main mb-3">Know what happens to your data.</h2>
+            <p className="text-sm text-text-dim leading-relaxed mb-5">Learn what stays in your browser, which scan details are saved, when external services are used, and how to request deletion.</p>
+            <a href="/privacy" className="text-sm font-semibold text-accent hover:underline">Read our privacy policy →</a>
+          </div>
         </div>
+      </section>
+
+      <footer className="relative z-10 border-t border-border-subtle px-6 py-6 text-center" dir="ltr" lang="en">
+        <nav aria-label="Information pages" className="flex justify-center gap-5 mb-3 text-sm text-text-dim">
+          <a href="/about" className="hover:text-accent">About</a>
+          <a href="/privacy" className="hover:text-accent">Privacy &amp; Data</a>
+          <a href="/terms.en" className="hover:text-accent">Terms</a>
+        </nav>
+        <p className="font-mono text-xs text-text-dim">JoeScan · A product of JoeTech</p>
       </footer>
 
       {/* Auth Modal */}

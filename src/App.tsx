@@ -5,7 +5,7 @@ import { LanguageProvider, useLanguage, LANGUAGE_OPTIONS } from './contexts/Lang
 import { NotificationProvider } from './contexts/NotificationContext';
 import Sidebar, { TabId, TAB_TO_PATH, PATH_TO_TAB } from './components/Sidebar';
 import NotificationCenter from './components/NotificationCenter';
-import { Shield, LogOut, Moon, Sun, User as UserIcon, BrainCircuit, Menu, Loader2, AlertTriangle, Wrench } from 'lucide-react';
+import { Shield, LogOut, Moon, Sun, User as UserIcon, BrainCircuit, Menu, Loader2, AlertTriangle, Wrench, Info } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 // Lazy-loaded page components (code splitting)
@@ -417,6 +417,12 @@ function AppContent() {
       </header>
 
         <main className="flex-1 w-full flex flex-col items-center p-4 md:p-8 overflow-y-auto overflow-x-hidden relative scrollbar-hide">
+        <section role="note" className="w-full max-w-7xl mb-4 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 flex gap-3 text-xs text-text-dim">
+          <Info className="w-4 h-4 shrink-0 text-amber-300 mt-0.5" />
+          <p>{lang === 'ar'
+            ? 'نتائج JoeScan تقييم أولي وليست ضماناً للأمان. استخدم كلمة مرور فريدة وقوية، فعّل المصادقة الثنائية (2FA)، وحدّث أجهزتك وتحقق من الروابط قبل إدخال أي بيانات.'
+            : 'JoeScan results are an initial assessment, not a security guarantee. Use unique strong passwords, enable two-factor authentication (2FA), update your devices, and verify links before entering data.'}</p>
+        </section>
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -456,6 +462,8 @@ function AppContent() {
           {/* Legal footer */}
           <footer className="w-full max-w-6xl mx-auto px-4 pb-6 pt-2 text-center text-[11px] text-text-dim/70 font-mono shrink-0">
             <a href="/privacy" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Privacy</a>
+            <span className="mx-2 opacity-40">·</span>
+            <a href="/about" target="_blank" rel="noopener" className="hover:text-accent transition-colors">{lang === 'ar' ? 'من نحن' : 'About'}</a>
             <span className="mx-2 opacity-40">·</span>
             <a href="/terms" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Terms</a>
             <span className="mx-2 opacity-40">·</span>
