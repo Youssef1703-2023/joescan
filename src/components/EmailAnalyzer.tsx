@@ -5,7 +5,7 @@ import { saveScan } from '../lib/webhooks';
 import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
 import { useLanguage } from '../contexts/LanguageContext';
 import { analyzeEmailExposure, translateReport } from '../lib/gemini';
-import { ShieldAlert, ShieldCheck, Shield, Loader2, ArrowRight, Check, X, Share2, CheckCircle2, RefreshCw, Download, Twitter, Facebook, Link as LinkIcon, Settings2, SlidersHorizontal, Search, Star, Database, GlobeLock, FileSearch, HardDrive, Trash2, Eye } from 'lucide-react';
+import { ShieldAlert, ShieldCheck, Shield, Loader2, ArrowRight, Check, X, Share2, CheckCircle2, RefreshCw, Download, Twitter, Facebook, Link as LinkIcon, Settings2, SlidersHorizontal, Search, Star, Database, GlobeLock, FileSearch, HardDrive, Trash2, Eye, Mail } from 'lucide-react';
 import { useNotifications } from '../contexts/NotificationContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
@@ -433,17 +433,30 @@ export default function EmailAnalyzer() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto w-full flex flex-col gap-8 flex-1">
+    <div className="max-w-6xl mx-auto w-full min-w-0 flex flex-col gap-8 flex-1">
       {/* Top Input Area */}
-      <section className="w-full max-w-[600px] mb-4">
-        <h1 className="text-[28px] font-bold mb-2">{t('hero_title')}</h1>
-        <p className="text-text-dim mb-6 text-sm md:text-base">{t('hero_subtitle')}</p>
+      <section className="relative isolate w-full rounded-[28px] border border-accent/15 bg-bg-surface px-4 py-8 sm:px-8 sm:py-12">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 rounded-[28px] bg-[radial-gradient(ellipse_at_top,rgba(0,255,0,0.08),transparent_65%)]" />
+        <div className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-accent">
+          <Mail className="h-3.5 w-3.5" /> Email exposure check
+        </div>
+        <div className="mx-auto max-w-3xl text-center">
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-text-main leading-tight">A clearer picture of<br className="hidden sm:block" /> <span className="text-accent">your email exposure.</span></h1>
+        <p className="mx-auto mt-4 mb-8 max-w-xl text-text-dim text-sm sm:text-base leading-relaxed">Check your email against available breach data. Understand what was exposed and what to do next.</p>
+        </div>
         
-        <div className="relative">
-          <form onSubmit={handleAnalyze} className="flex gap-3">
-            <div className="relative flex-1">
+        <div className="relative mx-auto w-full max-w-3xl">
+          <label htmlFor="email-audit-address" className="mb-2 block text-xs font-semibold text-text-main">Email address</label>
+          <form onSubmit={handleAnalyze} className="flex flex-col sm:flex-row gap-3 rounded-2xl border border-border-subtle bg-bg-base p-2 shadow-[0_12px_40px_rgba(0,0,0,0.15)] focus-within:border-accent/50 transition-colors">
+            <div className="relative min-w-0 flex-1">
+              <Mail aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-accent/70" />
               <input
-                type="text"
+                id="email-audit-address"
+                type="email"
+                autoComplete="email"
+                spellCheck={false}
+                required
+                aria-describedby="email-audit-hint"
                 value={email}
                 onChange={(e) => {
                   setEmail(e.target.value);
@@ -454,8 +467,8 @@ export default function EmailAnalyzer() {
                   setIsFocused(false);
                   if (email) setEmail(normalizeEmail(email));
                 }}
-                placeholder={t('email_placeholder_detailed')}
-                className="w-full bg-bg-surface border border-border-subtle pl-5 pr-12 py-4 rounded-lg text-text-main text-base outline-none focus:border-accent transition-colors shadow-none"
+                placeholder="you@example.com"
+                className="w-full min-w-0 bg-transparent border-0 pl-12 pr-14 py-4 rounded-xl text-text-main text-base outline-none placeholder:text-text-dim/60"
                 dir="ltr"
                 disabled={loading}
               />
@@ -464,6 +477,9 @@ export default function EmailAnalyzer() {
                 className={cn("absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-md transition-colors", showScanSettings ? "bg-accent/10 text-accent" : "text-text-dim hover:text-accent hover:bg-bg-base")}
                 onClick={() => setShowScanSettings(!showScanSettings)}
                 title={t('scan_settings')}
+                aria-label={t('scan_settings')}
+                aria-expanded={showScanSettings}
+                aria-controls="email-scan-settings"
               >
                 <SlidersHorizontal className="w-5 h-5" />
               </button>
@@ -472,9 +488,9 @@ export default function EmailAnalyzer() {
             <button
               type="submit"
               disabled={loading || !email}
-              className="bg-accent text-accent-fg font-bold px-8 rounded-lg uppercase tracking-widest transition-transform active:scale-95 disabled:opacity-50 disabled:active:scale-100 min-w-[120px] flex items-center justify-center"
+              className="bg-accent text-accent-fg font-bold px-6 py-4 rounded-xl text-sm transition-all hover:brightness-110 active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 sm:min-w-[160px] flex items-center justify-center gap-2"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('analyze_button')}
+              {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Checking…</> : <>Check email <ArrowRight className="w-4 h-4" /></>}
             </button>
           </form>
 
@@ -484,9 +500,10 @@ export default function EmailAnalyzer() {
                 initial={{ opacity: 0, y: -10, height: 0 }}
                 animate={{ opacity: 1, y: 0, height: "auto" }}
                 exit={{ opacity: 0, y: -10, height: 0 }}
-                className="absolute top-full left-0 right-0 mt-3 bg-bg-surface border border-border-subtle rounded-lg shadow-lg z-20 overflow-hidden"
+                id="email-scan-settings"
+                className="relative mt-4 bg-bg-base/70 border border-border-subtle rounded-2xl overflow-hidden"
               >
-                <div className="p-5 flex flex-col lg:flex-row gap-6">
+                <div className="p-4 sm:p-6 flex flex-col gap-6">
                   <div className="flex-1">
                     <h3 className="text-text-main font-bold mb-3 text-sm">{t('scan_sensitivity')}</h3>
                     <div className="flex flex-col gap-2">
@@ -505,7 +522,7 @@ export default function EmailAnalyzer() {
                        ))}
                     </div>
                   </div>
-                  <div className="h-px lg:h-auto lg:w-px bg-border-subtle my-2 lg:my-0" />
+                  <div className="h-px w-full bg-border-subtle" />
                   <div className="flex-1">
                     <h3 className="text-text-main font-bold mb-3 text-sm">{t('scan_db_selection')}</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
@@ -523,11 +540,11 @@ export default function EmailAnalyzer() {
                              className="flex items-start justify-between gap-3 p-3 rounded-xl border border-border-subtle bg-bg-base hover:border-accent/40 shadow-sm transition-colors cursor-pointer group" 
                              onClick={() => setScanDatabases(prev => ({ ...prev, [dbInfo.id]: !isChecked }))}
                            >
-                             <div className="flex items-start gap-3">
+                             <div className="flex min-w-0 items-start gap-3">
                                <div className={cn("p-2 rounded-lg shrink-0 transition-colors", isChecked ? "bg-accent/15 text-accent" : "bg-bg-surface text-text-dim group-hover:text-text-main")}>
                                  <Icon className="w-4 h-4" />
                                </div>
-                               <div className="flex flex-col gap-0.5">
+                               <div className="flex min-w-0 flex-col gap-0.5 break-words">
                                  <span className="text-sm font-semibold text-text-main leading-tight">{dbInfo.label}</span>
                                  <span className="text-[11px] text-text-dim leading-snug">{dbInfo.desc}</span>
                                </div>
@@ -567,18 +584,24 @@ export default function EmailAnalyzer() {
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}
-              className="text-text-dim/70 text-xs mt-2 ml-1"
+              id="email-audit-hint"
+              className="text-text-dim/70 text-xs mt-3 text-center"
             >
               {t('email_format_hint')}
             </motion.p>
           )}
         </AnimatePresence>
 
-        {error && <p className="text-error text-sm mt-3 bg-error/10 border border-error/30 p-2 rounded">{error}</p>}
+        {error && <p role="alert" className="mx-auto max-w-3xl text-error text-sm mt-4 bg-error/10 border border-error/30 p-3 rounded-xl">{error}</p>}
+        <div className="mx-auto mt-7 flex max-w-3xl flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border-subtle pt-5 text-[11px] text-text-dim">
+          <span className="flex items-center gap-2"><Database className="h-3.5 w-3.5 text-accent/70" /> Available breach records</span>
+          <span className="flex items-center gap-2"><FileSearch className="h-3.5 w-3.5 text-accent/70" /> Clear exposure report</span>
+          <span className="flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-accent/70" /> Practical next steps</span>
+        </div>
       </section>
 
       {/* Main Content Area */}
-      <div className="flex flex-col md:grid md:grid-cols-[320px_1fr] gap-8 flex-1 items-start">
+      <div className="flex flex-col xl:grid xl:grid-cols-[280px_minmax(0,1fr)] gap-6 flex-1 items-start">
         {/* Left Column: Risk Card and History */}
         <div className="w-full flex flex-col gap-6">
           {activeScan ? (
