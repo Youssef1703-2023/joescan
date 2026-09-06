@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, serverTimestamp, query, where, orderBy, onSnapshot, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { saveScan } from '../lib/webhooks';
+import { assessEmailBreaches, EmailSourceError, type EmailBreach } from '../lib/emailExposure';
 import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
 import { useLanguage } from '../contexts/LanguageContext';
 import { analyzeEmailExposure, translateReport } from '../lib/gemini';
@@ -23,7 +24,10 @@ interface ScanResult {
   securityScore?: number;
   scoreFactors?: string[];
   scoreImprovement?: string[];
-  breaches?: { name: string; date: string; dataExposed: string; recordCount?: string }[];
+  breaches?: EmailBreach[];
+  source?: string;
+  checkedAt?: string;
+  assessmentVersion?: number;
   createdAt: any;
   language?: string;
 }
@@ -91,13 +95,6 @@ export default function EmailAnalyzer() {
   const [isFocused, setIsFocused] = useState(false);
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [importantEmails, setImportantEmails] = useState<string[]>([]);
-  const [scanSensitivity, setScanSensitivity] = useState<'low'|'medium'|'high'>('medium');
-  const [scanDatabases, setScanDatabases] = useState({
-    havaIBeenPwned: true,
-    pwnedList: false,
-    darkWeb: true,
-    breachCompilation: false
-  });
   const { addNotification } = useNotifications();
   const [watchedEmails, setWatchedEmails] = useState<string[]>([]);
 
@@ -182,7 +179,8 @@ export default function EmailAnalyzer() {
       
       const emailResults = results.filter(r => !r.type || r.type === 'email').map(r => ({
         ...r,
-        emailScanned: r.emailScanned || r.target || ''
+        emailScanned: r.emailScanned || r.target || '',
+        ...(r.breaches?.length ? assessEmailBreaches(r.breaches) : {})
       }));
 
       setScans(emailResults);
@@ -274,7 +272,7 @@ export default function EmailAnalyzer() {
       }
 
       // 2. Perform exposure AI search
-      const analysis = await analyzeEmailExposure(cleanedEmail, lang, scanSensitivity, scanDatabases);
+      const analysis = await analyzeEmailExposure(cleanedEmail, lang);
       
       const newScan = {
         userId: auth.currentUser!.uid,
@@ -287,7 +285,10 @@ export default function EmailAnalyzer() {
         securityScore: analysis.securityScore,
         scoreFactors: analysis.scoreFactors,
         scoreImprovement: analysis.scoreImprovement,
-        breaches: analysis.breaches || [],
+        breaches: analysis.breaches,
+        source: analysis.source,
+        checkedAt: analysis.checkedAt,
+        assessmentVersion: analysis.assessmentVersion,
         createdAt: serverTimestamp(),
         language: lang
       };
@@ -299,7 +300,9 @@ export default function EmailAnalyzer() {
     } catch (err: any) {
       console.error(err);
       const msg = err.message || '';
-      if (msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('exhausted') || msg.includes('rate_limit')) {
+      if (err instanceof EmailSourceError) {
+        setError(err.message);
+      } else if (msg.includes('429') || msg.includes('quota') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('exhausted') || msg.includes('rate_limit')) {
         setError(lang === 'ar' 
           ? '⚠️ خادم الذكاء الاصطناعي مشغول حالياً. استنى دقيقة وجرب تاني.'
           : '⚠️ AI server is currently busy. Wait a minute and try again.'
@@ -476,8 +479,8 @@ export default function EmailAnalyzer() {
                 type="button"
                 className={cn("absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-md transition-colors", showScanSettings ? "bg-accent/10 text-accent" : "text-text-dim hover:text-accent hover:bg-bg-base")}
                 onClick={() => setShowScanSettings(!showScanSettings)}
-                title={t('scan_settings')}
-                aria-label={t('scan_settings')}
+                title="Data source and coverage"
+                aria-label="Data source and coverage"
                 aria-expanded={showScanSettings}
                 aria-controls="email-scan-settings"
               >
@@ -503,75 +506,11 @@ export default function EmailAnalyzer() {
                 id="email-scan-settings"
                 className="relative mt-4 bg-bg-base/70 border border-border-subtle rounded-2xl overflow-hidden"
               >
-                <div className="p-4 sm:p-6 flex flex-col gap-6">
-                  <div className="flex-1">
-                    <h3 className="text-text-main font-bold mb-3 text-sm">{t('scan_sensitivity')}</h3>
-                    <div className="flex flex-col gap-2">
-                       {['low', 'medium', 'high'].map(level => (
-                         <label key={level} className="flex items-center gap-2 cursor-pointer text-sm text-text-dim hover:text-text-main transition-colors">
-                            <input 
-                              type="radio" 
-                              name="sensitivity"
-                              value={level}
-                              checked={scanSensitivity === level}
-                              onChange={() => setScanSensitivity(level as any)}
-                              className="accent-accent w-4 h-4"
-                            />
-                            {level === 'low' ? 'Low (Major breaches only)' : level === 'medium' ? 'Medium (Standard databases)' : 'High (All lists & spam maps)'}
-                         </label>
-                       ))}
-                    </div>
-                  </div>
-                  <div className="h-px w-full bg-border-subtle" />
-                  <div className="flex-1">
-                    <h3 className="text-text-main font-bold mb-3 text-sm">{t('scan_db_selection')}</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1">
-                       {[
-                         { id: 'havaIBeenPwned', label: 'HaveIBeenPwned', icon: Database, desc: 'Global breach tracker' },
-                         { id: 'pwnedList', label: 'PwnedList', icon: FileSearch, desc: 'Stolen credential pastes' },
-                         { id: 'darkWeb', label: 'Dark Web Dumps', icon: GlobeLock, desc: 'Deep-web monitoring' },
-                         { id: 'breachCompilation', label: 'BreachCompilation 2017', icon: HardDrive, desc: '1.4B archive leak' }
-                       ].map((dbInfo) => {
-                         const Icon = dbInfo.icon;
-                         const isChecked = (scanDatabases as any)[dbInfo.id];
-                         return (
-                           <div 
-                             key={dbInfo.id} 
-                             className="flex items-start justify-between gap-3 p-3 rounded-xl border border-border-subtle bg-bg-base hover:border-accent/40 shadow-sm transition-colors cursor-pointer group" 
-                             onClick={() => setScanDatabases(prev => ({ ...prev, [dbInfo.id]: !isChecked }))}
-                           >
-                             <div className="flex min-w-0 items-start gap-3">
-                               <div className={cn("p-2 rounded-lg shrink-0 transition-colors", isChecked ? "bg-accent/15 text-accent" : "bg-bg-surface text-text-dim group-hover:text-text-main")}>
-                                 <Icon className="w-4 h-4" />
-                               </div>
-                               <div className="flex min-w-0 flex-col gap-0.5 break-words">
-                                 <span className="text-sm font-semibold text-text-main leading-tight">{dbInfo.label}</span>
-                                 <span className="text-[11px] text-text-dim leading-snug">{dbInfo.desc}</span>
-                               </div>
-                             </div>
-                             <button
-                               type="button"
-                               role="switch"
-                               aria-checked={isChecked}
-                               className={cn(
-                                 "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-bg-base mt-2",
-                                 isChecked ? "bg-accent" : "bg-border-subtle hover:bg-border-subtle/80"
-                               )}
-                             >
-                                <span className="sr-only">Toggle {dbInfo.label}</span>
-                                <span
-                                  aria-hidden="true"
-                                  className={cn(
-                                    "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white dark:bg-[#111110] shadow-sm ring-0 transition duration-200 ease-in-out",
-                                    isChecked ? "translate-x-4" : "translate-x-0"
-                                  )}
-                                />
-                             </button>
-                           </div>
-                         );
-                       })}
-                    </div>
-                  </div>
+                <div className="p-5 text-sm text-text-dim leading-relaxed">
+                  <h3 className="font-bold text-text-main mb-2">Data source: XposedOrNot</h3>
+                  <p>Your email is sent to XposedOrNot to check its indexed breaches. All returned breach records are included. Coverage can differ from other providers.</p>
+                  <p className="mt-2">HIBP and other databases are not connected. No match means no match in this source, not a guarantee of safety.</p>
+                  <a className="mt-3 inline-block text-accent underline" href="https://xposedornot.com/api_doc" target="_blank" rel="noopener noreferrer">About this data source</a>
                 </div>
               </motion.div>
             )}
@@ -618,10 +557,10 @@ export default function EmailAnalyzer() {
                 </span>
               </div>
               <h2 className="text-[32px] font-bold mb-2">
-                {activeScan.riskLevel === 'Low' ? t('status_secure') : activeScan.riskLevel === 'Medium' ? t('status_warning') : t('status_risk')}
+                {activeScan.breaches?.length ? 'Exposure found' : activeScan.assessmentVersion === 2 ? 'No matches' : 'Rescan needed'}
               </h2>
               <p className="text-text-dim text-[14px] mb-6">
-                {activeScan.riskLevel === 'Low' ? t('desc_secure') : t('desc_risk')}
+                {activeScan.breaches?.length ? 'Review the listed breaches and take the recommended steps.' : 'Limited provider coverage. This is not a security guarantee.'}
               </p>
               <div className="font-mono text-[14px] truncate w-full px-2" style={{ color: getRiskColor(activeScan.riskLevel).hex }} dir="ltr">
                 [!] {activeScan.emailScanned}
@@ -990,7 +929,9 @@ export default function EmailAnalyzer() {
                           <tbody>
                             {displayScan.breaches.map((breach, idx) => (
                               <tr key={idx} className="border-b border-border-subtle/30 hover:bg-error/5 transition-colors">
-                                <td className="px-3 py-2.5 font-semibold text-text-main">{breach.name}</td>
+                                <td className="px-3 py-2.5 font-semibold text-text-main">{breach.name}
+                                  {breach.description && <details className="mt-2 font-normal text-xs text-text-dim"><summary className="cursor-pointer text-accent">Breach details</summary><p className="mt-2 whitespace-pre-wrap leading-relaxed">{breach.description}</p></details>}
+                                </td>
                                 <td className="px-3 py-2.5 text-text-dim font-mono text-xs">{breach.date}</td>
                                 <td className="px-3 py-2.5">
                                   <div className="flex flex-wrap gap-1">
@@ -1010,6 +951,11 @@ export default function EmailAnalyzer() {
                     </div>
                   )}
 
+                  <div className="mb-5 rounded-xl border border-border-subtle p-4 text-sm text-text-dim">
+                    <strong className="text-text-main">{displayScan.source ? 'Source: ' + displayScan.source : 'Historical report — rescan to verify the source'}</strong>
+                    <p className="mt-1">Coverage varies by provider. This report does not include HIBP results. The score is a local estimate, not a security guarantee.</p>
+                    {!displayScan.assessmentVersion && <p className="mt-1 text-warning">This older report used the previous assessment logic. Run a new check for an updated report.</p>}
+                  </div>
                   <h3 className="text-xl font-bold mb-4 font-mono text-text-main">{t('report_overview')}</h3>
                   <div className="text-[15px] leading-relaxed text-text-dim whitespace-pre-wrap">
                     {displayScan.reportText}
