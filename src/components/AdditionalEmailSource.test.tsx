@@ -1,0 +1,4 @@
+import React from 'react';import {render,screen,cleanup} from '@testing-library/react';import {it,expect,afterEach} from 'vitest';import Component from './AdditionalEmailSource';
+afterEach(cleanup);
+it('shows combined saved evidence without an optional comparison action',()=>{render(<Component email="test@example.com" groups={[{name:'Incident',evidence:[{provider:'XposedOrNot',name:'Incident',date:'2025'}]}]} statuses={{xposedornot:'complete',leakcheck:'complete'}}/>);expect(screen.getByText('Incident')).toBeTruthy();expect(screen.queryByRole('button')).toBeNull();});
+it('makes partial provider failures visible',()=>{render(<Component email="test@example.com" groups={[]} statuses={{xposedornot:'failed',leakcheck:'complete'}}/>);expect(screen.getByRole('alert').textContent).toContain('Coverage incomplete');});

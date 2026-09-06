@@ -1,4 +1,6 @@
 import AdditionalEmailSource from './AdditionalEmailSource';
+import {fetchCombinedEmailExposure} from '../lib/combinedEmailExposure';
+import {groupEmailEvidence, type EvidenceGroup} from '../lib/emailEvidence';
 import React, { useState, useEffect } from 'react';
 import { collection, serverTimestamp, query, where, orderBy, onSnapshot, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
@@ -29,6 +31,9 @@ interface ScanResult {
   source?: string;
   checkedAt?: string;
   assessmentVersion?: number;
+  evidenceGroups?: EvidenceGroup[];
+  sourceStatuses?: {xposedornot:string;leakcheck:string};
+  coverageIncomplete?: boolean;
   createdAt: any;
   language?: string;
 }
@@ -181,7 +186,7 @@ export default function EmailAnalyzer() {
       const emailResults = results.filter(r => !r.type || r.type === 'email').map(r => ({
         ...r,
         emailScanned: r.emailScanned || r.target || '',
-        ...(r.breaches?.length ? assessEmailBreaches(r.breaches) : {})
+        ...(r.assessmentVersion !== 3 && r.breaches?.length ? assessEmailBreaches(r.breaches) : {})
       }));
 
       setScans(emailResults);
@@ -273,7 +278,13 @@ export default function EmailAnalyzer() {
       }
 
       // 2. Perform exposure AI search
-      const analysis = await analyzeEmailExposure(cleanedEmail, lang);
+      const analysis = await fetchCombinedEmailExposure(cleanedEmail, lang, async()=>{
+        const base=import.meta.env.VITE_AI_PROXY_URL;
+        if(!base||!auth.currentUser)throw new Error('Source unavailable');
+        const response=await fetch(base.replace(/\/+$/,'')+'/email-exposure/extra', {method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await auth.currentUser.getIdToken()},body:JSON.stringify({email:cleanedEmail,consent:true}),signal:AbortSignal.timeout(25000)});
+        if(!response.ok)throw new Error('Source unavailable');
+        return response.json();
+      });
       
       const newScan = {
         userId: auth.currentUser!.uid,
@@ -290,8 +301,11 @@ export default function EmailAnalyzer() {
         source: analysis.source,
         checkedAt: analysis.checkedAt,
         assessmentVersion: analysis.assessmentVersion,
+        evidenceGroups: analysis.evidenceGroups,
+        sourceStatuses: analysis.sourceStatuses,
+        coverageIncomplete: analysis.coverageIncomplete,
         createdAt: serverTimestamp(),
-        language: lang
+        language: analysis.language
       };
       
       const docRef = await saveScan(newScan);
@@ -509,7 +523,7 @@ export default function EmailAnalyzer() {
               >
                 <div className="p-5 text-sm text-text-dim leading-relaxed">
                   <h3 className="font-bold text-text-main mb-2">Data source: XposedOrNot</h3>
-                  <p>Your email is sent to XposedOrNot to check its indexed breaches. All returned breach records are included. Coverage can differ from other providers.</p>
+                  <p>Analyze sends your email to XposedOrNot and, through JoeScan, LeakCheck Public. Returned metadata is combined in your saved report. Coverage varies and a failed source is reported.</p>
                   <p className="mt-2">HIBP and other databases are not connected. No match means no match in this source, not a guarantee of safety.</p>
                   <a className="mt-3 inline-block text-accent underline" href="https://xposedornot.com/api_doc" target="_blank" rel="noopener noreferrer">About this data source</a>
                 </div>
@@ -532,6 +546,7 @@ export default function EmailAnalyzer() {
           )}
         </AnimatePresence>
 
+        <p className="mx-auto mt-4 max-w-3xl text-xs text-text-dim">Analyze checks XposedOrNot and LeakCheck Public using your email. Source metadata is saved with your report. <a href="/privacy" className="text-accent underline">Privacy policy</a></p>
         {error && <p role="alert" className="mx-auto max-w-3xl text-error text-sm mt-4 bg-error/10 border border-error/30 p-3 rounded-xl">{error}</p>}
         <div className="mx-auto mt-7 flex max-w-3xl flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border-subtle pt-5 text-[11px] text-text-dim">
           <span className="flex items-center gap-2"><Database className="h-3.5 w-3.5 text-accent/70" /> Available breach records</span>
@@ -540,7 +555,7 @@ export default function EmailAnalyzer() {
         </div>
       </section>
 
-      <div key={email || activeScan?.emailScanned || 'empty'}><AdditionalEmailSource email={email.trim() || activeScan?.emailScanned || ''} /></div>
+      {activeScan && <AdditionalEmailSource email={activeScan.emailScanned} groups={activeScan.evidenceGroups || groupEmailEvidence(activeScan.breaches || [], null)} statuses={activeScan.sourceStatuses || (activeScan.assessmentVersion === 2 ? {xposedornot:'complete',leakcheck:'not checked in this historical scan'} : undefined)} />}
       {/* Main Content Area */}
       <div className="flex flex-col xl:grid xl:grid-cols-[280px_minmax(0,1fr)] gap-6 flex-1 items-start">
         {/* Left Column: Risk Card and History */}
@@ -559,7 +574,7 @@ export default function EmailAnalyzer() {
                 </span>
               </div>
               <h2 className="text-[32px] font-bold mb-2">
-                {activeScan.breaches?.length ? 'Exposure found' : activeScan.assessmentVersion === 2 ? 'No matches' : 'Rescan needed'}
+                {activeScan.breaches?.length ? 'Exposure found' : activeScan.coverageIncomplete ? 'Incomplete check' : (activeScan.assessmentVersion || 0) >= 2 ? 'No matches' : 'Rescan needed'}
               </h2>
               <p className="text-text-dim text-[14px] mb-6">
                 {activeScan.breaches?.length ? 'Review the listed breaches and take the recommended steps.' : 'Limited provider coverage. This is not a security guarantee.'}
@@ -909,51 +924,8 @@ export default function EmailAnalyzer() {
                     </div>
                   )}
 
-                  {displayScan.breaches && displayScan.breaches.length > 0 && (
-                    <div className="bg-error/5 border border-error/20 rounded-xl p-6 mb-6">
-                      <h3 className="text-sm font-bold uppercase tracking-widest mb-4 flex items-center gap-2 text-error">
-                        <Database className="w-4 h-4" />
-                        {lang === 'ar' ? 'التسريبات المكتشفة' : 'Breaches Detected'}
-                        <span className="ml-auto bg-error/10 text-error px-2 py-0.5 rounded-full text-[10px]">
-                          {displayScan.breaches.length}
-                        </span>
-                      </h3>
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="border-b border-error/10">
-                              <th className="text-left px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-text-dim">{lang === 'ar' ? 'الخدمة' : 'Service'}</th>
-                              <th className="text-left px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-text-dim">{lang === 'ar' ? 'التاريخ' : 'Date'}</th>
-                              <th className="text-left px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-text-dim">{lang === 'ar' ? 'البيانات المسربة' : 'Data Exposed'}</th>
-                              <th className="text-right px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-text-dim">{lang === 'ar' ? 'عدد الحسابات' : 'Records'}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {displayScan.breaches.map((breach, idx) => (
-                              <tr key={idx} className="border-b border-border-subtle/30 hover:bg-error/5 transition-colors">
-                                <td className="px-3 py-2.5 font-semibold text-text-main">{breach.name}
-                                  {breach.description && <details className="mt-2 font-normal text-xs text-text-dim"><summary className="cursor-pointer text-accent">Breach details</summary><p className="mt-2 whitespace-pre-wrap leading-relaxed">{breach.description}</p></details>}
-                                </td>
-                                <td className="px-3 py-2.5 text-text-dim font-mono text-xs">{breach.date}</td>
-                                <td className="px-3 py-2.5">
-                                  <div className="flex flex-wrap gap-1">
-                                    {breach.dataExposed.split(',').map((d, i) => (
-                                      <span key={i} className="bg-bg-surface text-text-dim text-[10px] px-1.5 py-0.5 rounded border border-border-subtle">
-                                        {d.trim()}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="px-3 py-2.5 text-right text-text-dim font-mono text-xs">{breach.recordCount || '—'}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-
                   <div className="mb-5 rounded-xl border border-border-subtle p-4 text-sm text-text-dim">
+                    <p className="mb-2 font-bold text-text-main">Saved exposure report</p>
                     <strong className="text-text-main">{displayScan.source ? 'Source: ' + displayScan.source : 'Historical report — rescan to verify the source'}</strong>
                     <p className="mt-1">Coverage varies by provider. This report does not include HIBP results. The score is a local estimate, not a security guarantee.</p>
                     {!displayScan.assessmentVersion && <p className="mt-1 text-warning">This older report used the previous assessment logic. Run a new check for an updated report.</p>}

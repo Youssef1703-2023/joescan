@@ -1,30 +1,13 @@
-import React, {useState} from 'react';
-import {auth} from '../lib/firebase';
-interface Result { source:string; matchedRecords:number; sources:{name:string;date:string}[]; fields:string[]; checkedAt:string }
-export default function AdditionalEmailSource({email}:{email:string}) {
-  const [result,setResult]=useState<Result|null>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
-  const check=async()=>{
-    setBusy(true);setError('');setResult(null);
-    try {
-      if (!auth.currentUser) throw Error('Please sign in first.');
-      const base=import.meta.env.VITE_AI_PROXY_URL;
-      if (!base) throw Error('Additional source is unavailable.');
-      const response=await fetch(base.replace(/\/+$/,'')+'/email-exposure/extra',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await auth.currentUser.getIdToken()},body:JSON.stringify({email,consent:true}),signal:AbortSignal.timeout(25000)});
-      const data=await response.json();if(!response.ok)throw Error(data.error||'Provider unavailable');setResult(data);
-    }catch(e){setError(e instanceof Error?e.message:'Check failed');}finally{setBusy(false);}
-  };
-  return <section className="my-6 rounded-2xl border border-accent/20 bg-bg-surface p-5 text-sm">
-    <h3 className="text-lg font-bold text-text-main">Cross-check another free source</h3>
-    <p className="mt-2 text-text-dim leading-relaxed">Compare coverage with LeakCheck Public. Clicking below sends <strong className="break-all">{email}</strong> to LeakCheck through JoeScan. It returns source names and exposed data categories, never passwords. Results below are kept in this page only and are separate from the saved report.</p>
-    <button type="button" disabled={busy||!email} onClick={check} className="mt-4 rounded-xl bg-accent px-4 py-3 font-bold text-accent-fg disabled:opacity-50">{busy?'Checking…':'Send email to LeakCheck and compare'}</button>
-    <a href="https://leakcheck.io" target="_blank" rel="noopener noreferrer" className="ml-4 inline-block mt-3 text-accent underline text-xs">Powered by LeakCheck</a>
-    {error&&<p role="alert" className="mt-3 text-error">{error}</p>}
-    {result&&<div className="mt-5 border-t border-border-subtle pt-4">
-      <p className="font-bold text-text-main">{result.sources.length} reported source entries</p>
-      <p className="mt-1 text-xs text-text-dim">{result.matchedRecords} matching records. Records and source entries are not a count of unique incidents. Source aliases and compilation lists can overlap with the main report. No match is not proof of safety.</p>
-      <p className="mt-3 text-text-dim">Categories across these results (not attributed to each source): {result.fields.join(', ')||'None reported'}</p>
-      <ul className="mt-4 grid gap-2 sm:grid-cols-2">{result.sources.map(s=><li key={s.name+'|'+s.date} className="min-w-0 rounded-lg border border-border-subtle p-3"><span className="break-words font-semibold text-text-main">{s.name}</span><span className="block text-xs text-text-dim mt-1">{s.date||'Date not provided'}</span></li>)}</ul>
-      <p className="mt-3 text-xs text-text-dim">Checked: {new Date(result.checkedAt).toLocaleString()}</p>
-    </div>}
-  </section>;
+import React from 'react';
+import type {EvidenceGroup} from '../lib/emailEvidence';
+export default function AdditionalEmailSource({email,groups,statuses}:{email:string;groups:EvidenceGroup[];statuses?:{xposedornot:string;leakcheck:string}}) {
+ if(!statuses)return null;
+ return <section className="my-6 rounded-2xl border border-accent/20 bg-bg-surface p-5 sm:p-7 text-sm text-text-main" aria-label="Combined exposure report">
+ <h2 className="text-2xl font-bold">Exposure evidence</h2><p className="mt-2 break-all text-text-dim">{email}</p>
+ <p role="status" className="mt-3 text-text-dim">XposedOrNot: {statuses.xposedornot} · LeakCheck Public: {statuses.leakcheck}</p>
+ {(statuses.xposedornot==='failed'||statuses.leakcheck==='failed')&&<p role="alert" className="mt-3 text-warning">Coverage incomplete. A source failed; this is not a clean result. Run Analyze again to retry both sources.</p>}
+ <p className="mt-3 text-text-dim">Matching names with compatible dates are grouped. Aliases and compilation lists can still overlap; this is not a guaranteed count of unique incidents.</p>
+ <div className="mt-5 space-y-3">{groups.map((g,i)=><article key={i} className="rounded-xl border border-border-subtle p-4"><h3 className="text-lg font-bold break-words">{g.name}</h3>{g.evidence.map((e,j)=><div key={j} className="mt-3 border-t border-border-subtle pt-3"><p className="text-accent">{e.provider} · {e.date||'Date not supplied'}</p><p className="mt-2 text-text-dim">{e.categories||'Categories not supplied for this individual entry.'}</p>{e.description&&<p className="mt-2 text-text-dim whitespace-pre-wrap break-words">{e.description}</p>}{e.recordCount&&<p className="mt-2 text-xs text-text-dim">Dataset size reported by this provider: {e.recordCount} records. Not your personal exposure count.</p>}</div>)}</article>)}</div>
+ <a href="https://leakcheck.io" target="_blank" rel="noopener noreferrer" className="mt-4 inline-block text-accent underline text-xs">Powered by LeakCheck</a>
+ </section>;
 }
