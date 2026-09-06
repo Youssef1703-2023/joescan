@@ -15,9 +15,9 @@ service cloud.firestore {
     // unverified same-email signup from another provider must not inherit admin.
     function isAdmin() {
       return isAuthenticated() && (
-        request.auth.token.admin == true ||
-        (request.auth.token.email == 'joetech.dev.systems@gmail.com'
-          && request.auth.token.email_verified == true)
+        request.auth.token.get('admin', false) == true ||
+        (request.auth.token.get('email', '') == 'joetech.dev.systems@gmail.com'
+          && request.auth.token.get('email_verified', false) == true)
       );
     }
     

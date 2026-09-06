@@ -11,6 +11,7 @@ import { db, auth, logActivity, banUser, unbanUser, ADMIN_EMAIL, calculateEntitl
 import {
   collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, limit, getDoc, addDoc, serverTimestamp, onSnapshot, runTransaction, where
 } from 'firebase/firestore';
+import { loadAdminSections, type AdminLoadFailure } from '../lib/adminLoading';
 import { useLanguage } from '../contexts/LanguageContext';
 
 type AdminTab = 'analytics' | 'requests' | 'users' | 'promos' | 'activity' | 'tickets' | 'revenue' | 'health' | 'growth' | 'broadcast' | 'sessions' | 'flags' | 'exports' | 'settings';
@@ -26,6 +27,8 @@ export default function AdminDashboard() {
   const [referralClaims, setReferralClaims] = useState<any[]>([]);
   const [bannedMap, setBannedMap] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
+
+  const [loadFailures, setLoadFailures] = useState<AdminLoadFailure[]>([]);
 
   // Form states
   const [newCode, setNewCode] = useState('');
@@ -118,52 +121,46 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     setLoading(true);
+    const rows = (snapshot: Awaited<ReturnType<typeof getDocs>>) => snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
     try {
-      const [usersSnap, promosSnap, activitySnap, ticketsSnap, bannedSnap, platformSnap, flagsSnap, broadcastsSnap, tierReqsSnap, refClaimsSnap] = await Promise.all([
-        getDocs(collection(db, 'users')),
-        getDocs(collection(db, 'promoCodes')),
-        getDocs(query(collection(db, 'activityLog'), orderBy('timestamp', 'desc'), limit(50))),
-        getDocs(collection(db, 'supportTickets')),
-        getDocs(collection(db, 'bannedUsers')),
-        getDoc(doc(db, 'adminConfig', 'platformSettings')),
-        getDoc(doc(db, 'adminConfig', 'featureFlags')),
-        getDocs(query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'), limit(10))),
-        getDocs(query(collection(db, 'tierRequests'), orderBy('createdAt', 'desc'), limit(50))),
-        getDocs(query(collection(db, 'referralClaims'), orderBy('createdAt', 'desc'), limit(50))),
-      ]);
-      setUsers(usersSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setPromoCodes(promosSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setActivities(activitySnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setTickets(ticketsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setTierRequests(tierReqsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      setReferralClaims(refClaimsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-      const bMap: Record<string, any> = {};
-      bannedSnap.docs.forEach(d => { if (d.data().active) bMap[d.id] = d.data(); });
-      setBannedMap(bMap);
-
-      // Load persisted platform settings
-      if (platformSnap.exists()) {
-        const data = platformSnap.data();
-        setPlatformSettings({
-          rateLimitPerMin: data.rateLimitPerMin ?? 30,
-          maxScansDaily: data.maxScansDaily ?? 100,
-          maintenanceMode: data.maintenanceMode ?? false,
-          signupsEnabled: data.signupsEnabled ?? true,
-          aiMaintenanceMode: data.aiMaintenanceMode ?? false
-        });
+      await auth.authStateReady();
+      if (!auth.currentUser) {
+        setLoadFailures([{ section: 'session', code: 'unauthenticated' }]);
+        return;
       }
-
-      // Load persisted feature flags
-      if (flagsSnap.exists()) {
-        const data = flagsSnap.data();
-        const { updatedAt, ...flags } = data;
-        setFeatureFlags(prev => ({ ...prev, ...flags }));
-      }
-
-      // Load broadcasts
-      setBroadcasts(broadcastsSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (err) {
-      console.error("Admin fetch failed", err);
+      // Pick up verified email and custom claims before privileged queries.
+      await auth.currentUser.getIdToken(true);
+      setLoadFailures(await loadAdminSections({
+        users: async () => setUsers(rows(await getDocs(collection(db, 'users')))),
+        promos: async () => setPromoCodes(rows(await getDocs(collection(db, 'promoCodes')))),
+        activity: async () => setActivities(rows(await getDocs(query(collection(db, 'activityLog'), orderBy('timestamp', 'desc'), limit(50))))),
+        tickets: async () => setTickets(rows(await getDocs(collection(db, 'supportTickets')))),
+        bans: async () => {
+          const snap = await getDocs(collection(db, 'bannedUsers'));
+          const map: Record<string, any> = {};
+          snap.docs.forEach(d => { if (d.data().active) map[d.id] = d.data(); });
+          setBannedMap(map);
+        },
+        settings: async () => {
+          const snap = await getDoc(doc(db, 'adminConfig', 'platformSettings'));
+          const data = snap.data() || {};
+          setPlatformSettings({ rateLimitPerMin: data.rateLimitPerMin ?? 30, maxScansDaily: data.maxScansDaily ?? 100,
+            maintenanceMode: data.maintenanceMode ?? false, signupsEnabled: data.signupsEnabled ?? true,
+            aiMaintenanceMode: data.aiMaintenanceMode ?? false });
+        },
+        flags: async () => {
+          const snap = await getDoc(doc(db, 'adminConfig', 'featureFlags'));
+          if (snap.exists()) {
+            const { updatedAt, ...flags } = snap.data();
+            setFeatureFlags(prev => ({ ...prev, ...flags }));
+          }
+        },
+        broadcast: async () => setBroadcasts(rows(await getDocs(query(collection(db, 'broadcasts'), orderBy('createdAt', 'desc'), limit(10))))),
+        requests: async () => setTierRequests(rows(await getDocs(query(collection(db, 'tierRequests'), orderBy('createdAt', 'desc'), limit(50))))),
+        claims: async () => setReferralClaims(rows(await getDocs(query(collection(db, 'referralClaims'), orderBy('createdAt', 'desc'), limit(50))))),
+      }));
+    } catch {
+      setLoadFailures([{ section: 'session', code: 'authentication-failed' }]);
     } finally {
       setLoading(false);
     }
@@ -635,6 +632,14 @@ export default function AdminDashboard() {
     return <div className="flex justify-center items-center h-full"><Zap className="w-8 h-8 animate-pulse text-accent" /></div>;
   }
 
+  const dependencies: Partial<Record<AdminTab, string[]>> = {
+    analytics: ['users', 'bans', 'tickets', 'activity'], users: ['users', 'bans'],
+    revenue: ['users'], growth: ['users'], sessions: ['users', 'activity'], exports: ['users', 'activity', 'tickets'],
+    requests: ['requests', 'claims', 'users'], promos: ['promos'], activity: ['activity'],
+    tickets: ['tickets'], settings: ['settings'], flags: ['flags'], broadcast: ['broadcast', 'users'],
+  };
+  const activeUnavailable = loadFailures.some(f => f.section === 'session' || (dependencies[activeTab] || []).includes(f.section));
+
   const actionColors: Record<string, string> = {
     login: 'text-accent', scan: 'text-blue-400', upgrade: 'text-purple-400',
     ban: 'text-error', unban: 'text-green-400', promo_create: 'text-yellow-400',
@@ -655,9 +660,16 @@ export default function AdminDashboard() {
           <ShieldAlert className="w-8 h-8 text-error" />
           {t('admin_title')}
         </h1>
-        <p className="text-text-dim text-sm mt-2 font-mono">{t('admin_subtitle')}</p>
+        <p className="text-text-dim text-sm mt-2 font-mono">{loadFailures.length ? 'Some admin data could not be loaded.' : 'Manage registered users and platform activity.'}</p>
       </div>
 
+      {loadFailures.length > 0 && (
+        <div role="alert" className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-200">
+          <p>Unable to load: {loadFailures.map(f => f.section + ' (' + f.code + ')').join(', ')}.</p>
+          <p className="mt-1">These sections are unavailable, not empty. Check your connection and admin permissions. If access is denied, sign in again with your verified administrator account.</p>
+          <button onClick={fetchData} className="mt-3 underline font-bold">Retry loading</button>
+        </div>
+      )}
       {/* Sub-Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
         {tabs.map(tab => {
@@ -684,7 +696,7 @@ export default function AdminDashboard() {
         </button>
       </div>
 
-      <AnimatePresence mode="wait">
+      {activeUnavailable ? <p role="status" className="glass-card p-6 rounded-xl text-text-dim">This section is unavailable until its data loads successfully. Retry above, or open another section.</p> : <AnimatePresence mode="wait">
         <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
 
           {/* ═══════════ ANALYTICS ═══════════ */}
@@ -1566,7 +1578,7 @@ export default function AdminDashboard() {
           )}
 
         </motion.div>
-      </AnimatePresence>
+      </AnimatePresence>}
     </div>
   );
 }
