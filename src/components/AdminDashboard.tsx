@@ -9,7 +9,7 @@ import { Wrench,
 } from 'lucide-react';
 import { db, auth, logActivity, banUser, unbanUser, ADMIN_EMAIL, calculateEntitlementGrant } from '../lib/firebase';
 import {
-  collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, limit, getDoc, addDoc, serverTimestamp, onSnapshot, runTransaction, where
+  type QuerySnapshot, type DocumentData, collection, getDocs, doc, setDoc, deleteDoc, query, orderBy, limit, getDoc, addDoc, serverTimestamp, onSnapshot, runTransaction, where
 } from 'firebase/firestore';
 import { loadAdminSections, type AdminLoadFailure } from '../lib/adminLoading';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -121,7 +121,7 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     setLoading(true);
-    const rows = (snapshot: Awaited<ReturnType<typeof getDocs>>) => snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
+    const rows = (snapshot: QuerySnapshot<DocumentData>) => snapshot.docs.map(d => ({ ...d.data(), id: d.id }));
     try {
       await auth.authStateReady();
       if (!auth.currentUser) {
