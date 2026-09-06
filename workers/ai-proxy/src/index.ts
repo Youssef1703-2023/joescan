@@ -1,3 +1,4 @@
+import { boundedJson, publicLeakCheckResult } from './leakcheck';
 import * as jose from 'jose';
 export { QuotaCounter } from './quota';
 export { WatchlistMonitor } from './watchlist';
@@ -1166,6 +1167,27 @@ export default {
     const banRejection = await enforceBanGate(idToken, uid, userPayload, projectId, databaseId, corsHeaders);
     if (banRejection) {
       return banRejection;
+    }
+
+    if (pathname === '/email-exposure/extra') {
+      const headers = { ...corsHeaders, 'Content-Type':'application/json', 'Cache-Control':'no-store' };
+      const reply = (status:number, error:string) => new Response(JSON.stringify({error}),{status,headers});
+      if (request.method !== 'POST') return reply(405,'Use POST');
+      let body: any;
+      try { body = await boundedJson(request.body,1024); } catch { return reply(400,'Invalid or oversized request'); }
+      if (typeof body?.email !== 'string' || body.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email) || body.consent !== true) return reply(400,'A valid email and explicit provider consent are required');
+      try {
+        const account = await reserveDispatchWindow(getDispatchRateStub(env,'email-extra:' + uid),'hour',6,3600);
+        if (!account.ok) return reply(429,'Additional-source limit reached. Try again later.');
+        const shared = await reserveDispatchWindow(getDispatchRateStub(env,'email-extra:project'),'provider',1,2);
+        if (!shared.ok) return reply(429,'The provider is busy. Please retry in a few seconds.');
+      } catch { return reply(503,'Rate limiter unavailable'); }
+      try {
+        const response = await fetch('https://leakcheck.io/api/public?check=' + encodeURIComponent(body.email.trim().toLowerCase()), { redirect:'error',signal:AbortSignal.timeout(15000),headers:{Accept:'application/json'} });
+        if (!response.ok) return reply(response.status === 429 ? 429 : 502,'Additional provider unavailable. No clean result can be inferred.');
+        const result = publicLeakCheckResult(await boundedJson(response.body,512000));
+        return new Response(JSON.stringify(result),{headers});
+      } catch { return reply(502,'Additional provider could not complete this check'); }
     }
 
     const cairoDay = getCairoDay();

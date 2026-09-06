@@ -1,3 +1,4 @@
+import AdditionalEmailSource from './AdditionalEmailSource';
 import React, { useState, useEffect } from 'react';
 import { collection, serverTimestamp, query, where, orderBy, onSnapshot, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
@@ -539,6 +540,7 @@ export default function EmailAnalyzer() {
         </div>
       </section>
 
+      <div key={email || activeScan?.emailScanned || 'empty'}><AdditionalEmailSource email={email.trim() || activeScan?.emailScanned || ''} /></div>
       {/* Main Content Area */}
       <div className="flex flex-col xl:grid xl:grid-cols-[280px_minmax(0,1fr)] gap-6 flex-1 items-start">
         {/* Left Column: Risk Card and History */}

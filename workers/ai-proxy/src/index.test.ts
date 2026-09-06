@@ -128,6 +128,7 @@ function installFetchMock(): void {
       }
       return jsonResponse({ error: { code: 404, message: 'No document found', status: 'NOT_FOUND' } }, 404);
     }
+    if (url.startsWith('https://leakcheck.io/api/public')) return jsonResponse({success:true,found:7,fields:['email','password'],sources:[{name:'Example',date:'2024'}],password:'must-not-return'});
     if (url.startsWith('https://api.groq.com')) {
       providerCalls++;
       return jsonResponse({ id: 'chatcmpl-test', choices: [{ message: { role: 'assistant', content: 'ok' } }] });
@@ -752,4 +753,15 @@ describe('S03 webhook dispatch hardening', () => {
       expect(webhookDeliveryCalls).toBe(0);
     });
   });
+});
+
+describe('additional email provider security',()=>{
+ const req=(body:any,token=USER_TOKEN)=>authedRequest('https://proxy.joescan.test/email-exposure/extra','POST',token,JSON.stringify(body));
+ it('rejects unauthenticated requests',async()=>{expect((await handler.fetch(new Request('https://proxy.joescan.test/email-exposure/extra',{method:'POST'}),env)).status).toBe(401);});
+ it('rejects banned users before contacting the provider',async()=>{banDocMode='active';expect((await handler.fetch(req({email:'test@example.com',consent:true}),env)).status).toBe(403);expect(calls.some(c=>c.url.includes('leakcheck.io'))).toBe(false);});
+ it('requires explicit provider consent',async()=>{expect((await handler.fetch(req({email:'test@example.com'}),env)).status).toBe(400);expect(calls.some(c=>c.url.includes('leakcheck.io'))).toBe(false);});
+ it('returns only public source metadata with no-store',async()=>{const r=await handler.fetch(req({email:'test@example.com',consent:true}),env);expect(r.status).toBe(200);expect(r.headers.get('cache-control')).toBe('no-store');const d=await r.json() as any;expect(d.matchedRecords).toBe(7);expect(d.sources).toHaveLength(1);expect(d.password).toBeUndefined();});
+ it('limits requests before contacting the provider again',async()=>{await handler.fetch(req({email:'test@example.com',consent:true}),env);expect((await handler.fetch(req({email:'test@example.com',consent:true}),env)).status).toBe(429);expect(calls.filter(c=>c.url.includes('leakcheck.io'))).toHaveLength(1);});
+ it('fails closed when the limiter is unavailable',async()=>{env.QUOTA_COUNTER=undefined as any;expect((await handler.fetch(req({email:'test@example.com',consent:true}),env)).status).toBe(503);});
+ it('rejects oversized bodies',async()=>{expect((await handler.fetch(req({email:'test@example.com',consent:true,padding:'x'.repeat(2000)}),env)).status).toBe(400);});
 });
