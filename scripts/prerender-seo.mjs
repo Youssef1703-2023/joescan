@@ -6,7 +6,7 @@
  * Each generated page:
  *   - Full article/lesson content in semantic HTML (EN + AR variants)
  *   - Proper title, description, canonical, OG/Twitter tags, JSON-LD, hreflang
- *   - Tiny script bounces humans into the React app (crawlers ignore it)
+ *   - Identical static content for people and crawlers; opening the app is explicit
  *
  * Run: node scripts/prerender-seo.mjs   (after `vite build`, dist/ must exist)
  */
@@ -113,9 +113,6 @@ function shell({ lang, title, description, canonical, alternates, jsonLd, bodyHt
     footer{margin-top:40px;border-top:1px solid #1f2b3a;padding-top:16px;color:#8ba0b5;font-size:13px}
     .cta{display:inline-block;margin-top:10px;background:#00ff88;color:#000;font-weight:700;padding:10px 22px;border-radius:10px;text-decoration:none}
   </style>
-  <script>
-    (function(){var s=new URLSearchParams(window.location.search);if(!s.has('seo')){window.location.replace('${appUrl}');}})();
-  </script>
 </head>
 <body>
   <main>

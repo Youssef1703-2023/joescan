@@ -1,0 +1,226 @@
+[
+  {
+    "slug": "email-audit",
+    "title": "Email breach checker",
+    "description": "Check where an email address appears in available breach sources.",
+    "overview": "JoeScan combines available email exposure sources and removes duplicate breach entries when they can be matched. Reports help you understand which incidents may affect an address.",
+    "steps": [
+      "Review breach names and available dates.",
+      "Inspect the exposed data categories supplied by the source.",
+      "Use the report to prioritize password changes and account checks."
+    ],
+    "limits": "Coverage varies by provider. A result with no matches does not prove an address has never leaked. Provider outages and incomplete data are not clean results.",
+    "data": "Your email is sent to the configured lookup services. Saved scan reports belong to your signed-in account.",
+    "appPath": "/email-audit"
+  },
+  {
+    "slug": "password-vault",
+    "title": "Password strength & exposure check",
+    "description": "Understand password strength and check for known exposure.",
+    "overview": "JoeScan combines a password-strength assessment with a known-exposure check and a cryptographically secure password generator.",
+    "steps": [
+      "Assess length and predictable patterns.",
+      "Check known exposure using a hash-prefix lookup.",
+      "Generate a new password and store it in your password manager."
+    ],
+    "limits": "Strength estimates cannot predict every attack. A password absent from the available exposure dataset may still be compromised. Avoid reusing passwords.",
+    "data": "The raw password is not stored in scan history or sent in plaintext for the exposure lookup. A hash prefix is sent for that lookup; the match is checked locally.",
+    "appPath": "/password-vault"
+  },
+  {
+    "slug": "phone-number",
+    "title": "Phone number information",
+    "description": "Review phone-number formatting and available public context.",
+    "overview": "JoeScan helps interpret a phone number and organize available information into a readable assessment.",
+    "steps": [
+      "Check the number format and country context.",
+      "Review available lookup or AI-assisted observations.",
+      "Verify important claims with the relevant service or carrier."
+    ],
+    "limits": "A phone number does not establish identity, ownership or a precise live location. AI-generated observations can be wrong and carrier information can change.",
+    "data": "Only submit numbers you are authorized to assess. Inputs may be processed by the configured analysis provider and saved in your scan history.",
+    "appPath": "/phone-number"
+  },
+  {
+    "slug": "suspicious-link",
+    "title": "Suspicious link checker",
+    "description": "Review warning signs before opening an unfamiliar link.",
+    "overview": "JoeScan examines a URL for suspicious characteristics and provides an initial assessment to support safer browsing.",
+    "steps": [
+      "Review the domain and URL structure.",
+      "Inspect the reported warning signs and available reputation context.",
+      "Use the suggested next steps before entering credentials or payment data."
+    ],
+    "limits": "This is not a sandbox or a guarantee that a page is safe. A site can change after a check. Do not open a suspicious link just because no warning appeared.",
+    "data": "Remove private access tokens and personal details from URLs before submitting them. Analysis may involve an external provider.",
+    "appPath": "/suspicious-link"
+  },
+  {
+    "slug": "osint-username",
+    "title": "Username OSINT search",
+    "description": "Explore possible public profiles associated with a username.",
+    "overview": "JoeScan organizes username-based public-profile candidates and AI-assisted context to help you review your digital footprint.",
+    "steps": [
+      "Enter a username you are authorized to research.",
+      "Review candidate profile links and source context.",
+      "Confirm each match on its original platform."
+    ],
+    "limits": "The same username can belong to different people. Candidate links and AI observations are leads, not verified identity matches or proof that an account exists.",
+    "data": "Use public information responsibly. Do not submit passwords or private account data. Saved reports remain in your account.",
+    "appPath": "/osint-username"
+  },
+  {
+    "slug": "message-phishing",
+    "title": "Phishing message analysis",
+    "description": "Spot suspicious language and requests in messages.",
+    "overview": "JoeScan reviews submitted message text for indicators of scams, phishing and social engineering, then explains practical precautions.",
+    "steps": [
+      "Paste a message with unnecessary personal information removed.",
+      "Review suspicious requests, urgency and impersonation cues.",
+      "Verify the sender through a separate trusted channel."
+    ],
+    "limits": "AI analysis can miss scams or flag legitimate messages. It does not authenticate the sender, inspect your mailbox or guarantee attachment safety.",
+    "data": "Message text is sent to the configured analysis provider. Remove one-time codes, passwords and confidential content before submitting.",
+    "appPath": "/message-phishing"
+  },
+  {
+    "slug": "ip-scan",
+    "title": "IP address intelligence",
+    "description": "Understand available network and reputation context for an IP address.",
+    "overview": "JoeScan organizes IP-related information and security observations into a readable report.",
+    "steps": [
+      "Review available location and network information.",
+      "Examine reported exposure or reputation indicators.",
+      "Confirm findings before changing network settings."
+    ],
+    "limits": "IP geolocation is approximate. Shared networks and VPNs complicate attribution. An IP address does not identify a person, and results are not a complete network audit.",
+    "data": "Use only addresses you own or are authorized to assess. The address may be sent to external lookup or analysis services.",
+    "appPath": "/ip-scan"
+  },
+  {
+    "slug": "domain-whois",
+    "title": "Domain & DNS lookup",
+    "description": "Review domain registration and DNS information.",
+    "overview": "JoeScan brings available registration and DNS details together to help you understand a domain before relying on it.",
+    "steps": [
+      "Review available registration details.",
+      "Inspect DNS records and hosting context.",
+      "Use the findings alongside your own checks of the organization."
+    ],
+    "limits": "Registration details may be redacted, unavailable or outdated. A recent domain is not automatically malicious, and an old domain is not automatically trustworthy.",
+    "data": "Domain queries may be sent to public lookup services. Do not include credentials or private tokens in your input.",
+    "appPath": "/domain-whois"
+  },
+  {
+    "slug": "browser-fingerprint",
+    "title": "Browser fingerprint review",
+    "description": "See which browser characteristics may contribute to tracking.",
+    "overview": "JoeScan displays browser-exposed characteristics and an assessment of their relevance to online fingerprinting.",
+    "steps": [
+      "Review the characteristics your browser makes available.",
+      "Understand which combinations may aid tracking.",
+      "Consider privacy settings and the tradeoffs of changing them."
+    ],
+    "limits": "The assessment does not measure your uniqueness against every browser on the internet and cannot guarantee anonymity. Different sites use different tracking methods.",
+    "data": "Browser characteristics are collected for the displayed assessment. Review the Privacy & Data page before saving or sharing a report.",
+    "appPath": "/browser-fingerprint"
+  },
+  {
+    "slug": "device-security",
+    "title": "Device & network exposure check",
+    "description": "Review browser signals and available public network exposure.",
+    "overview": "JoeScan combines browser-visible security information with available public exposure data to help you identify areas worth investigating.",
+    "steps": [
+      "Inspect the browser-level security assessment.",
+      "Review any public IP exposure information returned.",
+      "Verify findings with your device settings and a qualified administrator."
+    ],
+    "limits": "A website cannot inspect all files, installed software or local network ports. Public exposure data may be stale. This is not antivirus software or a full vulnerability scan.",
+    "data": "Checks may query public exposure services for an IP address. The tool does not need your device password.",
+    "appPath": "/device-security"
+  },
+  {
+    "slug": "social-osint",
+    "title": "Social profile research",
+    "description": "Organize public social-profile leads for careful review.",
+    "overview": "JoeScan supports public-profile research with search candidates and AI-assisted summaries. It helps you decide where to investigate further.",
+    "steps": [
+      "Search a public identifier you are authorized to research.",
+      "Follow source links and compare the available context.",
+      "Treat uncertain associations as unconfirmed."
+    ],
+    "limits": "Similar names and usernames can produce false matches. AI summaries are not independent evidence of identity, ownership or wrongdoing.",
+    "data": "Research only publicly available information for legitimate purposes. Do not submit private conversations or credentials.",
+    "appPath": "/social-osint"
+  },
+  {
+    "slug": "watchlist",
+    "title": "Exposure watchlist",
+    "description": "Keep selected targets together for follow-up checks.",
+    "overview": "JoeScan provides an account-based watchlist for tracking selected targets and reviewing available follow-up findings.",
+    "steps": [
+      "Add an authorized target to your watchlist.",
+      "Review monitoring status and available updates.",
+      "Investigate changes and remove targets you no longer need."
+    ],
+    "limits": "Monitoring depends on source coverage, service availability and your plan. It is not continuous visibility into every leak or a guarantee of immediate notification.",
+    "data": "Watchlist targets are stored in your account to support follow-up checks. Account deletion includes the monitoring state.",
+    "appPath": "/watchlist"
+  },
+  {
+    "slug": "threat-map",
+    "title": "Threat intelligence map",
+    "description": "Explore available threat-feed information geographically.",
+    "overview": "JoeScan visualizes available threat intelligence to help you understand reported network activity in context.",
+    "steps": [
+      "Explore the supplied feed and geographic context.",
+      "Review source details and timestamps where available.",
+      "Use the map as background context for further investigation."
+    ],
+    "limits": "A marker is not proof of an ongoing attack against you. Feed coverage, location estimates and refresh times vary. The map is not a live view of all global attacks.",
+    "data": "The map provides general intelligence. Do not interpret its public indicators as private information about individual people.",
+    "appPath": "/threat-map"
+  },
+  {
+    "slug": "threat-3d",
+    "title": "3D threat visualization",
+    "description": "Explore threat information in an interactive globe.",
+    "overview": "JoeScan offers a three-dimensional view of available threat information for visual exploration.",
+    "steps": [
+      "Navigate the globe and inspect available markers.",
+      "Compare source context with the map view.",
+      "Investigate a reported indicator separately when necessary."
+    ],
+    "limits": "Visualization does not create additional evidence. Geographic markers may be approximate and feed information can be incomplete. Access depends on your plan.",
+    "data": "This view presents general threat information and does not publish your personal scan history.",
+    "appPath": "/threat-3d"
+  },
+  {
+    "slug": "siem-webhooks",
+    "title": "SIEM webhook integration",
+    "description": "Send selected security events to an approved destination.",
+    "overview": "JoeScan supports webhook delivery for eligible accounts, with destination restrictions and signed payloads.",
+    "steps": [
+      "Configure an approved HTTPS destination.",
+      "Review the event content and delivery requirements.",
+      "Verify signatures at the receiving service."
+    ],
+    "limits": "Delivery depends on an active eligible subscription, configured destination allowlist and service availability. Failed validation stops delivery; a webhook is not a complete SIEM.",
+    "data": "Events sent to your destination leave JoeScan. Retention at that destination is controlled separately and account deletion cannot recall earlier deliveries.",
+    "appPath": "/siem-webhooks"
+  },
+  {
+    "slug": "team",
+    "title": "Team workspace",
+    "description": "Coordinate eligible account workflows with a team.",
+    "overview": "JoeScan provides team-related account tools for eligible plans, alongside the security checks available in the workspace.",
+    "steps": [
+      "Review your current plan and team settings.",
+      "Invite only intended collaborators.",
+      "Periodically review and remove unnecessary access."
+    ],
+    "limits": "Team access does not remove the need for individual authorization or security review. Availability depends on the current plan and configuration.",
+    "data": "Invitations contain the information needed to manage collaboration. Do not place passwords or confidential scan details in invitation fields.",
+    "appPath": "/team"
+  }
+]

@@ -85,6 +85,7 @@ export default function SEOHead({ title, description, path = '/' }: SEOProps) {
 
   return (
     <Helmet>
+      <meta name="robots" content="noindex, nofollow" />
       <title>{fullTitle}</title>
       <meta name="description" content={pageDesc} />
       <link rel="canonical" href={url} />

@@ -1,3 +1,4 @@
+import publicTools from '../data/publicTools.json';
 import { motion } from 'motion/react';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
@@ -15,7 +16,7 @@ interface LandingPageProps {
 
 export default function LandingPage({ loading }: LandingPageProps) {
   const { t, lang } = useLanguage();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(new URLSearchParams(window.location.search).get("start") === "1");
 
   const features = [
     { icon: Mail, title: t('nav_email'), desc: t('landing_feat_email'), color: '#00ff00' },
@@ -31,10 +32,10 @@ export default function LandingPage({ loading }: LandingPageProps) {
   ];
 
   const stats = [
-    { value: '9+', label: t('landing_stat_tools') },
-    { value: 'AES-256', label: t('landing_stat_encryption') },
+    { value: String(features.length), label: t('landing_stat_tools') },
+    { value: 'HTTPS', label: lang === 'ar' ? 'اتصال مشفر' : 'Encrypted connection' },
     { value: 'AI', label: t('landing_stat_ai') },
-    { value: '∞', label: t('landing_stat_scans') },
+    { value: 'Daily', label: lang === 'ar' ? 'حدود حسب الخطة' : 'Plan-based limits' },
   ];
 
   return (
@@ -257,6 +258,13 @@ export default function LandingPage({ loading }: LandingPageProps) {
         </motion.div>
       </section>
 
+      <section className="relative z-10 w-full max-w-6xl mx-auto px-6 pb-16" dir="ltr" lang="en">
+        <p className="text-xs font-mono tracking-widest text-accent mb-3">EXPLORE / TOOL GUIDES</p>
+        <h2 className="text-3xl font-bold text-text-main mb-4">Find the right check for your question.</h2>
+        <p className="text-text-dim mb-8">Read what each tool does, what it cannot tell you, and how it handles your data before you sign in.</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{publicTools.map(tool => <a key={tool.slug} href={'/tools/'+tool.slug+'/'} className="glass-card p-6 hover:border-accent/50 transition-colors"><h3 className="font-bold text-text-main mb-2">{tool.title}</h3><p className="text-sm text-text-dim mb-4">{tool.description}</p><span className="text-accent text-sm">Explore this tool →</span></a>)}</div>
+        <a href="/tools/" className="inline-block text-accent font-semibold mt-6">View all tool guides →</a>
+      </section>
       {/* ===== ABOUT & PRIVACY ===== */}
       <section className="relative z-10 w-full max-w-5xl mx-auto px-6 pb-16" dir="ltr" lang="en">
         <div className="glass-card grid grid-cols-1 md:grid-cols-2 gap-8 p-7 md:p-9">
@@ -277,6 +285,7 @@ export default function LandingPage({ loading }: LandingPageProps) {
 
       <footer className="relative z-10 border-t border-border-subtle px-6 py-6 text-center" dir="ltr" lang="en">
         <nav aria-label="Information pages" className="flex justify-center gap-5 mb-3 text-sm text-text-dim">
+          <a href="/tools/" className="hover:text-accent">Tools</a>
           <a href="/about" className="hover:text-accent">About</a>
           <a href="/privacy" className="hover:text-accent">Privacy &amp; Data</a>
           <a href="/terms.en" className="hover:text-accent">Terms</a>

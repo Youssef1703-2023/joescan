@@ -49,8 +49,8 @@ jobs:
       - name: Copy legal and About pages
         run: node scripts/copy-legal.mjs
 
-      - name: Copy index.html to 404.html (SPA routing)
-        run: cp dist/index.html dist/404.html
+      - name: Verify public SEO and private route boundaries
+        run: node scripts/verify-public-seo.mjs
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

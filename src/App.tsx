@@ -59,7 +59,7 @@ const PageLoader = () => (
 
 // Derive initial tab from URL
 function getTabFromUrl(): TabId {
-  const path = window.location.pathname;
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
   return PATH_TO_TAB[path] || 'dashboard';
 }
 
@@ -127,7 +127,7 @@ function AppContent() {
     };
     window.addEventListener('popstate', handlePopState);
     // Replace current history entry with the tab info
-    window.history.replaceState({ tab: activeTab }, '', TAB_TO_PATH[activeTab] || '/');
+    window.history.replaceState({ tab: activeTab }, '');
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
@@ -234,12 +234,17 @@ function AppContent() {
     setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
+  const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+  if (!PATH_TO_TAB[currentPath]) {
+    return <><SEOHead title="Page not found" path="/404" /><main className="min-h-screen bg-bg-base text-text-main flex items-center justify-center p-8"><section><h1 className="text-3xl font-bold">Page not found</h1><p className="my-4 text-text-dim">This address does not match a JoeScan page.</p><a className="text-accent" href="/tools/">Explore tools →</a><a className="block mt-4 text-accent" href="/">Back to home</a></section></main></>;
+  }
+
   if (loading) {
     return <LoadingSkeleton />;
   }
 
   if (!user) {
-    return <LandingPage loading={loginLoading} onLogin={handleLogin} />;
+    return <>{window.location.pathname !== "/" && <SEOHead path={TAB_TO_PATH[activeTab]} />}<LandingPage loading={loginLoading} onLogin={handleLogin} /></>;
   }
 
   if (!user.emailVerified && user.email !== ADMIN_EMAIL) return <EmailVerificationGate user={user} onLogout={handleLogout} />;

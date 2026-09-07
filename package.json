@@ -7,7 +7,7 @@
     "dev": "vite --port=3000 --host=0.0.0.0",
     "dev:server": "tsx server.ts --api-only --port 8787",
     "dev:client": "vite --port=3000 --host=0.0.0.0",
-    "build": "vite build",
+    "build": "vite build && node scripts/build-public-pages.mjs && node scripts/copy-legal.mjs",
     "preview": "vite preview",
     "start": "tsx server.ts --port 3000",
     "clean": "rm -rf dist",
