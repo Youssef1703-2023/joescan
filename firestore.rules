@@ -92,7 +92,9 @@ service cloud.firestore {
     // below; list queries are denied the same way as single-document reads.
     function isNotBanned() {
       return !exists(/databases/$(database)/documents/accountDeletionJobs/$(request.auth.uid))
-        && (request.auth.token.get('email_verified', false) == true || isAdmin())
+        && (request.auth.token.get('email_verified', false) == true
+          || request.auth.token.get('firebase', {}).get('sign_in_provider', '') == 'google.com'
+          || isAdmin())
         && (!exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) ||
         get(/databases/$(database)/documents/bannedUsers/$(request.auth.uid))
           .data.get('active', false) != true);

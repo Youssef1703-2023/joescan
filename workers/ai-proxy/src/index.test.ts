@@ -772,3 +772,9 @@ describe('S04/S11 server enforcement',()=>{
  it('blocks AI when quota binding is missing',async()=>{env.QUOTA_COUNTER=undefined;expect((await handler.fetch(aiRequest(USER_TOKEN),env)).status).toBe(503);expect(providerCalls).toBe(0);});
  it('blocks AI on malformed quota reservation',async()=>{env.QUOTA_COUNTER={idFromName:(x:string)=>x,get:()=>({checkBurst:async()=>({ok:true}),reserve:async()=>({ok:true})})} as any;expect((await handler.fetch(aiRequest(USER_TOKEN),env)).status).toBe(503);expect(providerCalls).toBe(0);});
 });
+
+describe('Google session verification',()=>{
+ it('allows an authenticated Google session without email_verified',async()=>{h.payloads.set(USER_TOKEN,{sub:USER_UID,email_verified:false,firebase:{sign_in_provider:'google.com'}});const r=await handler.fetch(aiRequest(USER_TOKEN),env);expect(r.status).toBe(200);expect(providerCalls).toBe(1);});
+ it('still blocks banned Google users',async()=>{h.payloads.set(USER_TOKEN,{sub:USER_UID,email_verified:false,firebase:{sign_in_provider:'google.com'}});banDocMode='active';expect((await handler.fetch(aiRequest(USER_TOKEN),env)).status).toBe(403);expect(providerCalls).toBe(0);});
+ it('does not trust a linked Google identity on a password session',async()=>{h.payloads.set(USER_TOKEN,{sub:USER_UID,email_verified:false,firebase:{sign_in_provider:'password',identities:{'google.com':['linked-id']}}});expect((await handler.fetch(aiRequest(USER_TOKEN),env)).status).toBe(403);expect(providerCalls).toBe(0);});
+});

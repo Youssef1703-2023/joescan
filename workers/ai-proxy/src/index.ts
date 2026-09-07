@@ -1,3 +1,4 @@
+import {hasVerifiedSignIn} from './verifiedSignIn';
 function fetchDurable(stub:any,url:string,init?:RequestInit):Promise<Response>{return stub.fetch(new Request(url,init));}
 import {validateQuotaResult} from './quotaValidation';
 import {securityRoute} from './accountSecurity';
@@ -1173,7 +1174,7 @@ export default {
     const uid = userPayload.sub as string;
 
     if(pathname==='/account/delete')return securityRoute(request,{...env,PROJECT_ID:projectId,FIRESTORE_DATABASE_ID:databaseId},userPayload,tokenIsAdmin(userPayload),corsHeaders);
-    if(userPayload.email_verified!==true&&!tokenIsAdmin(userPayload))return new Response(JSON.stringify({error:'Verify your email before using JoeScan.',code:'EMAIL_VERIFICATION_REQUIRED'}),{status:403,headers:{...corsHeaders,'Content-Type':'application/json'}});
+    if(!hasVerifiedSignIn(userPayload)&&!tokenIsAdmin(userPayload))return new Response(JSON.stringify({error:'Verify your email before using JoeScan.',code:'EMAIL_VERIFICATION_REQUIRED'}),{status:403,headers:{...corsHeaders,'Content-Type':'application/json'}});
     try{const deletion=await fetch('https://firestore.googleapis.com/v1/projects/'+encodeURIComponent(projectId)+'/databases/'+encodeURIComponent(databaseId)+'/documents/accountDeletionJobs/'+encodeURIComponent(uid),{headers:{Authorization:'Bearer '+idToken,...(appCheckToken?{'X-Firebase-AppCheck':appCheckToken}:{})},signal:AbortSignal.timeout(10000)});if(deletion.status!==404)return new Response(JSON.stringify({error:'Account unavailable or deletion in progress'}),{status:deletion.ok?403:503,headers:corsHeaders});}catch{return new Response('Account status unavailable',{status:503,headers:corsHeaders});}
 
     // ─── Ban gate (S02): runs before EVERY authenticated endpoint ───

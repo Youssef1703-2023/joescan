@@ -1,3 +1,4 @@
+import {hasVerifiedSignIn} from './lib/verifiedSignIn';
 import EmailVerificationGate from './components/EmailVerificationGate';
 import {clearPrivateSession} from './lib/privateSession';
 import './styles/workspace.css';
@@ -68,6 +69,7 @@ function AppContent() {
   const [user, setUser] = useState(auth.currentUser);
   const currentUserRef = useRef<User | null>(auth.currentUser);
   const [loading, setLoading] = useState(true);
+  const [verifiedSession, setVerifiedSession] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
@@ -132,7 +134,7 @@ function AppContent() {
   }, []);
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => {
+    const unsub = onAuthStateChanged(auth, async (u) => {
       clearPrivateSession();
       const prevUser = currentUserRef.current;
       if (!u || (prevUser && u.uid !== prevUser.uid)) {
@@ -145,8 +147,19 @@ function AppContent() {
       setIsBanned(false);
       setShowApiSettings(false);
       setShowProfileSettings(false);
-      setLoading(false);
+      setLoading(true);
+      setVerifiedSession(false);
+      let allowed = false;
       if (u) {
+        try {
+          const token = await u.getIdTokenResult(true);
+          allowed = hasVerifiedSignIn(token.claims) || token.claims.admin === true;
+        } catch { /* Keep the gate closed when session verification fails. */ }
+      }
+      if (auth.currentUser?.uid !== u?.uid) return;
+      setVerifiedSession(allowed);
+      setLoading(false);
+      if (u && allowed) {
         // Load profile from Firestore (cross-device sync)
         ensureUserProfile(u.uid, u.email, u.displayName).then(profile => {
           if (auth.currentUser?.uid === u.uid && profile?.avatarURL) setCustomAvatar(profile.avatarURL);
@@ -247,7 +260,7 @@ function AppContent() {
     return <>{window.location.pathname !== "/" && <SEOHead path={TAB_TO_PATH[activeTab]} />}<LandingPage loading={loginLoading} onLogin={handleLogin} /></>;
   }
 
-  if (!user.emailVerified && user.email !== ADMIN_EMAIL) return <EmailVerificationGate user={user} onLogout={handleLogout} />;
+  if (!verifiedSession) return <EmailVerificationGate user={user} onLogout={handleLogout} />;
 
   if (!mfaPassed) {
     return <MfaGate user={user} onVerified={() => setMfaPassed(true)} onLogout={handleLogout} />;
