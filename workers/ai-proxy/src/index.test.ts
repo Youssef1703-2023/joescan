@@ -107,6 +107,7 @@ function installFetchMock(): void {
     if (url.includes(CERTS_URL_FRAGMENT)) {
       return jsonResponse({ 'test-kid': '-----BEGIN CERTIFICATE-----TEST-----END CERTIFICATE-----' });
     }
+    if (url.includes('/documents/accountDeletionJobs/')) return jsonResponse({},404);
     if (url.includes('/documents/bannedUsers/')) {
       return banDocResponse();
     }
@@ -764,4 +765,10 @@ describe('additional email provider security',()=>{
  it('limits requests before contacting the provider again',async()=>{await handler.fetch(req({email:'test@example.com',consent:true}),env);expect((await handler.fetch(req({email:'test@example.com',consent:true}),env)).status).toBe(429);expect(calls.filter(c=>c.url.includes('leakcheck.io'))).toHaveLength(1);});
  it('fails closed when the limiter is unavailable',async()=>{env.QUOTA_COUNTER=undefined as any;expect((await handler.fetch(req({email:'test@example.com',consent:true}),env)).status).toBe(503);});
  it('rejects oversized bodies',async()=>{expect((await handler.fetch(req({email:'test@example.com',consent:true,padding:'x'.repeat(2000)}),env)).status).toBe(400);});
+});
+
+describe('S04/S11 server enforcement',()=>{
+ it('blocks unverified callers before providers',async()=>{h.payloads.set(USER_TOKEN,{sub:USER_UID,email_verified:false});expect((await handler.fetch(aiRequest(USER_TOKEN),env)).status).toBe(403);expect(providerCalls).toBe(0);});
+ it('blocks AI when quota binding is missing',async()=>{env.QUOTA_COUNTER=undefined;expect((await handler.fetch(aiRequest(USER_TOKEN),env)).status).toBe(503);expect(providerCalls).toBe(0);});
+ it('blocks AI on malformed quota reservation',async()=>{env.QUOTA_COUNTER={idFromName:(x:string)=>x,get:()=>({checkBurst:async()=>({ok:true}),reserve:async()=>({ok:true})})} as any;expect((await handler.fetch(aiRequest(USER_TOKEN),env)).status).toBe(503);expect(providerCalls).toBe(0);});
 });

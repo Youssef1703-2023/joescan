@@ -1,9 +1,13 @@
+function fetchDurable(stub:any,url:string,init?:RequestInit):Promise<Response>{return stub.fetch(new Request(url,init));}
+import {validateQuotaResult} from './quotaValidation';
+import {securityRoute} from './accountSecurity';
 import { boundedJson, publicLeakCheckResult } from './leakcheck';
 import * as jose from 'jose';
 export { QuotaCounter } from './quota';
 export { WatchlistMonitor } from './watchlist';
 
 export interface Env {
+  FIREBASE_ADMIN_CREDENTIALS?: string;
   ENVIRONMENT?: string;
   PROJECT_ID?: string;
   FIRESTORE_DATABASE_ID?: string;
@@ -572,16 +576,16 @@ async function reserveDispatchWindow(
   windowSec: number
 ): Promise<{ ok: boolean; count: number; limit: number; retryAfter?: number }> {
   try {
-    if (typeof stub.reserveWindow === 'function') {
-      return await stub.reserveWindow(key, limit, windowSec);
+    if (typeof stub.fetch !== 'function' && typeof stub.reserveWindow === 'function') {
+      return validateQuotaResult(await stub.reserveWindow(key, limit, windowSec), 'window', limit);
     }
-    const res = await stub.fetch('https://quota/window', {
+    const res = await fetchDurable(stub, 'https://quota/window', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ key, limit, windowSec }),
     });
     if (!res.ok) throw new Error('RATE_LIMITER_UNAVAILABLE');
-    return await res.json();
+    return validateQuotaResult(await res.json(), 'window', limit);
   } catch (err) {
     console.error('Dispatch rate limiter error:', err instanceof Error ? err.message : err);
     throw new Error('RATE_LIMITER_UNAVAILABLE');
@@ -593,7 +597,8 @@ async function fetchUserWebhooksFromFirestore(
   uid: string,
   projectId: string,
   databaseId: string,
-  allowedHosts: string[]
+  allowedHosts: string[],
+  appCheckToken = ""
 ): Promise<{ hooks: WebhookDoc[]; rejected: SkippedHook[] }> {
   const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents:runQuery`;
 
@@ -614,6 +619,7 @@ async function fetchUserWebhooksFromFirestore(
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${idToken}`,
+        ...(appCheckToken ? {'X-Firebase-AppCheck': appCheckToken} : {}),
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
@@ -756,7 +762,8 @@ async function fetchCallerBanStatus(
   idToken: string,
   uid: string,
   projectId: string,
-  databaseId: string
+  databaseId: string,
+  appCheckToken = ""
 ): Promise<BanStatus> {
   const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents/bannedUsers/${encodeURIComponent(uid)}?mask.fieldPaths=active`;
 
@@ -765,6 +772,7 @@ async function fetchCallerBanStatus(
     res = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${idToken}`,
+        ...(appCheckToken ? {'X-Firebase-AppCheck': appCheckToken} : {}),
         'Accept': 'application/json',
       },
     });
@@ -805,13 +813,14 @@ async function enforceBanGate(
   userPayload: jose.JWTPayload,
   projectId: string,
   databaseId: string,
-  corsHeaders: Record<string, string>
+  corsHeaders: Record<string, string>,
+  appCheckToken = ""
 ): Promise<Response | null> {
   if (tokenIsAdmin(userPayload)) {
     return null;
   }
 
-  const banStatus = await fetchCallerBanStatus(idToken, uid, projectId, databaseId);
+  const banStatus = await fetchCallerBanStatus(idToken, uid, projectId, databaseId, appCheckToken);
 
   if (banStatus === 'banned') {
     // Deliberately uniform across every endpoint; never includes the reason.
@@ -896,7 +905,7 @@ function getCorsHeaders(request: Request): Record<string, string> {
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : 'https://joescan.me',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Requested-With, X-Firebase-AppCheck',
     'Access-Control-Expose-Headers': 'Retry-After, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset',
     'Access-Control-Max-Age': '86400',
   };
@@ -940,7 +949,8 @@ async function resolveUserTier(
   idToken: string,
   userPayload: jose.JWTPayload,
   projectId: string,
-  databaseId: string
+  databaseId: string,
+  appCheckToken = ""
 ): Promise<TierResolution> {
   if (tokenIsAdmin(userPayload)) {
     return { tier: 'enterprise', limit: TIER_LIMITS.enterprise };
@@ -951,13 +961,14 @@ async function resolveUserTier(
     return { tier: 'free', limit: TIER_LIMITS.free };
   }
 
-  const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents/users/${encodeURIComponent(uid)}?mask.fieldPaths=tier&mask.fieldPaths=subscriptionExpiry`;
+  const url = `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/${encodeURIComponent(databaseId)}/documents/users/${encodeURIComponent(uid)}?mask.fieldPaths=tier&mask.fieldPaths=subscriptionExpiry&mask.fieldPaths=subscriptionValidUntil`;
 
   let res: Response;
   try {
     res = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${idToken}`,
+        ...(appCheckToken ? {'X-Firebase-AppCheck': appCheckToken} : {}),
         'Accept': 'application/json',
       },
     });
@@ -989,7 +1000,7 @@ async function resolveUserTier(
     return { tier: 'free', limit: TIER_LIMITS.free };
   }
 
-  const expiryRaw = fields.subscriptionExpiry?.stringValue || fields.subscriptionExpiry?.timestampValue;
+  const expiryRaw = fields.subscriptionValidUntil?.timestampValue || fields.subscriptionExpiry?.stringValue || fields.subscriptionExpiry?.timestampValue;
   if (!expiryRaw || typeof expiryRaw !== 'string') {
     return { tier: 'free', limit: TIER_LIMITS.free };
   }
@@ -1013,16 +1024,16 @@ function getQuotaStub(env: Env, uid: string) {
 
 async function checkBurstGuard(stub: any): Promise<{ ok: boolean; retryAfter?: number }> {
   try {
-    if (typeof stub.checkBurst === 'function') {
-      return await stub.checkBurst(20, 60);
+    if (typeof stub.fetch !== 'function' && typeof stub.checkBurst === 'function') {
+      return validateQuotaResult(await stub.checkBurst(20, 60), 'burst', undefined);
     }
-    const res = await stub.fetch('https://quota/burst', {
+    const res = await fetchDurable(stub, 'https://quota/burst', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ maxBurst: 20, windowSec: 60 }),
     });
     if (!res.ok) return { ok: false, retryAfter: 60 };
-    return await res.json();
+    return validateQuotaResult(await res.json(), 'burst', undefined);
   } catch (err) {
     console.error('DO burst check error:', err);
     throw new Error('QUOTA_STORE_UNAVAILABLE');
@@ -1037,16 +1048,16 @@ async function checkBurstGuard(stub: any): Promise<{ ok: boolean; retryAfter?: n
  */
 async function reserveQuotaUnit(stub: any, limit: number, day: string): Promise<{ ok: boolean; used: number; limit: number }> {
   try {
-    if (typeof stub.reserve === 'function') {
-      return await stub.reserve(limit, day);
+    if (typeof stub.fetch !== 'function' && typeof stub.reserve === 'function') {
+      return validateQuotaResult(await stub.reserve(limit, day), 'reserve', limit);
     }
-    const res = await stub.fetch('https://quota/reserve', {
+    const res = await fetchDurable(stub, 'https://quota/reserve', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ limit, day }),
     });
     if (!res.ok) throw new Error('QUOTA_STORE_UNAVAILABLE');
-    return await res.json();
+    return validateQuotaResult(await res.json(), 'reserve', limit);
   } catch (err) {
     console.error('DO reserve quota error:', err);
     throw new Error('QUOTA_STORE_UNAVAILABLE');
@@ -1055,12 +1066,12 @@ async function reserveQuotaUnit(stub: any, limit: number, day: string): Promise<
 
 async function peekQuotaUnits(stub: any, day: string): Promise<{ used: number; day: string }> {
   try {
-    if (typeof stub.peek === 'function') {
-      return await stub.peek(day);
+    if (typeof stub.fetch !== 'function' && typeof stub.peek === 'function') {
+      return validateQuotaResult(await stub.peek(day), 'peek', undefined);
     }
-    const res = await stub.fetch(`https://quota/peek?day=${encodeURIComponent(day)}`);
+    const res = await fetchDurable(stub, `https://quota/peek?day=${encodeURIComponent(day)}`);
     if (!res.ok) throw new Error('QUOTA_STORE_UNAVAILABLE');
-    return await res.json();
+    return validateQuotaResult(await res.json(), 'peek', undefined);
   } catch (err) {
     console.error('DO peek quota error:', err);
     throw new Error('QUOTA_STORE_UNAVAILABLE');
@@ -1077,10 +1088,10 @@ function getWatchlistStub(env: Env, uid: string) {
 
 async function syncWatchlistDO(stub: any, targets: any[], revision: number, tier: string): Promise<any> {
   try {
-    if (typeof stub.sync === 'function') {
+    if (typeof stub.fetch !== 'function' && typeof stub.sync === 'function') {
       return await stub.sync(targets, revision, tier);
     }
-    const res = await stub.fetch('https://watchlist/sync', {
+    const res = await fetchDurable(stub, 'https://watchlist/sync', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ targets, revision, tier }),
@@ -1094,10 +1105,10 @@ async function syncWatchlistDO(stub: any, targets: any[], revision: number, tier
 
 async function getWatchlistStateDO(stub: any): Promise<any> {
   try {
-    if (typeof stub.getState === 'function') {
+    if (typeof stub.fetch !== 'function' && typeof stub.getState === 'function') {
       return await stub.getState();
     }
-    const res = await stub.fetch('https://watchlist/state');
+    const res = await fetchDurable(stub, 'https://watchlist/state');
     if (!res.ok) throw new Error('WATCHLIST_STORE_UNAVAILABLE');
     return await res.json();
   } catch (err) {
@@ -1108,10 +1119,10 @@ async function getWatchlistStateDO(stub: any): Promise<any> {
 
 async function sweepWatchlistNowDO(stub: any): Promise<any> {
   try {
-    if (typeof stub.sweepNow === 'function') {
+    if (typeof stub.fetch !== 'function' && typeof stub.sweepNow === 'function') {
       return await stub.sweepNow();
     }
-    const res = await stub.fetch('https://watchlist/sweep-now', {
+    const res = await fetchDurable(stub, 'https://watchlist/sweep-now', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
     });
@@ -1144,6 +1155,7 @@ export default {
     }
 
     const idToken = authHeader.substring(7).trim();
+    const appCheckToken = request.headers.get('X-Firebase-AppCheck') || '';
     const projectId = env.PROJECT_ID || FIREBASE_PROJECT_ID;
     const databaseId = env.FIRESTORE_DATABASE_ID || DEFAULT_FIRESTORE_DATABASE_ID;
 
@@ -1160,15 +1172,23 @@ export default {
 
     const uid = userPayload.sub as string;
 
+    if(pathname==='/account/delete')return securityRoute(request,{...env,PROJECT_ID:projectId,FIRESTORE_DATABASE_ID:databaseId},userPayload,tokenIsAdmin(userPayload),corsHeaders);
+    if(userPayload.email_verified!==true&&!tokenIsAdmin(userPayload))return new Response(JSON.stringify({error:'Verify your email before using JoeScan.',code:'EMAIL_VERIFICATION_REQUIRED'}),{status:403,headers:{...corsHeaders,'Content-Type':'application/json'}});
+    try{const deletion=await fetch('https://firestore.googleapis.com/v1/projects/'+encodeURIComponent(projectId)+'/databases/'+encodeURIComponent(databaseId)+'/documents/accountDeletionJobs/'+encodeURIComponent(uid),{headers:{Authorization:'Bearer '+idToken,...(appCheckToken?{'X-Firebase-AppCheck':appCheckToken}:{})},signal:AbortSignal.timeout(10000)});if(deletion.status!==404)return new Response(JSON.stringify({error:'Account unavailable or deletion in progress'}),{status:deletion.ok?403:503,headers:corsHeaders});}catch{return new Response('Account status unavailable',{status:503,headers:corsHeaders});}
+
     // ─── Ban gate (S02): runs before EVERY authenticated endpoint ───
     // Quota, threat-feed, webhook dispatch, watchlist, and AI provider paths
     // all sit below this point, so a banned account can never trigger
     // provider, Durable Object, or webhook work.
-    const banRejection = await enforceBanGate(idToken, uid, userPayload, projectId, databaseId, corsHeaders);
+    const banRejection = await enforceBanGate(idToken, uid, userPayload, projectId, databaseId, corsHeaders, appCheckToken);
     if (banRejection) {
       return banRejection;
     }
 
+    if(pathname==='/activity'){
+      try{const rate=await reserveDispatchWindow(getDispatchRateStub(env,'activity:'+uid),'minute',30,60);if(!rate.ok)return new Response('Rate limit',{status:429,headers:corsHeaders});}catch{return new Response('Rate limiter unavailable',{status:503,headers:corsHeaders});}
+      return securityRoute(request,{...env,PROJECT_ID:projectId,FIRESTORE_DATABASE_ID:databaseId},userPayload,tokenIsAdmin(userPayload),corsHeaders);
+    }
     if (pathname === '/email-exposure/extra') {
       const headers = { ...corsHeaders, 'Content-Type':'application/json', 'Cache-Control':'no-store' };
       const reply = (status:number, error:string) => new Response(JSON.stringify({error}),{status,headers});
@@ -1197,7 +1217,7 @@ export default {
     if (request.method === 'GET' && (pathname === '/quota' || pathname === '/api/quota')) {
       let tierInfo: TierResolution;
       try {
-        tierInfo = await resolveUserTier(idToken, userPayload, projectId, databaseId);
+        tierInfo = await resolveUserTier(idToken, userPayload, projectId, databaseId, appCheckToken);
       } catch {
         return new Response(
           JSON.stringify({
@@ -1359,7 +1379,7 @@ export default {
       // elevated behavior, consistent with the rest of the Worker's policy).
       let tierInfo: TierResolution;
       try {
-        tierInfo = await resolveUserTier(idToken, userPayload, projectId, databaseId);
+        tierInfo = await resolveUserTier(idToken, userPayload, projectId, databaseId, appCheckToken);
       } catch {
         return new Response(
           JSON.stringify({
@@ -1440,7 +1460,7 @@ export default {
       // reached once every gate above has passed.
       let lookup: { hooks: WebhookDoc[]; rejected: SkippedHook[] };
       try {
-        lookup = await fetchUserWebhooksFromFirestore(idToken, uid, projectId, databaseId, allowedHosts);
+        lookup = await fetchUserWebhooksFromFirestore(idToken, uid, projectId, databaseId, allowedHosts, appCheckToken);
       } catch {
         return new Response(JSON.stringify({ error: 'Failed to fetch webhook configurations' }), {
           status: 502,
@@ -1668,7 +1688,7 @@ export default {
 
       let tierInfo: TierResolution;
       try {
-        tierInfo = await resolveUserTier(idToken, userPayload, projectId, databaseId);
+        tierInfo = await resolveUserTier(idToken, userPayload, projectId, databaseId, appCheckToken);
       } catch {
         tierInfo = { tier: 'free', limit: TIER_LIMITS.free };
       }
@@ -1895,15 +1915,13 @@ export default {
     }
 
     // 3. Burst Guard Check before Firestore read (§8)
-    // Durable Object availability is best-effort: a brief DO outage must not
-    // block the chat. Fail open — provider caps (max_tokens, timeout) and the
-    // auth layer still protect the endpoint. Metering resumes when DO recovers.
+    // S04: never call a paid provider without verified quota reservation.
     let quotaStub: any = null;
     try {
       quotaStub = getQuotaStub(env, uid);
     } catch (err) {
       console.error('QUOTA_DO_BINDING_FAILED uid=' + uid, err instanceof Error ? err.message : err);
-      quotaStub = null;
+      return new Response(JSON.stringify({code:'QUOTA_STORE_UNAVAILABLE',error:'Quota verification unavailable. Retry shortly.'}),{status:503,headers:{...corsHeaders,'Content-Type':'application/json','Retry-After':'30'}});
     }
 
     let quotaDegraded = false;
@@ -1930,7 +1948,7 @@ export default {
         }
       } catch (err) {
         console.error('BURST_CHECK_FAILED uid=' + uid, err instanceof Error ? err.message : err);
-        quotaDegraded = true; // fail open
+        return new Response(JSON.stringify({code:'QUOTA_STORE_UNAVAILABLE',error:'Quota verification unavailable. Retry shortly.'}),{status:503,headers:{...corsHeaders,'Content-Type':'application/json','Retry-After':'30'}});
       }
     } else {
       quotaDegraded = true;
@@ -1939,7 +1957,7 @@ export default {
     // 4. Resolve Effective Tier & Limit (§1, §2)
     let tierInfo: TierResolution;
     try {
-      tierInfo = await resolveUserTier(idToken, userPayload, projectId, databaseId);
+      tierInfo = await resolveUserTier(idToken, userPayload, projectId, databaseId, appCheckToken);
     } catch {
       return new Response(
         JSON.stringify({
@@ -1967,12 +1985,10 @@ export default {
         reserveResult = await reserveQuotaUnit(quotaStub, tierInfo.limit, cairoDay);
       } catch (err) {
         console.error('QUOTA_RESERVE_FAILED uid=' + uid, err instanceof Error ? err.message : err);
-        quotaDegraded = true;
-        reserveResult = { ok: true, used: -1, limit: tierInfo.limit };
+        return new Response(JSON.stringify({code:'QUOTA_STORE_UNAVAILABLE',error:'Quota verification unavailable. Retry shortly.'}),{status:503,headers:{...corsHeaders,'Content-Type':'application/json','Retry-After':'30'}});
       }
     } else {
-      quotaDegraded = true;
-      reserveResult = { ok: true, used: -1, limit: tierInfo.limit };
+      return new Response(JSON.stringify({code:'QUOTA_STORE_UNAVAILABLE',error:'Quota verification unavailable. Retry shortly.'}),{status:503,headers:{...corsHeaders,'Content-Type':'application/json','Retry-After':'30'}});
     }
 
     if (!reserveResult.ok) {

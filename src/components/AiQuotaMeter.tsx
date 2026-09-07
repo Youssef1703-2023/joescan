@@ -1,3 +1,4 @@
+import {appAttestationHeaders} from '../lib/appAttestation';
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'motion/react';
 import { Zap, Key, RefreshCw, Clock, ShieldCheck, Sparkles, AlertCircle } from 'lucide-react';
@@ -70,7 +71,7 @@ export default function AiQuotaMeter() {
       const res = await fetch(quotaEndpoint, {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${idToken}`,
+          ...(await appAttestationHeaders()), 'Authorization': `Bearer ${idToken}`,
           'Accept': 'application/json',
         },
       });

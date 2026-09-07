@@ -1,3 +1,5 @@
+import {appAttestationHeaders} from './appAttestation';
+import {readPrivateSettings} from './privateSession';
 import OpenAI from "openai";
 import { auth } from "./firebase";
 
@@ -30,7 +32,7 @@ export class AiQuotaExceededError extends Error {
 // Custom user-supplied key from settings (D2)
 function getCustomGroqKey(): string {
   try {
-    const s = localStorage.getItem('joe_api_settings');
+    const s = JSON.stringify(readPrivateSettings(auth.currentUser?.uid || null));
     if (s) {
       const parsed = JSON.parse(s);
       if (parsed.groqKey) return parsed.groqKey;
@@ -81,7 +83,7 @@ async function executeUniversalAI(prompt: string, schemaObj: any, _useSearch: bo
   const response = await fetch(proxyUrl, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${idToken}`,
+      ...(await appAttestationHeaders()), 'Authorization': `Bearer ${idToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({

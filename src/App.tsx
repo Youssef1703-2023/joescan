@@ -1,3 +1,5 @@
+import EmailVerificationGate from './components/EmailVerificationGate';
+import {clearPrivateSession} from './lib/privateSession';
 import './styles/workspace.css';
 import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
@@ -131,20 +133,27 @@ function AppContent() {
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => {
+      clearPrivateSession();
       const prevUser = currentUserRef.current;
       if (!u || (prevUser && u.uid !== prevUser.uid)) {
         setMfaPassed(false);
       }
       currentUserRef.current = u;
       setUser(u);
+      setCustomAvatar(null);
+      setUserTier("free");
+      setIsBanned(false);
+      setShowApiSettings(false);
+      setShowProfileSettings(false);
       setLoading(false);
       if (u) {
         // Load profile from Firestore (cross-device sync)
         ensureUserProfile(u.uid, u.email, u.displayName).then(profile => {
-          if (profile?.avatarURL) setCustomAvatar(profile.avatarURL);
+          if (auth.currentUser?.uid === u.uid && profile?.avatarURL) setCustomAvatar(profile.avatarURL);
         });
         // Check ban status
         isUserBanned(u.uid).then(result => {
+          if (auth.currentUser?.uid !== u.uid) return;
           setIsBanned(result.banned);
           if (result.reason) setBanReason(result.reason);
         });
@@ -155,7 +164,7 @@ function AppContent() {
           setShowOnboarding(true);
         }
         // Fetch tier
-        getUserTier(u.uid).then(t => setUserTier(t));
+        getUserTier(u.uid).then(t => { if (auth.currentUser?.uid === u.uid) setUserTier(t); });
         // Fetch platform config for maintenance mode
         import('firebase/firestore').then(({ doc, getDoc }) => {
           getDoc(doc(db, 'adminConfig', 'platformSettings')).then(snap => {
@@ -232,6 +241,8 @@ function AppContent() {
   if (!user) {
     return <LandingPage loading={loginLoading} onLogin={handleLogin} />;
   }
+
+  if (!user.emailVerified && user.email !== ADMIN_EMAIL) return <EmailVerificationGate user={user} onLogout={handleLogout} />;
 
   if (!mfaPassed) {
     return <MfaGate user={user} onVerified={() => setMfaPassed(true)} onLogout={handleLogout} />;
@@ -502,13 +513,13 @@ function AppContent() {
         )}
       </AnimatePresence>
 
-      <ApiSettingsModal
+      <ApiSettingsModal key={user?.uid || "signed-out"}
         isOpen={showApiSettings}
         onClose={() => setShowApiSettings(false)}
       />
 
       {/* AI Cyber Assistant — floating chatbot */}
-      {user && <CyberAssistant />}
+      {user && <div key={user.uid}><CyberAssistant /></div>}
     </div>
   );
 }

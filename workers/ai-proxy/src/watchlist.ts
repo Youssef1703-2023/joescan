@@ -226,6 +226,8 @@ export function deriveDeterministicFindingId(targetId: string, kind: string, key
 }
 
 export class WatchlistMonitor {
+  async eraseAccount():Promise<void>{await this.state.blockConcurrencyWhile(async()=>{await this.state.storage.deleteAlarm();await this.state.storage.deleteAll();await this.state.storage.put('accountDeleted',true);});}
+
   private state: any;
   private env: any;
 
@@ -263,10 +265,12 @@ export class WatchlistMonitor {
   }
 
   private async saveState(st: WatchlistStoredState): Promise<void> {
+    if(await this.state.storage.get('accountDeleted'))return;
     await this.state.storage.put('watchlist_state', st);
   }
 
   private async armNextAlarm(st: WatchlistStoredState): Promise<void> {
+    if(await this.state.storage.get('accountDeleted'))return;
     const now = Date.now();
     const schedulable = st.targets.filter(t => {
       const isSchedulableType = t.type === 'ip' || t.type === 'domain';
@@ -836,6 +840,7 @@ export class WatchlistMonitor {
   // ─── Durable Object Alarm Handler ───
 
   async alarm(): Promise<void> {
+    if(await this.state.storage.get('accountDeleted'))return;
     try {
       const st = await this.loadState();
       st.sweepInProgress = true;
@@ -860,6 +865,7 @@ export class WatchlistMonitor {
   // ─── Public RPC Methods ───
 
   async sync(targetsInput: SyncTargetInput[], clientRevision: number, userTier: string = 'free'): Promise<SyncResult> {
+    if(await this.state.storage.get('accountDeleted'))throw new Error('ACCOUNT_DELETED');
     const tierLimit = WATCHLIST_TIER_LIMITS[userTier] || WATCHLIST_TIER_LIMITS.free;
 
     if (!Array.isArray(targetsInput)) {
@@ -1011,6 +1017,7 @@ export class WatchlistMonitor {
   }
 
   async sweepNow(): Promise<SweepResult> {
+    if(await this.state.storage.get('accountDeleted'))throw new Error('ACCOUNT_DELETED');
     const st = await this.loadState();
     if (st.sweepInProgress) {
       return {
@@ -1047,6 +1054,8 @@ export class WatchlistMonitor {
   // ─── Fetch Fallback Routing ───
 
   async fetch(request: Request): Promise<Response> {
+    if(new URL(request.url).pathname==='/erase-account'&&request.method==='POST'){await this.eraseAccount();return Response.json({ok:true});}
+    if(await this.state.storage.get('accountDeleted'))return new Response('Account deleted',{status:410});
     const url = new URL(request.url);
     const pathname = url.pathname.replace(/\/+$/, '') || '/';
 

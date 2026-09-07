@@ -77,7 +77,8 @@ service cloud.firestore {
     // Entitlement gate for premium resources. Costs one document read per
     // evaluation, so it is used only on create of a paid-tier resource.
     function tierIsEnterprise() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.tier == 'enterprise';
+      let user = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      return user.get('tier', 'free') == 'enterprise' && user.get('subscriptionValidUntil', null) is timestamp && user.subscriptionValidUntil > request.time;
     }
 
     // ─── Server-side ban predicate (S02) ───
@@ -90,16 +91,18 @@ service cloud.firestore {
     // Reads/writes are denied for banned users on every product resource
     // below; list queries are denied the same way as single-document reads.
     function isNotBanned() {
-      return !exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) ||
+      return !exists(/databases/$(database)/documents/accountDeletionJobs/$(request.auth.uid))
+        && (request.auth.token.get('email_verified', false) == true || isAdmin())
+        && (!exists(/databases/$(database)/documents/bannedUsers/$(request.auth.uid)) ||
         get(/databases/$(database)/documents/bannedUsers/$(request.auth.uid))
-          .data.get('active', false) != true;
+          .data.get('active', false) != true);
     }
 
     // ─── Users ───
     match /users/{userId} {
       allow read: if isAdmin() || (isNotBanned() && isOwner(userId));
       allow list: if isAdmin();
-      allow create: if isOwner(userId) && isNotBanned()
+      allow create: if isOwner(userId) && !exists(/databases/$(database)/documents/accountDeletionJobs/$(userId)) && !exists(/databases/$(database)/documents/bannedUsers/$(userId))
         && isValidUser()
         && uidUnchanged()
         && userCreateKeysOk()
@@ -110,18 +113,10 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ─── Usernames (unique username registry) ───
-    // Per-username `get` must stay public: login resolves a username to an email
-    // before the user is authenticated, so the ban predicate (which requires an
-    // authenticated caller) cannot apply here. `list` is denied — the documents
-    // carry uid + email, so listing would expose every user's address to anyone.
+    // S06: legacy username/email mappings are private; login uses email.
     match /usernames/{usernameId} {
-      allow get: if true;
-      allow list: if isAdmin();
-      allow create: if isAuthenticated() && isNotBanned()
-        && request.resource.data.keys().hasOnly(['uid','email','username','createdAt'])
-        && request.resource.data.uid == request.auth.uid;
-      allow update, delete: if isAdmin();
+      allow read: if isAdmin() && isNotBanned();
+      allow write: if false;
     }
 
     // ─── Admin Config (platform settings, feature flags) ───
@@ -158,12 +153,14 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // ─── Activity Log ───
+    // S09: activity entries are written by the authenticated server only.
     match /activityLog/{logId} {
-      allow read: if isAdmin();
-      allow create: if isAuthenticated() && isNotBanned()
-        && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if false;
+      allow read: if isAdmin() && isNotBanned();
+      allow write: if false;
+    }
+    match /accountDeletionJobs/{uid} {
+      allow get: if isOwner(uid);
+      allow list, write: if false;
     }
 
     // ─── Banned Users (S02) ───

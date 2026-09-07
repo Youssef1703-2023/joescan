@@ -105,9 +105,9 @@ describe('S02 firestore.rules ban enforcement', () => {
     }
   });
 
-  it('keeps the pre-auth username lookup public without listing', () => {
+  it('keeps legacy username mappings private', () => {
     const block = extractMatchBlock('usernames');
-    expect(block).toContain('allow get: if true;');
-    expect(block).toContain('allow list: if isAdmin();');
+    expect(block).toContain('allow read: if isAdmin() && isNotBanned();');
+    expect(block).toContain('allow write: if false;');
   });
 });

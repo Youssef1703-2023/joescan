@@ -1,3 +1,4 @@
+import {appAttestationHeaders} from './appAttestation';
 ﻿import { auth } from './firebase';
 
 export interface ThreatIndicator {
@@ -42,7 +43,7 @@ export async function fetchThreatFeed(): Promise<ThreatFeedResponse> {
   const res = await fetch(endpoint, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${idToken}`,
+      ...(await appAttestationHeaders()), 'Authorization': `Bearer ${idToken}`,
       'Accept': 'application/json',
     },
   });

@@ -1,3 +1,5 @@
+import {appAttestationHeaders} from '../lib/appAttestation';
+import {readPrivateSettings} from '../lib/privateSession';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bot, X, Send, Sparkles, Trash2, Shield, Mail, KeyRound, Globe, Wifi, ChevronDown, Zap, Wrench, Hammer } from 'lucide-react';
@@ -45,7 +47,7 @@ const maintTexts: Record<string, { title: string; body: string; eta: string }> =
 // key is still honored for users who already configured one.
 function getCustomApiKey(): { key: string; provider: 'groq' | 'openrouter' } | null {
   try {
-    const s = localStorage.getItem('joe_api_settings');
+    const s = JSON.stringify(readPrivateSettings(auth.currentUser?.uid || null));
     if (s) {
       const parsed = JSON.parse(s);
       if (parsed.groqKey) return { key: parsed.groqKey, provider: 'groq' };
@@ -108,7 +110,7 @@ async function callAIChat(messages: { role: string; content: string }[]): Promis
   const res = await fetch(proxyUrl, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${idToken}`,
+      ...(await appAttestationHeaders()), 'Authorization': `Bearer ${idToken}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -315,26 +317,7 @@ export default function CyberAssistant() {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Load history from localStorage
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved) as ChatMessage[];
-        setMessages(parsed.slice(-MAX_HISTORY));
-      }
-    } catch {}
-  }, []);
-
-  // Save history to localStorage
-  useEffect(() => {
-    if (messages.length > 0) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(messages.slice(-MAX_HISTORY)));
-      } catch {}
-    }
-  }, [messages]);
-
+  // Chat remains in memory; the App remounts this component on identity changes.
   // Auto-scroll
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -469,7 +452,7 @@ export default function CyberAssistant() {
 
   const clearHistory = () => {
     setMessages([]);
-    localStorage.removeItem(STORAGE_KEY);
+    // No persistent chat data.
   };
 
   const formatTime = (ts: number) => {

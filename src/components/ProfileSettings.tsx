@@ -1,3 +1,4 @@
+import {appAttestationHeaders} from '../lib/appAttestation';
 import React, { useState, useRef, useEffect } from 'react';
 import { updateProfile, deleteUser, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail, multiFactor, TotpMultiFactorGenerator } from 'firebase/auth';
 import { auth, db, getUserProfile, updateUserProfile } from '../lib/firebase';
@@ -242,10 +243,20 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
     reader.readAsDataURL(file);
   };
 
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const handleDeleteAccount = async () => {
+    if (deletingAccount) return;
     if (confirm("Are you entirely sure? This action is irreversible.")) {
       try {
-        await deleteUser(user);
+        setDeletingAccount(true);
+        const base=import.meta.env.VITE_AI_PROXY_URL;
+        if(!base)throw Error('Account deletion service unavailable');
+        let done=false;
+        for(let batch=0;batch<100&&!done;batch++){
+          const response=await fetch(base.replace(/\/+$/,'')+'/account/delete',{method:'POST',headers:{'Content-Type':'application/json',...(await appAttestationHeaders()), Authorization:'Bearer '+await user.getIdToken()},body:JSON.stringify({confirm:'DELETE'})});
+          const result=await response.json();if(!response.ok)throw Error(result.error||'Deletion interrupted. Retry to resume.');done=result.done===true;
+        }
+        if(!done)throw Error('More data remains. Retry deletion to resume cleanup.');
         onClose();
         onLogout();
       } catch (err: any) {
@@ -254,7 +265,7 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
         } else {
           setError(err.message);
         }
-      }
+      } finally { setDeletingAccount(false); }
     }
   };
 
@@ -563,6 +574,7 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
                 </button>
                 <button 
                   onClick={handleDeleteAccount}
+                  disabled={deletingAccount}
                   className="w-full text-error hover:text-white hover:bg-error transition-colors font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 border border-error/50 hover:border-transparent"
                 >
                   <AlertTriangle className="w-4 h-4" /> {t('delete_account')}

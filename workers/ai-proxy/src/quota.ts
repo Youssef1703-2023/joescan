@@ -37,6 +37,8 @@ export interface WindowResult {
 }
 
 export class QuotaCounter implements DurableObject {
+  async eraseAccount():Promise<void>{await this.state.blockConcurrencyWhile(async()=>{await this.state.storage.deleteAlarm();await this.state.storage.deleteAll();await this.state.storage.put('accountDeleted',true);});}
+
   private state: DurableObjectState;
   private env: any;
 
@@ -114,6 +116,8 @@ export class QuotaCounter implements DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    if(new URL(request.url).pathname==='/erase-account'&&request.method==='POST'){await this.eraseAccount();return Response.json({ok:true});}
+    if(await this.state.storage.get('accountDeleted'))return new Response('Account deleted',{status:410});
     const url = new URL(request.url);
     if (url.pathname === '/reserve' && request.method === 'POST') {
       const body = (await request.json()) as { limit: number; day: string };

@@ -1,3 +1,4 @@
+import {appAttestationHeaders} from '../lib/appAttestation';
 import AdditionalEmailSource from './AdditionalEmailSource';
 import {fetchCombinedEmailExposure} from '../lib/combinedEmailExposure';
 import {groupEmailEvidence, type EvidenceGroup} from '../lib/emailEvidence';
@@ -281,7 +282,7 @@ export default function EmailAnalyzer() {
       const analysis = await fetchCombinedEmailExposure(cleanedEmail, lang, async()=>{
         const base=import.meta.env.VITE_AI_PROXY_URL;
         if(!base||!auth.currentUser)throw new Error('Source unavailable');
-        const response=await fetch(base.replace(/\/+$/,'')+'/email-exposure/extra', {method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+await auth.currentUser.getIdToken()},body:JSON.stringify({email:cleanedEmail,consent:true}),signal:AbortSignal.timeout(25000)});
+        const response=await fetch(base.replace(/\/+$/,'')+'/email-exposure/extra', {method:'POST',headers:{'Content-Type':'application/json',...(await appAttestationHeaders()), Authorization:'Bearer '+await auth.currentUser.getIdToken()},body:JSON.stringify({email:cleanedEmail,consent:true}),signal:AbortSignal.timeout(25000)});
         if(!response.ok)throw new Error('Source unavailable');
         return response.json();
       });

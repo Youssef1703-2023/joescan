@@ -41,51 +41,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'checking' | 'available' | 'taken' | 'invalid'>('idle');
   const [usernameDebounce, setUsernameDebounce] = useState<NodeJS.Timeout | null>(null);
 
-  // Check username availability on signup
-  useEffect(() => {
-    if (mode !== 'signup' || !username.trim()) {
-      setUsernameStatus('idle');
-      return;
-    }
-    
-    // Validate format: 3-20 chars, alphanumeric + underscore only
-    const isValid = /^[a-zA-Z0-9_]{3,20}$/.test(username);
-    if (!isValid) {
-      setUsernameStatus('invalid');
-      return;
-    }
-
-    setUsernameStatus('checking');
-    
-    if (usernameDebounce) clearTimeout(usernameDebounce);
-    
-    const timer = setTimeout(async () => {
-      try {
-        const usernameDoc = await getDoc(doc(db, 'usernames', username.toLowerCase()));
-        setUsernameStatus(usernameDoc.exists() ? 'taken' : 'available');
-      } catch (err) {
-        console.error('Username check failed:', err);
-        setUsernameStatus('available'); // Allow attempt if check fails
-      }
-    }, 500);
-    
-    setUsernameDebounce(timer);
-    
-    return () => { if (timer) clearTimeout(timer); };
-  }, [username, mode]);
-
-  // Resolve username to email for login
-  const resolveUsernameToEmail = async (input: string): Promise<string> => {
-    // If it looks like an email, return as-is
-    if (input.includes('@')) return input;
-    
-    // Otherwise, look up the username in Firestore
-    const usernameDoc = await getDoc(doc(db, 'usernames', input.toLowerCase()));
-    if (usernameDoc.exists()) {
-      return usernameDoc.data().email;
-    }
-    throw new Error('Username not found. Please check your username or use your email address.');
-  };
+  useEffect(()=>{setUsernameStatus(/^[a-zA-Z0-9_]{3,20}$/.test(username)?'available':'invalid');},[username]);
+  const resolveUsernameToEmail=async(input:string):Promise<string>=>{if(!input.includes('@'))throw Error('Use your email address to sign in or recover your account.');return input.trim();};
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,20 +56,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         if (!username.trim()) throw new Error('Username is required.');
         if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) throw new Error('Username must be 3-20 characters (letters, numbers, underscore only).');
         if (usernameStatus === 'taken') throw new Error('This username is already taken. Please choose another.');
-        if (password.length < 6) throw new Error('Password must be at least 6 characters.');
+        if (password.length < 12) throw new Error('Password must be at least 12 characters.');
         
         // Anti-Spam: Check if email is from a disposable domain
         if (isDisposableEmail(email)) {
           throw new Error('Prepaid or temporary email addresses are blocked. Please use a valid email.');
         }
-        
-        // Double-check username availability
-        const existingDoc = await getDoc(doc(db, 'usernames', username.toLowerCase()));
-        if (existingDoc.exists()) throw new Error('This username is already taken. Please choose another.');
-
-        // Prevent abuse: Check basic device footprint
-        const deviceId = localStorage.getItem('joescan-device-id') || crypto.randomUUID();
-        localStorage.setItem('joescan-device-id', deviceId);
         
         // Create account
         const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -122,14 +71,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         
         // Set display name to username
         await updateProfile(cred.user, { displayName: username });
-        
-        // Reserve the username in Firestore
-        await setDoc(doc(db, 'usernames', username.toLowerCase()), {
-          uid: cred.user.uid,
-          email: email.toLowerCase(),
-          username: username,
-          createdAt: new Date().toISOString(),
-        });
         
         // Also save username to user profile
         await setDoc(doc(db, 'users', cred.user.uid), {
@@ -155,7 +96,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         }
         
       } else if (mode === 'login') {
-        // Resolve username or email
+        // Resolve email address
         const resolvedEmail = await resolveUsernameToEmail(username);
         try {
           await signInWithEmailAndPassword(auth, resolvedEmail, password);
@@ -176,7 +117,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           targetEmail = username;
         }
         await sendPasswordResetEmail(auth, targetEmail);
-        setSuccessMsg(`Recovery protocol initiated. Check your inbox at ${targetEmail}.`);
+        setSuccessMsg(`If an account exists for this address, a recovery email will be sent.`);
         setTimeout(() => setMode('login'), 3000);
       }
     } catch (err: any) {
@@ -185,7 +126,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       if (err.code === 'auth/email-already-in-use') {
         setError('This email is already registered. Try logging in instead.');
       } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') {
-        setError('Invalid credentials. Check your username/email and password.');
+        setError('Invalid credentials. Check your email and password.');
       } else if (err.code === 'auth/user-not-found') {
         setError('No account found with these credentials.');
       } else if (err.code === 'auth/too-many-requests') {
@@ -280,7 +221,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const getUsernameHint = () => {
     switch (usernameStatus) {
       case 'checking': return <span className="text-yellow-400 text-[10px] font-mono">Checking availability...</span>;
-      case 'available': return <span className="text-accent text-[10px] font-mono">✓ Username available</span>;
+      case 'available': return <span className="text-accent text-[10px] font-mono">✓ Valid display name</span>;
       case 'taken': return <span className="text-error text-[10px] font-mono">✗ Username already taken</span>;
       case 'invalid': return <span className="text-orange-400 text-[10px] font-mono">3-20 chars, letters/numbers/_ only</span>;
       default: return null;
@@ -329,7 +270,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
              {mode !== 'forgot_password' && (
                <div className="space-y-1">
                  <label className="text-[10px] font-mono tracking-widest text-text-dim uppercase">
-                   {mode === 'login' ? 'Username or Email' : 'Username'}
+                   {mode === 'login' ? 'Email address' : 'Display name'}
                  </label>
                  <div className="relative">
                    <div className="absolute left-3 top-1/2 -translate-y-1/2">
@@ -346,7 +287,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                        mode === 'signup' && usernameStatus === 'available' ? 'border-accent/60' : 
                        'border-border-subtle'
                      }`}
-                     placeholder={mode === 'login' ? 'username or email' : 'choose_username'}
+                     placeholder={mode === 'login' ? 'email address' : 'choose_display_name'}
                      dir="ltr"
                    />
                  </div>
@@ -358,7 +299,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
              {(mode === 'signup' || mode === 'forgot_password') && (
                <div className="space-y-1">
                  <label className="text-[10px] font-mono tracking-widest text-text-dim uppercase">
-                   {mode === 'forgot_password' ? 'Username or Email' : 'Operator Email'}
+                   {mode === 'forgot_password' ? 'Email address' : 'Operator Email'}
                  </label>
                  <div className="relative">
                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
@@ -368,7 +309,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                      onChange={e => mode === 'forgot_password' ? setUsername(e.target.value) : setEmail(e.target.value)}
                      required
                      className="w-full bg-bg-base border border-border-subtle rounded-lg pl-10 pr-4 py-3 text-sm focus:border-accent outline-none font-mono"
-                     placeholder={mode === 'forgot_password' ? 'username or email' : 'operator@joescan.cloud'}
+                     placeholder={mode === 'forgot_password' ? 'email address' : 'operator@joescan.cloud'}
                      dir="ltr"
                    />
                  </div>

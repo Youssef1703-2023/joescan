@@ -107,6 +107,7 @@ function installFetchMock(): void {
     if (url.includes(CERTS_URL_FRAGMENT)) {
       return jsonResponse({ 'test-kid': '-----BEGIN CERTIFICATE-----TEST-----END CERTIFICATE-----' });
     }
+    if (url.includes('/documents/accountDeletionJobs/')) return jsonResponse({},404);
     if (url.includes('/documents/bannedUsers/')) {
       return jsonResponse({ error: { code: 404, message: 'No document found', status: 'NOT_FOUND' } }, 404);
     }
@@ -593,7 +594,8 @@ describe('S03 webhook dispatch: hostile request validation', () => {
       if (url.includes(CERTS_URL_FRAGMENT)) {
         return jsonResponse({ 'test-kid': 'cert' });
       }
-      if (url.includes('/documents/bannedUsers/')) {
+      if (url.includes('/documents/accountDeletionJobs/')) return jsonResponse({},404);
+    if (url.includes('/documents/bannedUsers/')) {
         return jsonResponse({ error: { code: 404, message: 'No document found', status: 'NOT_FOUND' } }, 404);
       }
       if (url.includes('/documents/users/')) {

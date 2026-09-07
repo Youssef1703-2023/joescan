@@ -1,3 +1,4 @@
+import {appAttestationHeaders} from './appAttestation';
 ﻿import { auth, db } from './firebase';
 import { collection, addDoc, doc, updateDoc, increment } from 'firebase/firestore';
 import { PASSWORD_SCAN_TARGET } from './scanLabels';
@@ -51,7 +52,7 @@ export async function dispatchWebhooks(params: WebhookDispatchParams): Promise<W
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${idToken}`,
+      ...(await appAttestationHeaders()), 'Authorization': `Bearer ${idToken}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },

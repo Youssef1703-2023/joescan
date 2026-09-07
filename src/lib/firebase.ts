@@ -1,3 +1,4 @@
+import {appAttestationHeaders} from './appAttestation';
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore, getDocFromServer, getDocs, doc, setDoc, addDoc, collection, query, where, arrayUnion, arrayRemove } from "firebase/firestore";
@@ -191,6 +192,7 @@ export function calculateEntitlementGrant(
   const result: any = {
     tier: targetTier,
     subscriptionExpiry: newExpiryDate.toISOString(),
+    subscriptionValidUntil: newExpiryDate,
   };
 
   if (isSocTrial) {
@@ -213,14 +215,10 @@ export async function logActivity(action: ActivityType, details: string = '', ta
   try {
     const user = auth.currentUser;
     if (!user) return;
-    await addDoc(collection(db, 'activityLog'), {
-      userId: user.uid,
-      email: user.email,
-      action,
-      details,
-      targetUser: targetUser || null,
-      timestamp: new Date().toISOString(),
-    });
+    const base=import.meta.env.VITE_AI_PROXY_URL;
+    if(!base)return;
+    const response=await fetch(base.replace(/\/+$/,'')+'/activity', {method:'POST',headers:{'Content-Type':'application/json',...(await appAttestationHeaders()), Authorization:'Bearer '+await user.getIdToken()},body:JSON.stringify({action,details,targetUser:targetUser||null})});
+    if(!response.ok)throw new Error('Activity logging unavailable');;
   } catch (err) {
     console.error("Failed to log activity", err);
   }

@@ -1,3 +1,4 @@
+import {appAttestationHeaders} from './appAttestation';
 import { auth } from './firebase';
 
 export type WatchlistTargetType = 'ip' | 'domain' | 'email' | 'phone';
@@ -120,7 +121,7 @@ export async function fetchWatchlistState(): Promise<WatchlistStateResponse> {
   const res = await fetch(endpoint, {
     method: 'GET',
     headers: {
-      'Authorization': `Bearer ${idToken}`,
+      ...(await appAttestationHeaders()), 'Authorization': `Bearer ${idToken}`,
       'Accept': 'application/json',
     },
   });
@@ -150,7 +151,7 @@ export async function syncWatchlist(targets: SyncTargetInput[], revision?: numbe
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${idToken}`,
+      ...(await appAttestationHeaders()), 'Authorization': `Bearer ${idToken}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
@@ -183,7 +184,7 @@ export async function sweepWatchlistNow(): Promise<SweepResult> {
   const res = await fetch(endpoint, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${idToken}`,
+      ...(await appAttestationHeaders()), 'Authorization': `Bearer ${idToken}`,
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },

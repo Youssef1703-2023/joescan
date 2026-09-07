@@ -1,3 +1,4 @@
+vi.mock('./appAttestation', () => ({appAttestationHeaders:async()=>({'X-Firebase-AppCheck':'test-attestation'})}));
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({

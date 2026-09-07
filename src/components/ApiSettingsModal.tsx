@@ -3,25 +3,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Settings, X, Database, CheckCircle, BrainCircuit } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 
-interface ApiSettings {
-  provider: 'gemini' | 'groq' | 'grok';
-  geminiKey: string;
-  groqKey: string;
-  grokKey: string;
-}
-
-export const getApiSettings = (): ApiSettings => {
-  try {
-    const stored = localStorage.getItem('joe_api_settings');
-    if (stored) return { geminiKey: '', ...JSON.parse(stored) };
-  } catch (e) {}
-  return { provider: 'gemini', geminiKey: '', groqKey: '', grokKey: '' };
-};
-
-export const saveApiSettings = (settings: ApiSettings) => {
-  localStorage.setItem('joe_api_settings', JSON.stringify(settings));
-  window.dispatchEvent(new Event('api_settings_changed'));
-};
+import {auth} from '../lib/firebase';
+import {readPrivateSettings,writePrivateSettings,type ApiSettings} from '../lib/privateSession';
+export const getApiSettings=():ApiSettings=>readPrivateSettings(auth.currentUser?.uid||null);
+export const saveApiSettings=(settings:ApiSettings)=>{writePrivateSettings(auth.currentUser?.uid||null,settings);window.dispatchEvent(new Event('api_settings_changed'));};
 
 interface ApiSettingsModalProps {
   isOpen: boolean;
@@ -77,7 +62,7 @@ export default function ApiSettingsModal({ isOpen, onClose }: ApiSettingsModalPr
 
           <div className="p-6 space-y-6">
             <p className="text-sm opacity-80 leading-relaxed">
-              {t('api_settings_desc')}
+              Custom keys stay in memory for this signed-in session only. They are cleared when you sign out or reload.
             </p>
 
             <div className="space-y-4">

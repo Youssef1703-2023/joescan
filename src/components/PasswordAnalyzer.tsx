@@ -3,6 +3,7 @@ import { serverTimestamp } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 import { saveScan } from '../lib/webhooks';
 import { PASSWORD_SCAN_TARGET } from '../lib/scanLabels';
+import { generateSecurePassword } from '../lib/securePassword';
 import { useLanguage } from '../contexts/LanguageContext';
 import { KeyRound, Loader2, ShieldCheck, AlertTriangle, ArrowRight, RefreshCw, X, ShieldAlert, Settings2, Check, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -57,35 +58,13 @@ export default function PasswordAnalyzer() {
   const passedPatterns = password.length > 0 && !hasPatterns;
 
   const generatePassword = () => {
-    let chars = "";
-    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    const lower = "abcdefghijklmnopqrstuvwxyz";
-    const nums = "0123456789";
-    const spec = "!@#$%^&*()_+~`|}{[]:;?><,./-=";
-    
-    if (genUpper) chars += upper;
-    if (genLower) chars += lower;
-    if (genNum) chars += nums;
-    if (genSym) chars += spec;
-    
-    if (chars === "") {
-      chars = lower;
-      setGenLower(true);
+    try {
+      const generated=generateSecurePassword({length:genLength,upper:genUpper,lower:genLower,numbers:genNum,symbols:genSym});
+      if(!genUpper&&!genLower&&!genNum&&!genSym)setGenLower(true);
+      setPassword(generated);
+    } catch {
+      setError('Secure password generation is unavailable. Please use an updated browser over HTTPS.');
     }
-
-    let pass = "";
-    if (genUpper) pass += upper[Math.floor(Math.random() * upper.length)];
-    if (genLower) pass += lower[Math.floor(Math.random() * lower.length)];
-    if (genNum) pass += nums[Math.floor(Math.random() * nums.length)];
-    if (genSym) pass += spec[Math.floor(Math.random() * spec.length)];
-    
-    const remainingLength = Math.max(0, genLength - pass.length);
-    for(let i=0; i<remainingLength; i++) {
-        pass += chars[Math.floor(Math.random() * chars.length)];
-    }
-    
-    pass = pass.split('').sort(() => 0.5 - Math.random()).join('');
-    setPassword(pass);
   };
 
   let score = 0;
