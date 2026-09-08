@@ -1,300 +1,35 @@
+import {useEffect, useRef, useState, useCallback} from 'react';
 import publicTools from '../data/publicTools.json';
-import { motion } from 'motion/react';
-import { useLanguage } from '../contexts/LanguageContext';
-import {
-  Shield, Mail, KeyRound, Smartphone, Link as LinkIcon,
-  UserSearch, MessageSquareWarning, Wifi, ArrowRight,
-  Lock, Zap, Globe, ChevronDown, Fingerprint, Monitor
-} from 'lucide-react';
-import React, { useState } from 'react';
 import AuthModal from './AuthModal';
-
-interface LandingPageProps {
-  onLogin: () => void;
-  loading: boolean;
-}
-
-export default function LandingPage({ loading }: LandingPageProps) {
-  const { t, lang } = useLanguage();
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(new URLSearchParams(window.location.search).get("start") === "1");
-
-  const features = [
-    { icon: Mail, title: t('nav_email'), desc: t('landing_feat_email'), color: '#00ff00' },
-    { icon: KeyRound, title: t('nav_password'), desc: t('landing_feat_password'), color: '#00cc88' },
-    { icon: Smartphone, title: t('nav_phone'), desc: t('landing_feat_phone'), color: '#00aaff' },
-    { icon: LinkIcon, title: t('nav_url'), desc: t('landing_feat_url'), color: '#ff9f0a' },
-    { icon: UserSearch, title: t('nav_username'), desc: t('landing_feat_username'), color: '#a855f7' },
-    { icon: MessageSquareWarning, title: t('nav_message'), desc: t('landing_feat_message'), color: '#ef4444' },
-    { icon: Wifi, title: t('nav_ip'), desc: t('landing_feat_ip'), color: '#06b6d4' },
-    { icon: Globe, title: lang === 'ar' ? 'فحص الدومين' : 'Domain WHOIS', desc: lang === 'ar' ? 'استعلم عن بيانات تسجيل الدومين وسجلات DNS والموقع الجغرافي للسيرفر.' : 'Query domain registration data, DNS records, and server geolocation.', color: '#8b5cf6' },
-    { icon: Fingerprint, title: lang === 'ar' ? 'بصمة المتصفح' : 'Browser Fingerprint', desc: lang === 'ar' ? 'كشف البصمة المخفية لجهازك (مواصفات الهاردوير والسوفتوير) التي تستخدم في التتبع.' : 'Reveal your hidden device fingerprint (hardware/software specs) used for seamless tracking.', color: '#ec4899' },
-    { icon: Monitor, title: lang === 'ar' ? 'أمان الجهاز' : 'Device Security Check', desc: lang === 'ar' ? 'فحص البورتات المفتوحة وثغرات الشبكة (Shodan) وتقييم أمان المتصفح.' : 'Thoroughly scan your network exposure, open ports, and check public CVE databases via Shodan InternetDB.', color: '#10b981' },
-  ];
-
-  const stats = [
-    { value: String(features.length), label: t('landing_stat_tools') },
-    { value: 'HTTPS', label: lang === 'ar' ? 'اتصال مشفر' : 'Encrypted connection' },
-    { value: 'AI', label: t('landing_stat_ai') },
-    { value: 'Daily', label: lang === 'ar' ? 'حدود حسب الخطة' : 'Plan-based limits' },
-  ];
-
-  return (
-    <div className="min-h-screen flex flex-col relative" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      {/* Mesh Background */}
-      <div className="mesh-bg" />
-      <div className="grid-overlay" />
-
-      {/* ===== HERO SECTION ===== */}
-      <section className="relative z-10 flex flex-col items-center justify-center min-h-[85vh] px-6 py-20 text-center">
-        {/* Floating Shield */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-          className="relative mb-8"
-        >
-          <div className="w-28 h-28 md:w-36 md:h-36 rounded-full flex items-center justify-center relative">
-            {/* Outer Pulse Ring */}
-            <div className="absolute inset-0 rounded-full border-2 border-accent/30 animate-pulse-glow" />
-            <div className="absolute inset-2 rounded-full border border-accent/20" />
-            {/* Shield Icon */}
-            <img src="/icon-512.png" alt="JoeScan" className="w-16 h-16 md:w-24 md:h-24 drop-shadow-[0_0_25px_rgba(0,255,0,0.5)] rounded-2xl" />
-          </div>
-        </motion.div>
-
-        {/* Brand */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="flex items-center gap-1 mb-6"
-        >
-          <span className="font-mono text-5xl md:text-7xl font-light text-text-main tracking-tight" dir="ltr">JOE</span>
-          <span className="font-mono text-5xl md:text-7xl font-black text-accent tracking-tight" dir="ltr">SCAN</span>
-          <div className="w-2 h-2 md:w-3 md:h-3 bg-accent rounded-full ml-1 animate-pulse" />
-        </motion.div>
-
-        {/* Tagline */}
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.35 }}
-          className="text-xl md:text-3xl font-bold text-text-main max-w-2xl mb-4 leading-relaxed"
-        >
-          {t('landing_hero_title')}
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.45 }}
-          className="text-text-dim text-base md:text-lg max-w-xl mb-10 leading-relaxed"
-        >
-          {t('landing_hero_subtitle')}
-        </motion.p>
-
-        {/* CTA Button */}
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.55 }}
-          onClick={() => setIsAuthModalOpen(true)}
-          disabled={loading}
-          className="btn-glow px-10 py-4 text-base md:text-lg flex items-center gap-3 disabled:opacity-50"
-        >
-          {loading ? (
-            <div className="w-5 h-5 border-2 border-accent-fg/30 border-t-accent-fg rounded-full animate-spin" />
-          ) : (
-            <>
-              <Lock className="w-5 h-5" />
-              {t('landing_cta')}
-              <ArrowRight className="w-5 h-5" />
-            </>
-          )}
-        </motion.button>
-
-        {/* Scroll Indicator */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-          className="absolute bottom-8 flex flex-col items-center text-text-dim/50"
-        >
-          <span className="text-[10px] uppercase tracking-[0.3em] font-mono mb-2">{t('landing_scroll')}</span>
-          <ChevronDown className="w-5 h-5 animate-bounce" />
-        </motion.div>
-      </section>
-
-      {/* ===== STATS BAR ===== */}
-      <section className="relative z-10 w-full max-w-5xl mx-auto px-6">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.7 }}
-          className="glass-card grid grid-cols-2 md:grid-cols-4 divide-x divide-border-subtle"
-        >
-          {stats.map((stat, i) => (
-            <div key={i} className="p-6 md:p-8 text-center">
-              <div className="text-2xl md:text-3xl font-black font-mono text-accent mb-1">{stat.value}</div>
-              <div className="text-[11px] md:text-xs text-text-dim uppercase tracking-widest font-semibold">{stat.label}</div>
-            </div>
-          ))}
-        </motion.div>
-      </section>
-
-      {/* ===== FEATURES SECTION ===== */}
-      <section className="relative z-10 w-full max-w-6xl mx-auto px-6 py-24">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-3xl md:text-4xl font-bold text-text-main mb-4">
-            {t('landing_features_title')}
-          </h2>
-          <p className="text-text-dim max-w-lg mx-auto">
-            {t('landing_features_subtitle')}
-          </p>
-        </motion.div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {features.map((feat, i) => {
-            const Icon = feat.icon;
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-30px" }}
-                transition={{ duration: 0.5, delay: i * 0.08 }}
-                className="glass-card p-6 flex flex-col gap-4 group cursor-default"
-              >
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-                  style={{
-                    backgroundColor: `${feat.color}12`,
-                    boxShadow: `0 0 20px ${feat.color}10`,
-                  }}
-                >
-                  <Icon className="w-6 h-6" style={{ color: feat.color }} />
-                </div>
-                <div>
-                  <h3 className="font-bold text-text-main text-sm mb-1.5">{feat.title}</h3>
-                  <p className="text-text-dim text-xs leading-relaxed">{feat.desc}</p>
-                </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ===== TRUST / HOW IT WORKS ===== */}
-      <section className="relative z-10 w-full max-w-4xl mx-auto px-6 pb-24">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-14"
-        >
-          <h2 className="text-3xl md:text-4xl font-bold text-text-main mb-4">
-            {t('landing_how_title')}
-          </h2>
-        </motion.div>
-
-        <div className="flex flex-col md:flex-row gap-6 items-stretch">
-          {[
-            { step: '01', icon: Lock, title: t('landing_step1_title'), desc: t('landing_step1_desc') },
-            { step: '02', icon: Zap, title: t('landing_step2_title'), desc: t('landing_step2_desc') },
-            { step: '03', icon: Globe, title: t('landing_step3_title'), desc: t('landing_step3_desc') },
-          ].map((item, i) => {
-            const Icon = item.icon;
-            return (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.15 }}
-                className="glass-card p-8 flex-1 text-center flex flex-col items-center gap-4"
-              >
-                <div className="font-mono text-accent/40 text-5xl font-black">{item.step}</div>
-                <Icon className="w-8 h-8 text-accent" />
-                <h3 className="font-bold text-text-main text-lg">{item.title}</h3>
-                <p className="text-text-dim text-sm leading-relaxed">{item.desc}</p>
-              </motion.div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* ===== FINAL CTA ===== */}
-      <section className="relative z-10 w-full max-w-3xl mx-auto px-6 pb-20">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
-          className="glass-card border-gradient p-10 md:p-14 text-center"
-        >
-          <img src="/icon-512.png" alt="JoeScan" className="w-14 h-14 mx-auto mb-5 drop-shadow-[0_0_20px_rgba(0,255,0,0.4)] rounded-xl" />
-          <h2 className="text-2xl md:text-3xl font-bold text-text-main mb-3">
-            {t('landing_final_title')}
-          </h2>
-          <p className="text-text-dim mb-8 max-w-md mx-auto">
-            {t('landing_final_subtitle')}
-          </p>
-          <button
-            onClick={() => setIsAuthModalOpen(true)}
-            disabled={loading}
-            className="btn-glow px-10 py-4 text-base flex items-center gap-3 mx-auto disabled:opacity-50"
-          >
-            <Lock className="w-5 h-5" />
-            {t('landing_cta')}
-          </button>
-        </motion.div>
-      </section>
-
-      <section className="relative z-10 w-full max-w-6xl mx-auto px-6 pb-16" dir="ltr" lang="en">
-        <p className="text-xs font-mono tracking-widest text-accent mb-3">EXPLORE / TOOL GUIDES</p>
-        <h2 className="text-3xl font-bold text-text-main mb-4">Find the right check for your question.</h2>
-        <p className="text-text-dim mb-8">Read what each tool does, what it cannot tell you, and how it handles your data before you sign in.</p>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">{publicTools.map(tool => <a key={tool.slug} href={'/tools/'+tool.slug+'/'} className="glass-card p-6 hover:border-accent/50 transition-colors"><h3 className="font-bold text-text-main mb-2">{tool.title}</h3><p className="text-sm text-text-dim mb-4">{tool.description}</p><span className="text-accent text-sm">Explore this tool →</span></a>)}</div>
-        <a href="/tools/" className="inline-block text-accent font-semibold mt-6">View all tool guides →</a>
-      </section>
-      {/* ===== ABOUT & PRIVACY ===== */}
-      <section className="relative z-10 w-full max-w-5xl mx-auto px-6 pb-16" dir="ltr" lang="en">
-        <div className="glass-card grid grid-cols-1 md:grid-cols-2 gap-8 p-7 md:p-9">
-          <div>
-            <p className="text-xs font-mono tracking-widest text-accent mb-3">ABOUT / JOETECH</p>
-            <h2 className="text-xl font-bold text-text-main mb-3">Built by JoeTech. Made for people.</h2>
-            <p className="text-sm text-text-dim leading-relaxed mb-5">JoeScan brings cybersecurity and OSINT tools together to help you understand your exposure and decide what to do next.</p>
-            <a href="/about" className="text-sm font-semibold text-accent hover:underline">About JoeScan →</a>
-          </div>
-          <div className="border-t md:border-t-0 md:border-l border-border-subtle pt-7 md:pt-0 md:pl-8">
-            <p className="text-xs font-mono tracking-widest text-accent mb-3">PRIVACY &amp; DATA</p>
-            <h2 className="text-xl font-bold text-text-main mb-3">Know what happens to your data.</h2>
-            <p className="text-sm text-text-dim leading-relaxed mb-5">Learn what stays in your browser, which scan details are saved, when external services are used, and how to request deletion.</p>
-            <a href="/privacy" className="text-sm font-semibold text-accent hover:underline">Read our privacy policy →</a>
-          </div>
-        </div>
-      </section>
-
-      <footer className="relative z-10 border-t border-border-subtle px-6 py-6 text-center" dir="ltr" lang="en">
-        <nav aria-label="Information pages" className="flex justify-center gap-5 mb-3 text-sm text-text-dim">
-          <a href="/tools/" className="hover:text-accent">Tools</a>
-          <a href="/about" className="hover:text-accent">About</a>
-          <a href="/privacy" className="hover:text-accent">Privacy &amp; Data</a>
-          <a href="/terms.en" className="hover:text-accent">Terms</a>
-        </nav>
-        <p className="font-mono text-xs text-text-dim">JoeScan · A product of JoeTech</p>
-      </footer>
-
-      {/* Auth Modal */}
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
-    </div>
-  );
+import '../styles/video-landing.css';
+const cuts=[0,.24,.5,.76,1];
+const chapters=[
+  {label:'FOOTPRINT',eyebrow:'YOUR DIGITAL FOOTPRINT',title:'Your online life.',accent:'Look closer.',body:'Your email connects to a wider digital world. Take a closer look at the traces you leave behind.'},
+  {label:'CONNECTIONS',eyebrow:'FOLLOW THE SIGNAL',title:'Follow the signal.',accent:'Ask the right question.',body:'Start with a question about your email, password or a suspicious link. JoeScan brings the right tools together.'},
+  {label:'EVIDENCE',eyebrow:'LOOK AT THE EVIDENCE',title:'Bring the details',accent:'into focus.',body:'Look at the source, the data involved and the limits. No matches does not prove your data has never been exposed.'},
+  {label:'ACTION',eyebrow:'KNOW YOUR NEXT MOVE',title:'See the path.',accent:'Take your next step.',body:'Replace reused passwords, enable two-factor authentication and review your accounts. An assessment is a starting point.'},
+];
+export default function LandingPage({loading}:{onLogin:()=>void;loading:boolean}){
+ const [authOpen,setAuthOpen]=useState(new URLSearchParams(location.search).get('start')==='1');
+ const closeAuth=useCallback(()=>setAuthOpen(false),[]);
+ const [active,setActive]=useState(0),[failed,setFailed]=useState(false),[reduced,setReduced]=useState(false);
+ const journey=useRef<HTMLElement>(null),video=useRef<HTMLVideoElement>(null),copy=useRef<HTMLDivElement>(null),progress=useRef<HTMLDivElement>(null);
+ useEffect(()=>{const media=matchMedia('(prefers-reduced-motion: reduce)');let frame=0,target=0;const clamp=(n:number)=>Math.max(0,Math.min(1,n));const v=video.current!;
+ const seek=()=>{if(v.readyState<1||!Number.isFinite(v.duration)||v.seeking||media.matches)return;if(Math.abs(v.currentTime-target)>.025)v.currentTime=target};
+ const update=()=>{frame=0;if(!journey.current)return;const p=clamp(-journey.current.getBoundingClientRect().top/Math.max(1,journey.current.offsetHeight-innerHeight));const idx=Math.min(3,cuts.slice(1).findIndex(c=>p<c)<0?3:cuts.slice(1).findIndex(c=>p<c));setActive(idx);const local=(p-cuts[idx])/(cuts[idx+1]-cuts[idx]);const fi=idx===0?1:clamp(local/.14),fo=idx===3?1:clamp((1-local)/.14);copy.current?.style.setProperty('--scene-opacity',String(Math.min(fi,fo)));copy.current?.style.setProperty('--scene-y',((1-fi)*20-(1-fo)*12)+'px');progress.current?.querySelectorAll('button').forEach((b,i)=>b.style.setProperty('--fill',String(clamp((p-cuts[i])/(cuts[i+1]-cuts[i])))));target=Number.isFinite(v.duration)?p*Math.max(0,v.duration-.04):0;if(!media.matches)seek()};
+ const schedule=()=>{if(!frame)frame=requestAnimationFrame(update)};const preference=()=>{setReduced(media.matches);schedule()};preference();v.addEventListener('loadedmetadata',schedule);v.addEventListener('seeked',seek);addEventListener('scroll',schedule,{passive:true});addEventListener('resize',schedule);media.addEventListener('change',preference);return()=>{cancelAnimationFrame(frame);v.removeEventListener('loadedmetadata',schedule);v.removeEventListener('seeked',seek);removeEventListener('scroll',schedule);removeEventListener('resize',schedule);media.removeEventListener('change',preference)};
+ },[]);
+ const jump=(i:number)=>{const el=journey.current;if(el)scrollTo({top:el.getBoundingClientRect().top+scrollY+(el.offsetHeight-innerHeight)*(cuts[i]+.04),behavior:'instant'})};
+ return <div className={'video-landing'+(reduced||failed?' static':'')} lang="en" dir="ltr">
+ <a className="skip" href="#tools">Skip the visual journey</a>
+ <nav aria-label="Main navigation"><a className="landing-brand" href="/" aria-label="JoeScan home"><img src="/icon-192.png" alt="" width="34" height="34"/><b>JoeScan<small>A JOETECH PRODUCT</small></b></a><div className="nav-actions"><a href="#tools">Explore tools ↗</a><button className="login-button" disabled={loading} onClick={()=>setAuthOpen(true)}>Login ↗</button></div></nav>
+ <main><section className="journey" ref={journey} aria-label="Discover JoeScan"><div className="stage">
+ <video ref={video} id="journey-video" muted playsInline preload="auto" poster="/media/joescan-signal-poster.jpg" aria-hidden="true" src="/media/joescan-signal.mp4" onError={()=>setFailed(true)}/><div className="video-shade"/>
+ <div className="copy" ref={copy}>{chapters.map((c,i)=><section className="scene" key={c.label} hidden={!reduced&&!failed&&active!==i}><span className="kicker">0{i+1} / {c.eyebrow}</span>{i===0?<h1>{c.title}<br/><em>{c.accent}</em></h1>:<h2>{c.title}<br/><em>{c.accent}</em></h2>}<p>{c.body}</p>{(i===0||i===3)&&<a href="#tools" className="cta">{i===0?'Find your first check':'Explore all tools'} ↗</a>}</section>)}</div>
+ <p id="video-status">Scroll to continue ↓</p><div className="progress" ref={progress} aria-label="Journey chapters">{chapters.map((c,i)=><button key={c.label} onClick={()=>jump(i)} aria-current={active===i?'step':undefined}>0{i+1} / {c.label}</button>)}</div>
+ </div></section>
+ <section className="tools" id="tools"><span className="kicker">01 / CHOOSE YOUR FIRST CHECK</span><h2>A little insight.<br/><em>A clearer next step.</em></h2><p>Start with an email or password check, or explore the full toolkit. Every guide explains what the tool checks and where its limits are.</p><div className="links">{publicTools.slice(0,2).map((t,i)=><a key={t.slug} href={'/tools/'+t.slug+'/'}><div className={"tool-art tool-art-"+i} aria-hidden="true">{i===0?<><span className="art-orbit"/><span className="art-core">@</span><span className="art-dot"/></>:<><span className="art-orbit"/><span className="art-core">✳</span><span className="art-password">•••• ••••</span></>}</div><span className="tool-number">{String(i+1).padStart(2,'0')} / EXPLORE ↗</span><h3>{i===0?"Email exposure":"Password check"}</h3><small>{t.description}</small><span className="tool-open">Explore tool <span>↗</span></span></a>)}<a className="more-tools" href="/tools/"><div className="more-art" aria-hidden="true">{["↗","⌕","+","◎","#","⊞"].map(x=><span key={x}>{x}</span>)}</div><span className="tool-number">THE FULL TOOLKIT</span><h3>More ways<br/>to look closer.</h3><small>Discover all {publicTools.length} tools for cybersecurity and public-information research.</small><span className="more-tools-link">View all tools →</span></a></div></section>
+ <section className="end"><div><span>BUILT BY JOETECH</span><h2>Your next step<br/>starts here.</h2><p>Clear information. Honest boundaries. Practical action.</p></div><button className="login-button" onClick={()=>setAuthOpen(true)}>Get started ↗</button></section></main>
+ <footer>JOESCAN / A JOETECH PRODUCT · <a href="/about">About</a> · <a href="/privacy">Privacy & data</a> · <a href="/terms.en">Terms</a></footer><AuthModal isOpen={authOpen} onClose={closeAuth}/>
+ </div>;
 }

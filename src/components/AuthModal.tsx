@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Lock, X, ArrowRight, ShieldCheck, Zap, User, AlertCircle, CheckCircle2, Gift } from 'lucide-react';
 import { 
@@ -13,7 +13,7 @@ import {
 } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
 import { doc, setDoc, getDoc, getDocs, collection, query, where } from 'firebase/firestore';
-import { useLanguage } from '../contexts/LanguageContext';
+import '../styles/auth-experience.css';
 import { isDisposableEmail } from '../utils/disposableDomains';
 import { isMfaRequiredError, MfaChallenge } from './MfaGuard';
 import type { MultiFactorError } from 'firebase/auth';
@@ -26,13 +26,17 @@ interface AuthModalProps {
 }
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const { t, lang } = useLanguage();
+  const panelRef=useRef<HTMLDivElement>(null);
+  const [showPassword,setShowPassword]=useState(false);
+
+  const switchMode=(next:AuthMode)=>{setMode(next);setError('');setSuccessMsg('');setPassword('');setShowPassword(false);};
   const [mode, setMode] = useState<AuthMode>('login');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  useEffect(()=>{if(!isOpen)return;const previous=document.activeElement as HTMLElement;const overflow=document.body.style.overflow;document.body.style.overflow='hidden';const timer=setTimeout(()=>panelRef.current?.querySelector<HTMLButtonElement>('button')?.focus(),0);const key=(e:KeyboardEvent)=>{if(e.key==='Escape'&&!loading)onClose();if(e.key==='Tab'){const items=Array.from<HTMLElement>(panelRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]),input,a[href]')||[]).filter(el=>el.getClientRects().length);const first=items[0],last=items.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}};document.addEventListener('keydown',key);return()=>{clearTimeout(timer);document.body.style.overflow=overflow;document.removeEventListener('keydown',key);previous?.focus()};},[isOpen,onClose,loading]);
   const [successMsg, setSuccessMsg] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [mfaError, setMfaError] = useState<MultiFactorError | null>(null);
@@ -118,7 +122,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         }
         await sendPasswordResetEmail(auth, targetEmail);
         setSuccessMsg(`If an account exists for this address, a recovery email will be sent.`);
-        setTimeout(() => setMode('login'), 3000);
+
       }
     } catch (err: any) {
       console.error(err);
@@ -200,7 +204,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           }}
           onCancel={() => {
             setMfaError(null);
-            setError(null);
+            setError('');
             setLoading(false);
           }}
         />
@@ -208,198 +212,26 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     );
   }
 
-  const getUsernameIcon = () => {
-    switch (usernameStatus) {
-      case 'checking': return <Zap className="w-4 h-4 text-yellow-400 animate-pulse" />;
-      case 'available': return <CheckCircle2 className="w-4 h-4 text-accent" />;
-      case 'taken': return <AlertCircle className="w-4 h-4 text-error" />;
-      case 'invalid': return <AlertCircle className="w-4 h-4 text-orange-400" />;
-      default: return <User className="w-4 h-4 text-text-dim" />;
-    }
-  };
 
-  const getUsernameHint = () => {
-    switch (usernameStatus) {
-      case 'checking': return <span className="text-yellow-400 text-[10px] font-mono">Checking availability...</span>;
-      case 'available': return <span className="text-accent text-[10px] font-mono">✓ Valid display name</span>;
-      case 'taken': return <span className="text-error text-[10px] font-mono">✗ Username already taken</span>;
-      case 'invalid': return <span className="text-orange-400 text-[10px] font-mono">3-20 chars, letters/numbers/_ only</span>;
-      default: return null;
-    }
-  };
-
-  return (
-    <AnimatePresence>
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-      >
-        <motion.div 
-          initial={{ scale: 0.95, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.95, y: 20 }}
-          className="glass-card max-w-md w-full border-accent/30 flex flex-col overflow-hidden relative shadow-[0_0_50px_rgba(0,255,0,0.1)]"
-        >
-          {/* Header */}
-          <div className="flex justify-between items-center p-5 border-b border-border-subtle bg-bg-surface">
-             <div className="flex items-center gap-2 font-mono uppercase tracking-widest text-sm">
-                <ShieldCheck className="w-4 h-4 text-accent" />
-                {mode === 'login' ? 'System Login' : mode === 'signup' ? 'Request Clearance' : 'Password Recovery'}
-             </div>
-             <button onClick={onClose} className="text-text-dim hover:text-text-main hover:bg-bg-elevated p-1 rounded-md transition-colors">
-               <X className="w-5 h-5"/>
-             </button>
-          </div>
-
-          {/* Body */}
-          <form onSubmit={handleAuth} className="p-6 space-y-4">
-             {error && (
-               <div className="bg-error/10 border border-error/50 text-error p-3 rounded-lg text-xs font-mono mb-4">
-                 [ERROR] {error}
-               </div>
-             )}
-             {successMsg && (
-               <div className="bg-accent/10 border border-accent/50 text-accent p-3 rounded-lg text-xs font-mono mb-4">
-                 [SUCCESS] {successMsg}
-               </div>
-             )}
-
-             {/* Username field - for login and signup */}
-             {mode !== 'forgot_password' && (
-               <div className="space-y-1">
-                 <label className="text-[10px] font-mono tracking-widest text-text-dim uppercase">
-                   {mode === 'login' ? 'Email address' : 'Display name'}
-                 </label>
-                 <div className="relative">
-                   <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                     {mode === 'signup' ? getUsernameIcon() : <User className="w-4 h-4 text-text-dim" />}
-                   </div>
-                   <input 
-                     type="text" 
-                     value={username}
-                     onChange={e => setUsername(e.target.value.replace(/\s/g, ''))}
-                     required
-                     autoComplete="username"
-                     className={`w-full bg-bg-base border rounded-lg pl-10 pr-4 py-3 text-sm focus:border-accent outline-none font-mono transition-colors ${
-                       mode === 'signup' && usernameStatus === 'taken' ? 'border-error/60' : 
-                       mode === 'signup' && usernameStatus === 'available' ? 'border-accent/60' : 
-                       'border-border-subtle'
-                     }`}
-                     placeholder={mode === 'login' ? 'email address' : 'choose_display_name'}
-                     dir="ltr"
-                   />
-                 </div>
-                 {mode === 'signup' && getUsernameHint()}
-               </div>
-             )}
-
-             {/* Email field - only for signup and forgot password */}
-             {(mode === 'signup' || mode === 'forgot_password') && (
-               <div className="space-y-1">
-                 <label className="text-[10px] font-mono tracking-widest text-text-dim uppercase">
-                   {mode === 'forgot_password' ? 'Email address' : 'Operator Email'}
-                 </label>
-                 <div className="relative">
-                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
-                   <input 
-                     type={mode === 'forgot_password' ? 'text' : 'email'}
-                     value={mode === 'forgot_password' ? username : email}
-                     onChange={e => mode === 'forgot_password' ? setUsername(e.target.value) : setEmail(e.target.value)}
-                     required
-                     className="w-full bg-bg-base border border-border-subtle rounded-lg pl-10 pr-4 py-3 text-sm focus:border-accent outline-none font-mono"
-                     placeholder={mode === 'forgot_password' ? 'email address' : 'operator@joescan.cloud'}
-                     dir="ltr"
-                   />
-                 </div>
-               </div>
-             )}
-
-             {/* Password field */}
-             {mode !== 'forgot_password' && (
-               <div className="space-y-1 relative">
-                 <div className="flex justify-between items-end">
-                   <label className="text-[10px] font-mono tracking-widest text-text-dim uppercase">Security Key</label>
-                   {mode === 'login' && (
-                     <button type="button" onClick={() => setMode('forgot_password')} className="text-[10px] font-mono text-accent hover:underline uppercase">Forgot Key?</button>
-                   )}
-                 </div>
-                 <div className="relative">
-                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
-                   <input 
-                     type="password" 
-                     value={password}
-                     onChange={e => setPassword(e.target.value)}
-                     required
-                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                     className="w-full bg-bg-base border border-border-subtle rounded-lg pl-10 pr-4 py-3 text-sm focus:border-accent outline-none font-mono"
-                     placeholder="••••••••"
-                     dir="ltr"
-                   />
-                 </div>
-               </div>
-             )}
-
-             {/* Referral Code Field (Optional) */}
-             {mode === 'signup' && (
-               <div className="space-y-1 relative mt-2">
-                 <div className="flex justify-between items-end">
-                   <label className="text-[10px] font-mono tracking-widest text-text-dim uppercase">{lang === 'ar' ? 'كود الإحالة (اختياري)' : 'Referral Code (Optional)'}</label>
-                 </div>
-                 <div className="relative">
-                   <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-accent/50" />
-                   <input 
-                     type="text" 
-                     value={referralCode}
-                     onChange={e => setReferralCode(e.target.value)}
-                     className="w-full bg-bg-base border border-border-subtle rounded-lg pl-10 pr-4 py-3 text-sm focus:border-accent outline-none font-mono uppercase"
-                     placeholder="e.g. VIP-123"
-                     dir="ltr"
-                   />
-                 </div>
-               </div>
-             )}
-
-             <button 
-               type="submit" 
-               disabled={loading || (mode === 'signup' && usernameStatus === 'taken')}
-               className="w-full btn-glow py-3 rounded-lg flex items-center justify-center gap-2 mt-4 text-sm font-bold uppercase tracking-widest disabled:opacity-50"
-             >
-               {loading ? <Zap className="w-4 h-4 animate-pulse" /> : mode === 'login' ? 'Authenticate' : mode === 'signup' ? 'Establish Clearance' : 'Send Override Link'}
-               {!loading && <ArrowRight className="w-4 h-4" />}
-             </button>
-
-             {/* Divider */}
-             {mode !== 'forgot_password' && (
-                <>
-                  <div className="flex items-center gap-3 my-4 opacity-50">
-                    <div className="flex-1 h-px bg-border-main" />
-                    <span className="text-[10px] font-mono uppercase tracking-widest">OR SECURE LOGIN VIA</span>
-                    <div className="flex-1 h-px bg-border-main" />
-                  </div>
-                  <button 
-                    type="button" 
-                    onClick={handleGoogleAuth}
-                    disabled={loading}
-                    className="w-full py-3 bg-bg-base border border-border-subtle hover:border-accent/50 hover:bg-bg-elevated rounded-lg flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-widest transition-all"
-                  >
-                    Google Identity
-                  </button>
-                </>
-             )}
-          </form>
-
-          {/* Footer Toggle */}
-          <div className="p-4 border-t border-border-subtle bg-bg-surface text-center">
-             {mode === 'login' ? (
-                <p className="text-xs text-text-dim">No physical clearance? <button onClick={() => { setMode('signup'); setError(''); setSuccessMsg(''); }} className="text-accent hover:underline font-bold">Request Access</button></p>
-             ) : (
-                <p className="text-xs text-text-dim">Already have clearance? <button onClick={() => { setMode('login'); setError(''); setSuccessMsg(''); }} className="text-accent hover:underline font-bold">Authenticate Here</button></p>
-             )}
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
-  );
+  return <div className="auth-backdrop" lang="en" dir="ltr">
+    <div className="auth-panel" ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="auth-title">
+      <aside className="auth-story" aria-hidden="true"><span className="auth-brand">JOESCAN / JOETECH</span><div><span className="auth-eyebrow">A CLEARER PERSPECTIVE</span><h2>Your digital life.<br/><em>In focus.</em></h2><p>Understand your exposure.<br/>Make your next move count.</p></div><span className="auth-story-foot">EXPOSURE → CONTEXT → ACTION</span></aside>
+      <div className="auth-content"><button className="auth-close" onClick={onClose} disabled={loading} aria-label="Close sign in"><X size={20}/></button>
+      <span className="auth-eyebrow">{mode==='signup'?'YOUR NEXT CHAPTER':mode==='forgot_password'?'ACCOUNT RECOVERY':'WELCOME BACK'}</span>
+      <h2 id="auth-title">{mode==='login'?'Good to see you.':mode==='signup'?'Make it your space.':'Let’s get you back.'}</h2>
+      <p className="auth-intro">{mode==='login'?'Sign in to explore your tools and saved reports.':mode==='signup'?'Create your JoeScan account to start exploring.':'Enter your email and we’ll send a recovery link.'}</p>
+      {mode!=='forgot_password'&&<div className="auth-tabs"><button aria-pressed={mode==='login'} disabled={loading} onClick={()=>switchMode('login')}>Login</button><button aria-pressed={mode==='signup'} disabled={loading} onClick={()=>switchMode('signup')}>Create account</button></div>}
+      <form onSubmit={handleAuth}>
+      {error&&<p className="auth-message auth-error" role="alert">{error}</p>}{successMsg&&<p className="auth-message" role="status">{successMsg}</p>}
+      {mode==='signup'&&<label htmlFor="auth-name">Display name<input id="auth-name" value={username} onChange={e=>setUsername(e.target.value.replace(/\s/g,''))} required minLength={3} maxLength={20} pattern="[a-zA-Z0-9_]{3,20}" autoComplete="nickname" placeholder="Your display name"/><small>3–20 letters, numbers or underscores.</small></label>}
+      <label htmlFor="auth-email">Email address<input id="auth-email" type="email" autoComplete="email" required value={mode==='signup'?email:username} onChange={e=>mode==='signup'?setEmail(e.target.value):setUsername(e.target.value)} placeholder="you@example.com"/></label>
+      {mode!=='forgot_password'&&<label htmlFor="auth-password"><span className="auth-label-row">Password{mode==='login'&&<button type="button" disabled={loading} onClick={()=>switchMode('forgot_password')}>Forgot password?</button>}</span><span className="auth-password"><input id="auth-password" type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} required minLength={mode==='signup'?12:undefined} autoComplete={mode==='login'?'current-password':'new-password'} placeholder={mode==='signup'?'At least 12 characters':'Enter your password'}/><button type="button" aria-label={showPassword?'Hide password':'Show password'} aria-pressed={showPassword} onClick={()=>setShowPassword(!showPassword)}>{showPassword?'Hide':'Show'}</button></span></label>}
+      {mode==='signup'&&<details className="auth-referral"><summary>Have a referral code? <span>Optional</span></summary><label htmlFor="auth-referral">Referral code<input id="auth-referral" value={referralCode} onChange={e=>setReferralCode(e.target.value)} placeholder="Enter your code"/></label></details>}
+      <button className="auth-submit" type="submit" disabled={loading}>{loading?'Please wait…':mode==='login'?'Login':mode==='signup'?'Create account':'Send recovery link'}<ArrowRight size={17}/></button>
+      </form>
+      {mode!=='forgot_password'?<><div className="auth-divider"><span>or continue with</span></div><button className="auth-google" onClick={handleGoogleAuth} disabled={loading}><span aria-hidden="true">G</span>Continue with Google</button></>:<button className="auth-back" onClick={()=>switchMode('login')}>← Back to login</button>}
+      <p className="auth-legal">{mode==='signup'?'By creating an account, you agree to our ':'Learn about our '}<a href="/terms.en">Terms</a> and <a href="/privacy">Privacy & data policy</a>.</p>
+      </div>
+    </div>
+  </div>;
 }
