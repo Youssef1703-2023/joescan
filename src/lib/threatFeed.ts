@@ -40,7 +40,11 @@ export async function fetchThreatFeed(): Promise<ThreatFeedResponse> {
   const idToken = await user.getIdToken();
   const endpoint = proxyUrl.replace(/\/+$/, '') + '/threat-feed';
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
+  try {
   const res = await fetch(endpoint, {
+    signal: controller.signal,
     method: 'GET',
     headers: {
       ...(await appAttestationHeaders()), 'Authorization': `Bearer ${idToken}`,
@@ -53,5 +57,8 @@ export async function fetchThreatFeed(): Promise<ThreatFeedResponse> {
     throw new Error(errData.error || `Threat feed error (HTTP ${res.status})`);
   }
 
-  return (await res.json()) as ThreatFeedResponse;
+  const data = await res.json();
+  if (!data || !Array.isArray(data.indicators)) throw new Error('Threat feed returned an invalid response.');
+  return data as ThreatFeedResponse;
+  } finally { clearTimeout(timer); }
 }

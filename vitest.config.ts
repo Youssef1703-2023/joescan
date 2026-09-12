@@ -11,6 +11,6 @@ export default defineConfig({
     // duplicate test files from .claude/worktrees and failing on them.
     // workers/** has its own vitest.config.ts (Node environment for the
     // Cloudflare Worker); it must not run under this jsdom setup.
-    exclude: [...configDefaults.exclude, '**/.claude/**', 'workers/**'],
+    exclude: [...configDefaults.exclude, '**/.claude/**', 'workers/**', 'reports/**', 'design/**', '**/.tools/**', '.pages-deploy*/**'],
   },
 });

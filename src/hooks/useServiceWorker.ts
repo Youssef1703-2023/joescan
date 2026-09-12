@@ -1,3 +1,4 @@
+import {isLocalPreview} from '../lib/previewCache';
 import { useState, useEffect, useCallback } from 'react';
 
 export interface SWUpdateStatus {
@@ -23,7 +24,7 @@ export function useServiceWorker(): SWUpdateStatus {
 
   // Register SW on mount
   useEffect(() => {
-    if (!('serviceWorker' in navigator)) return;
+    if (isLocalPreview() || !('serviceWorker' in navigator)) return;
 
     navigator.serviceWorker.register('/sw.js').then((reg) => {
       setRegistration(reg);

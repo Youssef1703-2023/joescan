@@ -1,0 +1,12 @@
+import {render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
+import {it,expect,vi,afterEach} from 'vitest';
+const data=vi.hoisted(()=>({fail:false}));
+vi.mock('../contexts/LanguageContext',()=>({useLanguage:()=>({lang:'en',dir:'ltr'})}));
+vi.mock('./ThreatGlobe',()=>({default:()=> <div>Globe</div>}));
+vi.mock('../lib/threatFeed',()=>({fetchThreatFeed:vi.fn(async()=>{if(data.fail)throw Error('offline');return {source:'Test source',updatedAt:'2026-09-11T12:00:00Z',indicators:Array.from({length:35},(_,i)=>({id:String(i),ip:'192.0.2.'+i,malware:i%2?'Example A':'Example B',status:i%2?'online':'offline',country:'US',countryName:'United States',coordinates:[38,-97]}))}})}));
+import ThreatMap3D from './ThreatMap3D';
+import {fetchThreatFeed} from '../lib/threatFeed';
+afterEach(()=>{cleanup();data.fail=false;vi.clearAllMocks()});
+it('provides access to all indicators and filters consistently',async()=>{render(<ThreatMap3D/>);await screen.findByText('192.0.2.0');fireEvent.click(screen.getByLabelText('Next page'));fireEvent.click(screen.getByLabelText('Next page'));expect(screen.getByText('192.0.2.34')).toBeTruthy();fireEvent.change(screen.getByLabelText('Filter status'),{target:{value:'online'}});expect(screen.queryByText('192.0.2.0')).toBeNull();expect(screen.getByText('192.0.2.1')).toBeTruthy()});
+it('pauses rotation independently from refresh and retains data on failure',async()=>{render(<ThreatMap3D/>);await screen.findByText('192.0.2.0');fireEvent.click(screen.getByLabelText('Pause rotation'));expect(fetchThreatFeed).toHaveBeenCalledTimes(1);data.fail=true;fireEvent.click(screen.getByRole('button',{name:'Refresh feed'}));await screen.findByRole('alert');expect(screen.getByText('192.0.2.0')).toBeTruthy()});
+it('does not report zero threats as a successful failed fetch',async()=>{data.fail=true;render(<ThreatMap3D/>);await screen.findByRole('alert');expect(screen.getByText('The threat feed could not be loaded.')).toBeTruthy()});

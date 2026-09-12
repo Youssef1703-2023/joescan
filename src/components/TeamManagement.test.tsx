@@ -1,0 +1,22 @@
+import {render,screen,fireEvent,waitFor,cleanup} from '@testing-library/react';
+import {it,expect,vi,afterEach} from 'vitest';
+const state=vi.hoisted(()=>({records:[] as any[],tier:'enterprise',fail:false,add:vi.fn(),remove:vi.fn(),update:vi.fn()}));
+vi.mock('../lib/firebase',()=>({auth:{currentUser:{uid:'owner',email:'owner@example.com'}},db:{},getUserTier:async()=>state.tier,logActivity:vi.fn().mockResolvedValue(undefined)}));
+vi.mock('../contexts/LanguageContext',()=>({useLanguage:()=>({lang:'en',dir:'ltr',t:(key:string)=>({team_title:'Team Management',team_invite:'Invite Member',team_email_label:'Email address',team_role_label:'Role',team_role_owner:'Owner',team_role_analyst:'Analyst',team_role_viewer:'Viewer',team_owner:'Team Owner',team_cancel:'Cancel',team_enterprise_desc:'Team management requires an Enterprise subscription. Collaborate with up to 5 analysts in your security operations center.'}[key]||key)})}));
+vi.mock('firebase/firestore',()=>({collection:(_db:any,name:string)=>name,doc:(_db:any,col:string,id:string)=>id,where:(...args:any[])=>args,query:(col:string,...constraints:any[])=>({col,constraints}),getDocs:async(q:any)=>{expect(q.constraints).toContainEqual(['ownerId','==','owner']);if(state.fail)throw Error('offline');return {docs:state.records.map(r=>({id:r.id,data:()=>r}))}},addDoc:(...args:any[])=>state.add(...args),deleteDoc:(...args:any[])=>state.remove(...args),updateDoc:(...args:any[])=>state.update(...args)}));
+import TeamManagement from './TeamManagement';
+afterEach(()=>{cleanup();state.records=[];state.tier='enterprise';state.fail=false;vi.clearAllMocks()});
+it('shows an owner and empty team, then creates a pending invitation',async()=>{
+state.add.mockResolvedValue({id:'new'});render(<TeamManagement/>);await screen.findByText('Your next teammate starts here.');fireEvent.click(screen.getByRole('button',{name:'Invite Member'}));fireEvent.change(screen.getByLabelText('Email address'),{target:{value:'colleague@example.com'}});fireEvent.click(screen.getByLabelText('Viewer'));fireEvent.click(screen.getByRole('button',{name:'Create invitation'}));await screen.findByText('colleague@example.com');expect(state.add).toHaveBeenCalledWith('teams',expect.objectContaining({ownerId:'owner',memberEmail:'colleague@example.com',role:'viewer',status:'invited'}));
+});
+it('requires confirmation before removing a member',async()=>{
+state.records=[{id:'member',memberEmail:'colleague@example.com',role:'analyst',status:'joined'}];state.remove.mockResolvedValue(undefined);render(<TeamManagement/>);await screen.findByText('colleague@example.com');fireEvent.click(screen.getByRole('button',{name:'Remove colleague@example.com'}));expect(state.remove).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Confirm removal'}));await waitFor(()=>expect(state.remove).toHaveBeenCalledWith('member'));expect(screen.queryByText('colleague@example.com')).toBeNull();
+});
+it('keeps the previous role when saving fails',async()=>{
+state.records=[{id:'member',memberEmail:'colleague@example.com',role:'analyst',status:'joined'}];state.update.mockRejectedValue(Error('permission denied'));render(<TeamManagement/>);const role=await screen.findByLabelText('Role for colleague@example.com');fireEvent.change(role,{target:{value:'viewer'}});await screen.findByRole('alert');expect((role as HTMLSelectElement).value).toBe('analyst');
+});
+it('shows a failure instead of claiming an empty team',async()=>{state.fail=true;render(<TeamManagement/>);await screen.findByRole('alert');expect(screen.queryByText('Your next teammate starts here.')).toBeNull()});
+it('shows existing members and enforces five seats',async()=>{
+state.records=Array.from({length:5},(_,i)=>({id:String(i),memberEmail:['maya','alex','sam','noor','jordan'][i]+'@example.com',role:i%2?'viewer':'analyst',status:i%2?'invited':'joined',invitedAt:'2026-09-09T10:00:00Z'}));render(<TeamManagement/>);await screen.findByText('maya@example.com');expect((screen.getByRole('button',{name:'Invite Member'}) as HTMLButtonElement).disabled).toBe(true);fireEvent.change(screen.getByLabelText('Search members'),{target:{value:'maya'}});expect(screen.queryByText('alex@example.com')).toBeNull();expect(screen.getByText('maya@example.com')).toBeTruthy();
+});
+it('renders the plan requirement without member controls',async()=>{state.tier='free';render(<TeamManagement/>);await screen.findByRole('link',{name:'Explore plans'});expect(screen.queryByRole('button',{name:'Invite Member'})).toBeNull();});

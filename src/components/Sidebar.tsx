@@ -12,40 +12,9 @@ import { auth, getUserTier, SubscriptionTier, ADMIN_EMAIL } from '../lib/firebas
 import { Sparkles, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
-export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'phone' | 'url' | 'username' | 'message' | 'ip' | 'social' | 'domain' | 'fingerprint' | 'device_security' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'siem' | 'team' | 'threat_3d' | 'referral' | 'blog' | 'academy';
-
-// URL path <-> TabId mapping
-export const TAB_TO_PATH: Record<TabId, string> = {
-  dashboard: '/',
-  history: '/history',
-  watchlist: '/watchlist',
-  email: '/email-audit',
-  password: '/password-vault',
-  phone: '/phone-number',
-  url: '/suspicious-link',
-  username: '/osint-username',
-  message: '/message-phishing',
-  ip: '/ip-scan',
-  social: '/social-osint',
-  domain: '/domain-whois',
-  fingerprint: '/browser-fingerprint',
-  device_security: '/device-security',
-  pricing: '/pricing',
-  admin: '/admin',
-  threat_map: '/threat-map',
-  support: '/support',
-  api_keys: '/api-keys',
-  siem: '/siem-webhooks',
-  team: '/team',
-  threat_3d: '/threat-3d',
-  referral: '/referral',
-  blog: '/blog',
-  academy: '/academy',
-};
-
-export const PATH_TO_TAB: Record<string, TabId> = Object.fromEntries(
-  Object.entries(TAB_TO_PATH).map(([tab, path]) => [path, tab as TabId])
-) as Record<string, TabId>;
+import type {TabId} from '../lib/workspaceRoutes';
+export {TAB_TO_PATH,PATH_TO_TAB} from '../lib/workspaceRoutes';
+export type {TabId} from '../lib/workspaceRoutes';
 
 interface SidebarProps {
   activeTab: TabId;
@@ -90,8 +59,6 @@ export default function Sidebar({ activeTab, setActiveTab, isCollapsed, setIsCol
       items: [
         { id: 'email', icon: Mail, label: t('nav_email') },
         { id: 'password', icon: KeyRound, label: t('nav_password') },
-        { id: 'phone', icon: Smartphone, label: t('nav_phone') },
-        { id: 'username', icon: UserSearch, label: t('nav_username') },
       ]
     },
     {
@@ -99,16 +66,12 @@ export default function Sidebar({ activeTab, setActiveTab, isCollapsed, setIsCol
       items: [
         { id: 'url', icon: LinkIcon, label: t('nav_url') },
         { id: 'message', icon: MessageSquareWarning, label: t('nav_message') },
-        { id: 'ip', icon: Wifi, label: t('nav_ip') },
         { id: 'domain', icon: Globe, label: t('nav_domain') },
-        { id: 'fingerprint', icon: Fingerprint, label: t('nav_fingerprint') },
-        { id: 'device_security', icon: Monitor, label: t('nav_device_security') },
       ]
     },
     {
       title: lang === 'ar' ? 'التعليم والمجتمع' : 'ACADEMY & COMMUNITY',
       items: [
-        { id: 'academy', icon: GraduationCap, label: t('nav_academy') },
         { id: 'blog', icon: BookOpen, label: lang === 'ar' ? 'المدوّنة' : 'Blog' },
         { id: 'referral', icon: Gift, label: lang === 'ar' ? 'ادعِ أصحابك' : 'Refer Friends' },
       ]
@@ -116,7 +79,6 @@ export default function Sidebar({ activeTab, setActiveTab, isCollapsed, setIsCol
     ...((userTier === 'enterprise' || isAdmin) ? [{
       title: t('sidebar_enterprise'),
       items: [
-        { id: 'siem', icon: Webhook, label: 'SIEM / Webhooks' },
         { id: 'team', icon: Users, label: t('sidebar_team') },
         { id: 'threat_3d', icon: Globe, label: t('sidebar_threat_3d') },
       ]

@@ -1,58 +1,21 @@
-import { useEffect } from 'react';
+import {useEffect} from 'react';
+import type {TabId} from '../lib/workspaceRoutes';
 
-interface ShortcutMap {
-  [key: string]: string; // shortcut key -> tabId
-}
-
-const SHORTCUTS: ShortcutMap = {
-  'e': 'email',
-  'p': 'password',
-  'n': 'phone',        // phone Number
-  'u': 'username',
-  'l': 'url',          // Link
-  'm': 'message',
-  'i': 'ip',
-  'd': 'domain',
-  'f': 'fingerprint',
-  's': 'device_security', // Security
-  'h': 'history',
-  'w': 'watchlist',
-  'b': 'blog',
-  'a': 'academy',
-};
-
-interface Props {
-  onNavigate: (tabId: string) => void;
-  enabled: boolean;
-}
-
-/**
- * Global keyboard shortcuts:
- * Ctrl+Shift+<key> → Navigate to tool
- * Ctrl+K → Command Palette (handled separately)
- */
-export default function KeyboardShortcuts({ onNavigate, enabled }: Props) {
-  useEffect(() => {
-    if (!enabled) return;
-
-    const handler = (e: KeyboardEvent) => {
-      // Only handle Ctrl+Shift combinations
-      if (!e.ctrlKey || !e.shiftKey) return;
-      // Don't trigger in input/textarea
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-
-      const key = e.key.toLowerCase();
-      const tabId = SHORTCUTS[key];
-      if (tabId) {
-        e.preventDefault();
-        onNavigate(tabId);
-      }
-    };
-
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [onNavigate, enabled]);
-
-  return null; // invisible component
+const SHORTCUTS:Partial<Record<string,TabId>>={e:'email',p:'password',l:'url',m:'message',d:'domain',h:'history',w:'watchlist',b:'blog'};
+interface Props {onNavigate:(tab:TabId)=>void;allowedTabs:readonly TabId[];enabled:boolean}
+/** Ctrl+Shift+key opens an available tool. Ctrl/Cmd+K belongs to Signal Navigation. */
+export default function KeyboardShortcuts({onNavigate,allowedTabs,enabled}:Props){
+ useEffect(()=>{
+  if(!enabled)return;
+  const handle=(event:KeyboardEvent)=>{
+   if(event.defaultPrevented||!event.ctrlKey||!event.shiftKey||event.altKey||event.metaKey)return;
+   const target=event.target as HTMLElement|null;
+   if(target?.closest?.('input,textarea,select,[contenteditable="true"],[contenteditable=""]'))return;
+   if(document.querySelector('dialog[open],[role="dialog"][aria-modal="true"]'))return;
+   const tab=SHORTCUTS[event.key.toLowerCase()];
+   if(tab&&allowedTabs.includes(tab)){event.preventDefault();onNavigate(tab)}
+  };
+  window.addEventListener('keydown',handle);return()=>window.removeEventListener('keydown',handle);
+ },[enabled,allowedTabs,onNavigate]);
+ return null;
 }

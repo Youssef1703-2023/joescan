@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import '../styles/focus-watchlist.css';
 import { Target, Plus, Trash2, AlertTriangle, ShieldCheck, Activity, Globe, Mail, Smartphone, Wifi, RefreshCw, Clock, Info } from 'lucide-react';
 import { db, auth, getUserTier, SubscriptionTier } from '../lib/firebase';
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore';
@@ -39,7 +39,10 @@ const TIER_TARGET_LIMITS: Record<SubscriptionTier, number> = {
 };
 
 export default function Watchlist() {
-  const { lang, t } = useLanguage();
+  const { lang } = useLanguage();
+  const copy = (en: string, ar: string) => lang === 'ar' ? ar : en;
+  const [runtimeUnavailable, setRuntimeUnavailable] = useState(false);
+  const [search, setSearch] = useState('');
   const { notifications, addNotification } = useNotifications();
 
   const [targets, setTargets] = useState<WatchlistTarget[]>([]);
@@ -63,7 +66,7 @@ export default function Watchlist() {
   const processedFindingIdsRef = useRef<Set<string>>(new Set());
 
   const fetchWatchlist = async () => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) { setLoading(false); setErrorMessage('Sign in to view your watchlist.'); return; }
     setLoading(true);
     setErrorMessage('');
     try {
@@ -90,7 +93,7 @@ export default function Watchlist() {
           setLastSweptAt(new Date(doState.lastSweptAt));
         }
       } catch (doErr) {
-        console.warn('Could not fetch DO state, falling back to local metadata:', doErr);
+        setRuntimeUnavailable(true);
       }
 
       const doTargetsMap = new Map<string, any>();
@@ -317,337 +320,32 @@ export default function Watchlist() {
     }
   };
 
-  const renderStatusBadge = (target: WatchlistTarget) => {
-    if (target.type === 'email') {
-      return (
-        <div className="px-3 py-1 rounded flex items-center gap-1.5 text-[10px] font-mono tracking-wider uppercase font-medium bg-bg-elevated text-text-dim border border-border-subtle">
-          <Info className="w-3 h-3 text-text-dim" />
-          On Demand (Client)
-        </div>
-      );
-    }
 
-    if (target.type === 'phone') {
-      return (
-        <div className="px-3 py-1 rounded flex items-center gap-1.5 text-[10px] font-mono tracking-wider uppercase font-medium bg-bg-elevated text-text-dim border border-border-subtle">
-          <Info className="w-3 h-3 text-amber-500" />
-          Unsupported
-        </div>
-      );
-    }
-
-    switch (target.status) {
-      case 'threat_detected':
-        return (
-          <div className="px-3 py-1.5 rounded flex items-center gap-1.5 text-[10px] font-mono tracking-widest uppercase font-bold bg-error/10 text-error border border-error/50 glow-low-error">
-            <AlertTriangle className="w-3 h-3" />
-            Threat Detected
-          </div>
-        );
-      case 'baseline_established':
-        return (
-          <div className="px-3 py-1.5 rounded flex items-center gap-1.5 text-[10px] font-mono tracking-widest uppercase font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-            <ShieldCheck className="w-3 h-3" />
-            Baseline Set
-          </div>
-        );
-      case 'clean':
-      case 'monitoring':
-        return (
-          <div className="px-3 py-1.5 rounded flex items-center gap-1.5 text-[10px] font-mono tracking-widest uppercase font-bold bg-accent/10 text-accent border border-accent/20">
-            <ShieldCheck className="w-3 h-3" />
-            Clean / Monitored
-          </div>
-        );
-      case 'stale_unconfirmed':
-        return (
-          <div className="px-3 py-1.5 rounded flex items-center gap-1.5 text-[10px] font-mono tracking-widest uppercase font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30">
-            <Clock className="w-3 h-3" />
-            Lease Expired
-          </div>
-        );
-      case 'evaluating':
-      default:
-        return (
-          <div className="px-3 py-1.5 rounded flex items-center gap-1.5 text-[10px] font-mono tracking-widest uppercase font-bold bg-bg-elevated text-text-dim border border-border-subtle">
-            <RefreshCw className="w-3 h-3 animate-spin" />
-            Evaluating
-          </div>
-        );
-    }
+  const scheduled = (target: WatchlistTarget) => target.type === 'ip' || target.type === 'domain';
+  const statusLabel = (target: WatchlistTarget) => {
+    if (target.type === 'email') return copy('On demand', 'عند الطلب');
+    if (target.type === 'phone') return copy('Not supported', 'غير مدعوم');
+    if (runtimeUnavailable) return copy('Status unavailable', 'الحالة غير متاحة');
+    return ({threat_detected:copy('Needs attention','تحتاج مراجعة'),baseline_established:copy('Baseline recorded','تم تسجيل الحالة الأساسية'),clean:copy('No new findings','لا نتائج جديدة'),monitoring:copy('Monitoring','قيد المتابعة'),stale_unconfirmed:copy('Confirmation expired','انتهى التأكيد'),evaluating:copy('Awaiting check','بانتظار الفحص')} as Record<string,string>)[target.status] || copy('Not assessed','غير مُقيّم');
   };
-
-  return (
-    <div className="max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="workspace-heading overflow-hidden">
-        <div className="absolute right-0 top-0 w-64 h-64 bg-error/10 blur-[100px] rounded-full pointer-events-none" />
-        <div className="scan-heading-group relative z-10 gap-5">
-          <div className="w-20 h-20 rounded-2xl bg-bg-surface border border-border-subtle flex items-center justify-center shrink-0 relative">
-            <div className="absolute inset-0 rounded-2xl border border-error/50 animate-pulse-glow" style={{ animationDuration: '3s' }} />
-            <Target className="w-10 h-10 text-error" />
-          </div>
-          <div>
-            <h1 className="text-2xl md:text-3xl font-black mb-2" data-text={lang === 'ar' ? 'المراقبة المجدولة للتهديدات' : 'Scheduled Threat Watchlist'}>
-              {lang === 'ar' ? 'المراقبة المجدولة للتهديدات' : 'Scheduled Threat Watchlist'}
-            </h1>
-            <p className="text-text-dim max-w-xl text-sm leading-relaxed">
-              {lang === 'ar'
-                ? 'مسوحات يومية مجدولة لعناوين IP والنطاقات للكشف التلقائي عن المنافذ المفتوحة وتغيرات DNS وانتهاء الصلاحية. تفحص الإيميلات عند الطلب.'
-                : 'Automated daily scheduled sweeps for IP and domain assets to detect newly opened ports, DNS changes, and domain expiry. Email breach checks run on demand.'}
-            </p>
-          </div>
-        </div>
-
-        {/* Global Schedule State Badge */}
-        <div className="relative z-10 flex flex-col items-end gap-2 text-xs font-mono">
-          <div className="flex items-center gap-2 bg-bg-surface/80 border border-border-subtle px-3 py-1.5 rounded-lg text-text-dim">
-            <Clock className="w-3.5 h-3.5 text-accent" />
-            <span>Last Swept: {lastSweptAt ? lastSweptAt.toLocaleString() : 'Never checked'}</span>
-          </div>
-          <div className="text-[10px] text-text-dim">Schedule timezone: Africa/Cairo</div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Add Target Panel */}
-        <div className="glass-card p-6 h-fit sticky top-24">
-          <h3 className="font-mono text-xs uppercase tracking-widest text-text-dim mb-4">Command: Add Target</h3>
-          <form onSubmit={handleInitiateAdd} className="space-y-4">
-            <div className="space-y-1">
-              <label className="text-[10px] font-mono uppercase text-text-dim">{lang === 'ar' ? 'نوع الهدف' : 'Asset Type'}</label>
-              <select
-                value={newTargetType}
-                onChange={e => setNewTargetType(e.target.value as WatchlistTargetType)}
-                className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none"
-              >
-                <option value="ip">IPv4 Address (Scheduled Daily)</option>
-                <option value="domain">Domain Name (Scheduled Daily)</option>
-                <option value="email">Email Address (On-Demand Only)</option>
-                <option value="phone">Phone Number (Unsupported)</option>
-              </select>
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-[10px] font-mono uppercase text-text-dim">{lang === 'ar' ? 'البيانات' : 'Identifier'}</label>
-              <input
-                type="text"
-                required
-                value={newTargetValue}
-                onChange={e => setNewTargetValue(e.target.value)}
-                placeholder={newTargetType === 'ip' ? 'e.g. 192.168.1.1' : newTargetType === 'domain' ? 'e.g. example.com' : 'e.g. user@domain.com'}
-                className="w-full bg-bg-base border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent focus:ring-1 focus:ring-accent outline-none font-mono"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isAdding || !newTargetValue.trim()}
-              className="w-full btn-glow py-3 rounded-lg flex items-center justify-center gap-2 text-sm disabled:opacity-50"
-            >
-              <Plus className="w-4 h-4" /> {lang === 'ar' ? 'إضافة للمراقبة' : 'DEPLOY SENSOR'}
-            </button>
-          </form>
-        </div>
-
-        {/* Watchlist Grid */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex justify-between items-center mb-2 px-2">
-            <div className="flex items-center gap-2 text-xs font-mono text-text-dim tracking-widest">
-              <Activity className="w-4 h-4 text-accent animate-pulse" />
-              {targets.length} / {TIER_TARGET_LIMITS[userTier]} {lang === 'ar' ? 'أهداف نشطة' : 'ACTIVE SENSORS'} ({userTier.toUpperCase()})
-            </div>
-            <button
-              onClick={handleSweepNow}
-              disabled={isSweeping || loading}
-              className="flex items-center gap-2 text-xs font-mono hover:text-accent transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isSweeping ? 'animate-spin' : ''}`} />
-              {lang === 'ar' ? 'مسح الآن' : 'SWEEP ALL'}
-            </button>
-          </div>
-
-          {errorMessage && (
-            <div className="p-3 bg-error/10 border border-error/50 text-error text-xs rounded-lg font-mono">
-              {errorMessage}
-            </div>
-          )}
-
-          <AnimatePresence>
-            {targets.length === 0 && !loading && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-card p-12 flex flex-col items-center justify-center text-center opacity-60">
-                <Target className="w-16 h-16 text-text-dim mb-4" />
-                <p className="font-mono text-sm uppercase tracking-widest">{lang === 'ar' ? 'لا يوجد أهداف مراقبة' : 'Sensor Array Empty'}</p>
-                <p className="text-xs text-text-dim mt-2 max-w-sm">Deploy your first sensor by adding an asset to the watchlist.</p>
-              </motion.div>
-            )}
-
-            {targets.map(target => (
-              <motion.div
-                key={target.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className={`glass-card p-4 border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all duration-500 ${
-                  target.status === 'threat_detected'
-                    ? 'border-error shadow-[0_0_15px_rgba(255,0,0,0.15)] bg-error/5'
-                    : target.status === 'evaluating'
-                    ? 'border-accent/40 bg-accent/5'
-                    : 'border-border-subtle/50 hover:border-border-subtle'
-                }`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-bg-base border border-border-subtle flex items-center justify-center shrink-0">
-                    {getIcon(target.type)}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-sm">{target.value}</span>
-                      <span className="text-[9px] uppercase tracking-widest bg-bg-elevated px-1.5 py-0.5 rounded text-text-dim">{target.type}</span>
-                      {target.type === 'email' && (
-                        <span className="text-[9px] text-text-dim italic">(checked on demand, not scheduled)</span>
-                      )}
-                      {target.type === 'phone' && (
-                        <span className="text-[9px] text-amber-400 italic">(monitoring not supported)</span>
-                      )}
-                    </div>
-                    <div className="text-[10px] text-text-dim font-mono tracking-widest uppercase mt-1 flex flex-wrap items-center gap-3">
-                      <span>Checked: {target.lastChecked ? target.lastChecked.toLocaleString() : 'Never checked'}</span>
-                      {target.nextDueAt && (target.type === 'ip' || target.type === 'domain') && (
-                        <span>Next sweep: {new Date(target.nextDueAt).toLocaleTimeString()}</span>
-                      )}
-                      {target.threatDetails && (
-                        <span className={`normal-case tracking-normal truncate max-w-[280px] block border-l pl-2 ${target.status === 'threat_detected' ? 'text-error border-error/30' : 'text-text-dim border-border-subtle'}`}>
-                          {target.threatDetails}
-                        </span>
-                      )}
-                      {target.lastError && (
-                        <span className="text-amber-400 normal-case tracking-normal truncate max-w-[240px] block border-l border-amber-400/30 pl-2">
-                          Error: {target.lastError}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-4 w-full sm:w-auto mt-2 sm:mt-0 justify-between sm:justify-end border-t sm:border-none border-border-subtle pt-3 sm:pt-0">
-                  {/* Status Badge */}
-                  {renderStatusBadge(target)}
-
-                  <button onClick={() => handleDelete(target.id)} className="p-2 hover:bg-error/10 hover:text-error rounded transition-colors text-text-dim" title="Remove Sensor">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
-      </div>
-
-      {/* Schedule Configuration Modal */}
-      <AnimatePresence>
-        {isScheduleModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="glass-card max-w-md w-full p-6 relative overflow-hidden"
-            >
-              <div className="absolute top-0 left-0 w-full h-1 bg-accent/50" />
-              <h2 className="text-xl font-bold mb-2 font-mono uppercase tracking-widest flex items-center gap-2">
-                <Target className="w-5 h-5 text-accent" />
-                Configure Sweep Schedule
-              </h2>
-              <p className="text-sm text-text-dim mb-4">
-                Configure background sweep schedule for <span className="text-white font-bold">{newTargetValue}</span>.
-              </p>
-
-              {newTargetType === 'email' && (
-                <div className="mb-4 p-3 bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs rounded-lg">
-                  Notice: Email breach monitoring runs on-demand from your browser to preserve free-tier rate allowances. Background scheduled sweeps are not active for emails.
-                </div>
-              )}
-
-              {newTargetType === 'phone' && (
-                <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs rounded-lg">
-                  Notice: Automated phone monitoring is currently unsupported on the free tier.
-                </div>
-              )}
-
-              {(newTargetType === 'ip' || newTargetType === 'domain') && (
-                <div className="space-y-4">
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-mono uppercase text-text-dim">Frequency</label>
-                    <select
-                      value={scheduleFreq}
-                      onChange={e => setScheduleFreq(e.target.value as WatchlistFrequency)}
-                      className="w-full bg-bg-surface border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent outline-none"
-                    >
-                      <option value="daily">Daily Scheduled Sweep</option>
-                      <option value="weekly">Weekly Scheduled Sweep</option>
-                    </select>
-                  </div>
-
-                  <div className="flex gap-4">
-                    {scheduleFreq === 'weekly' && (
-                      <div className="space-y-1 flex-1">
-                        <label className="text-[10px] font-mono uppercase text-text-dim">Day</label>
-                        <select
-                          value={scheduleDay}
-                          onChange={e => setScheduleDay(e.target.value)}
-                          className="w-full bg-bg-surface border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent outline-none"
-                        >
-                          <option value="Monday">Monday</option>
-                          <option value="Wednesday">Wednesday</option>
-                          <option value="Friday">Friday</option>
-                          <option value="Sunday">Sunday</option>
-                        </select>
-                      </div>
-                    )}
-                    <div className="space-y-1 flex-1">
-                      <label className="text-[10px] font-mono uppercase text-text-dim">Time (Africa/Cairo)</label>
-                      <input
-                        type="time"
-                        value={scheduleTime}
-                        onChange={e => setScheduleTime(e.target.value)}
-                        className="w-full bg-bg-surface border border-border-subtle rounded-lg px-4 py-3 text-sm focus:border-accent outline-none font-mono"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {errorMessage && (
-                <div className="mt-4 p-3 bg-error/10 border border-error/50 text-error text-xs rounded-lg font-mono">
-                  ERROR: {errorMessage}
-                </div>
-              )}
-
-              <div className="mt-8 flex gap-3">
-                <button
-                  onClick={() => setIsScheduleModalOpen(false)}
-                  className="flex-1 py-3 bg-bg-elevated text-text-main rounded-lg text-sm font-bold uppercase hover:bg-bg-surface transition-colors border border-border-subtle hover:border-text-dim"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={confirmAddTarget}
-                  disabled={isAdding}
-                  className="flex-1 btn-glow py-3 rounded-lg text-sm font-bold uppercase disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isAdding ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Confirm Deploy'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
+  const date = (value: Date | null) => value ? value.toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-GB', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Africa/Cairo'}) : copy('Not checked yet','لم يُفحص بعد');
+  const visibleTargets = targets.filter(target => target.value.toLowerCase().includes(search.toLowerCase()));
+  const addingScheduled = newTargetType === 'ip' || newTargetType === 'domain';
+  const busy = loading || isSweeping || isAdding;
+  return <section className="focus-watchlist" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <header className="fw-header"><div><span className="fw-eyebrow">JOESCAN / {copy('YOUR WORKSPACE','مساحة عملك')}</span><h1>{copy('Live watchlist.','قائمة المتابعة.')}</h1><p>{copy('Keep an eye on what matters. Review changes to your IP addresses and domains in one place.','تابع ما يهمك. راجع التغييرات في عناوين IP والنطاقات من مكان واحد.')}</p></div><button className="fw-secondary" onClick={fetchWatchlist} disabled={busy}><RefreshCw size={16}/>{copy('Refresh status','تحديث الحالة')}</button></header>
+    <div className="fw-summary"><div><span>{copy('Saved items','عناصر محفوظة')}</span><strong>{loading ? '—' : targets.length}<small>/ {TIER_TARGET_LIMITS[userTier]}</small></strong><p>{userTier} {copy('plan','خطة')}</p></div><div><span>{copy('Needs attention','تحتاج مراجعة')}</span><strong className="fw-warm">{loading || runtimeUnavailable ? '—' : targets.filter(t => t.status === 'threat_detected').length}</strong><p>{copy('Review the latest findings','راجع أحدث النتائج')}</p></div><div className="fw-last"><Clock size={21}/><div><span>{copy('Last sweep','آخر فحص')}</span><b>{runtimeUnavailable ? copy('Unavailable','غير متاح') : date(lastSweptAt)}</b><p>{copy('Schedule & times: Africa/Cairo','الجدولة والتوقيت: أفريقيا / القاهرة')}</p></div></div></div>
+    {errorMessage && <div className="fw-notice fw-error" role="alert">{errorMessage}</div>}
+    {runtimeUnavailable && <div className="fw-notice" role="status">{copy('Your saved items are available, but current monitoring status could not be retrieved. Refresh to try again.','عناصرك المحفوظة متاحة، لكن تعذر استرجاع حالة المتابعة الحالية. جرّب التحديث.')}</div>}
+    <div className="fw-layout"><aside className="fw-add"><div className="fw-add-icon"><Plus size={23}/></div><h2>{copy('Add to your watchlist','أضف لقائمة المتابعة')}</h2><p>{copy('Choose an item, then set how often to check it.','اختر عنصرًا، ثم حدد موعد فحصه.')}</p>
+      <form onSubmit={handleInitiateAdd}><label htmlFor="fw-type">{copy('Item type','نوع العنصر')}</label><select id="fw-type" disabled={isScheduleModalOpen || busy} value={newTargetType} onChange={e=>setNewTargetType(e.target.value as WatchlistTargetType)}><option value="ip">IPv4 address</option><option value="domain">Domain</option><option value="email">Email · On demand</option><option value="phone" disabled>Phone · Not supported</option></select><label htmlFor="fw-value">{copy('Address or identifier','العنوان أو المعرّف')}</label><input id="fw-value" type={newTargetType === 'email' ? 'email' : 'text'} required disabled={isScheduleModalOpen || busy} value={newTargetValue} onChange={e=>setNewTargetValue(e.target.value)} placeholder={newTargetType === 'ip' ? 'e.g. 8.8.8.8' : newTargetType === 'domain' ? 'e.g. example.com' : 'you@example.com'}/>
+      {!isScheduleModalOpen && <button className="fw-primary" disabled={busy || !newTargetValue.trim()} type="submit"><Plus size={16}/>{copy('Continue','متابعة')}</button>}</form>
+      {isScheduleModalOpen && <div className="fw-schedule"><h3>{addingScheduled ? copy('Choose your schedule','اختر الجدول') : copy('Save for on-demand checks','احفظ للفحص عند الطلب')}</h3>{addingScheduled ? <><label htmlFor="fw-frequency">{copy('Frequency','التكرار')}</label><select id="fw-frequency" disabled={isAdding} value={scheduleFreq} onChange={e=>setScheduleFreq(e.target.value as WatchlistFrequency)}><option value="daily">Daily</option><option value="weekly">Weekly</option></select>{scheduleFreq === 'weekly' && <><label htmlFor="fw-day">{copy('Day','اليوم')}</label><select id="fw-day" disabled={isAdding} value={scheduleDay} onChange={e=>setScheduleDay(e.target.value)}>{['Monday','Wednesday','Friday','Sunday'].map(day=><option key={day}>{day}</option>)}</select></>}<label htmlFor="fw-time">{copy('Time · Africa/Cairo','الوقت · أفريقيا / القاهرة')}</label><input id="fw-time" type="time" required disabled={isAdding} value={scheduleTime} onChange={e=>setScheduleTime(e.target.value)}/></> : <p>{copy('Email checks run on demand. Saving an email does not enable background monitoring.','فحص الإيميل يتم عند الطلب. حفظ الإيميل لا يفعّل متابعة في الخلفية.')}</p>}<div className="fw-confirm"><button className="fw-secondary" disabled={isAdding} onClick={()=>setIsScheduleModalOpen(false)}>{copy('Back','رجوع')}</button><button className="fw-primary" disabled={isAdding || (addingScheduled && !scheduleTime)} onClick={confirmAddTarget}>{isAdding ? copy('Saving…','جارٍ الحفظ…') : copy('Save item','حفظ العنصر')}</button></div></div>}
+      <div className="fw-explainer"><Info size={16}/><p>{copy('IP and domain checks can be scheduled. Emails are checked on demand; phone monitoring is not supported.','يمكن جدولة فحص IP والنطاقات. الإيميل يُفحص عند الطلب، ومتابعة الهاتف غير مدعومة.')}</p></div>
+    </aside><div className="fw-list"><div className="fw-list-heading"><div><h2>{copy('Your watchlist','قائمة متابعتك')}</h2><p>{copy('Changes worth a closer look.','تغييرات تستحق نظرة أقرب.')}</p></div><button className="fw-secondary" onClick={handleSweepNow} disabled={busy || !targets.some(scheduled)}><Activity size={16}/>{isSweeping ? copy('Checking…','جارٍ الفحص…') : copy('Check now','افحص الآن')}</button></div>
+      <input className="fw-search" aria-label={copy('Search watchlist','البحث في قائمة المتابعة')} placeholder={copy('Search your saved items…','ابحث في العناصر المحفوظة…')} value={search} onChange={e=>setSearch(e.target.value)}/>
+      {loading ? <div className="fw-empty" role="status"><RefreshCw size={28}/><h3>{copy('Loading your watchlist…','جارٍ تحميل القائمة…')}</h3></div> : !visibleTargets.length ? <div className="fw-empty"><Target size={35}/><h3>{errorMessage ? copy('Watchlist unavailable','القائمة غير متاحة') : search ? copy('No matching items','لا توجد عناصر مطابقة') : copy('Start with one important item.','ابدأ بعنصر يهمك.')}</h3><p>{errorMessage ? copy('Refresh status to try loading again.','حدّث الحالة لإعادة المحاولة.') : search ? copy('Try another address or clear your search.','جرّب عنوانًا آخر أو امسح البحث.') : copy('Add an IP address or domain to follow changes over time.','أضف عنوان IP أو نطاقًا لمتابعة التغييرات مع الوقت.')}</p></div> : visibleTargets.map(target=><article className={'fw-card ' + (target.status === 'threat_detected' && !runtimeUnavailable ? 'fw-attention' : '')} key={target.id}><div className="fw-card-head"><span className="fw-item-icon">{getIcon(target.type)}</span><div><h3 dir="auto">{target.value}</h3><span>{target.type.toUpperCase()} · {scheduled(target) ? (target.schedule?.frequency === 'weekly' ? copy('Weekly checks','فحوصات أسبوعية') : copy('Daily checks','فحوصات يومية')) : copy('Saved item','عنصر محفوظ')}</span></div><button aria-label={copy('Remove item: ','حذف العنصر: ') + target.value} disabled={busy} onClick={()=>handleDelete(target.id)}><Trash2 size={16}/></button></div><div className="fw-card-state"><span className="fw-badge">{statusLabel(target)}</span>{scheduled(target) && <span>{copy('Last checked: ','آخر فحص: ')}{runtimeUnavailable ? '—' : date(target.lastChecked)}</span>}</div>{scheduled(target) && !!target.nextDueAt && !runtimeUnavailable && <p className="fw-next">{copy('Next check: ','الفحص التالي: ')}{date(new Date(target.nextDueAt))}</p>}{target.type === 'email' && <p className="fw-next">{copy('On-demand checks only. No scheduled background monitoring.','فحص عند الطلب فقط. لا توجد متابعة مجدولة في الخلفية.')}</p>}{target.type === 'phone' && <p className="fw-next">{copy('Monitoring is not supported for this item.','المتابعة غير مدعومة لهذا العنصر.')}</p>}{target.threatDetails && <p className="fw-detail">{target.threatDetails}</p>}{target.lastError && <p className="fw-detail fw-warm">{copy('Last check issue: ','مشكلة آخر فحص: ')}{target.lastError}</p>}</article>)}
+      <p className="fw-footnote">{copy('Scheduled checks run periodically. An unchanged result is not a guarantee of security.','تُجرى الفحوصات المجدولة دوريًا. عدم تغير النتيجة ليس ضمانًا للأمان.')}</p>
+    </div></div>
+  </section>;
 }

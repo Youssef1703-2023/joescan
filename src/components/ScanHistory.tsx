@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { collection, query, where, orderBy, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { PASSWORD_SCAN_TARGET } from '../lib/scanLabels';
-import { motion, AnimatePresence } from 'motion/react';
+import '../styles/focus-history.css';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
   Database, Shield, Trash2, Download, Search, Filter,
@@ -24,6 +24,9 @@ export default function ScanHistory() {
   const { lang, t } = useLanguage();
   const [scans, setScans] = useState<ScanHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const copy = (en: string, ar: string) => lang === 'ar' ? ar : en;
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [riskFilter, setRiskFilter] = useState<string>('all');
@@ -57,7 +60,7 @@ export default function ScanHistory() {
 
       setScans(results);
     } catch (error) {
-      console.error('Error fetching history:', error);
+      setError(copy('Your history could not be loaded. Please try again.', 'تعذر تحميل السجل. حاول مرة أخرى.'));
     } finally {
       setLoading(false);
     }
@@ -74,7 +77,7 @@ export default function ScanHistory() {
 
     try {
       await deleteDoc(doc(db, 'scans', id));
-      setScans(scans.filter((scan) => scan.id !== id));
+      setScans(previous => previous.filter((scan) => scan.id !== id));
     } catch (error) {
       console.error('Error deleting document:', error);
     }
@@ -83,10 +86,11 @@ export default function ScanHistory() {
   const handleExportCSV = () => {
     if (scans.length === 0) return;
 
+    const cell = (value: unknown) => { const text = String(value ?? 'N/A'); return '"' + (/^[=+@\-\t\r]/.test(text) ? "'" : '') + text.replace(/"/g, '""') + '"'; };
     const headers = ['Type', 'Target', 'Risk Level', 'Score', 'Date'];
     const csvContent = [
       headers.join(','),
-      ...scans.map((scan) => `"${scan.type}","${scan.target}","${scan.riskLevel}","${scan.securityScore || 'N/A'}","${scan.createdAt.toLocaleString()}"`),
+      ...scans.map(scan => [scan.type, scan.target, scan.riskLevel || 'Unknown', scan.securityScore, scan.createdAt.toLocaleString()].map(cell).join(',')),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -97,6 +101,7 @@ export default function ScanHistory() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   const getIcon = (type: string) => {
@@ -130,211 +135,57 @@ export default function ScanHistory() {
     }
   };
 
-  const getRiskStyles = (risk: string) => {
-    switch (risk?.toUpperCase()) {
-      case 'HIGH': return 'bg-error/10 text-error border-error/20';
-      case 'MEDIUM': return 'bg-caution/10 text-caution border-caution/20';
-      case 'LOW': return 'bg-[#0f0]/10 text-[#0f0] border-[#0f0]/20';
-      default: return 'bg-border-subtle/50 text-text-dim border-border-subtle';
-    }
-  };
+  const risk = (scan: ScanHistory) => ['low','medium','high'].includes(scan.riskLevel?.toLowerCase()) ? scan.riskLevel.toLowerCase() : 'unknown';
 
   const filteredScans = scans.filter((scan) => {
     const matchesSearch = scan.target.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === 'all' || scan.type === typeFilter;
-    const matchesRisk = riskFilter === 'all' || (scan.riskLevel || 'low').toLowerCase() === riskFilter.toLowerCase();
+    const matchesRisk = riskFilter === 'all' || risk(scan) === riskFilter;
     return matchesSearch && matchesType && matchesRisk;
   });
 
-  const totalPages = Math.ceil(filteredScans.length / itemsPerPage);
-  const currentScans = filteredScans.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const filterTypes = ['all', 'email', 'password', 'phone', 'url', 'username', 'social_osint', 'message', 'ip', 'domain', 'browser_fingerprint'];
-  const filterRisks = ['all', 'low', 'medium', 'high'];
+  const totalPages = Math.max(1, Math.ceil(filteredScans.length / itemsPerPage));
+  const page = Math.min(currentPage, totalPages);
+  const currentScans = filteredScans.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const filterTypes = ['all', ...new Set(['email', 'password', 'url', ...scans.map(scan => scan.type)])];
+  const filterRisks = ['all', 'low', 'medium', 'high', 'unknown'];
 
+  const clearFilters = () => { setSearchQuery(''); setTypeFilter('all'); setRiskFilter('all'); setCurrentPage(1); };
+  const filtered = searchQuery !== '' || typeFilter !== 'all' || riskFilter !== 'all';
+  const riskLabel = (value: string) => value === 'unknown' ? copy('Not assessed', 'غير مُقيّم') : t(('status_badge_' + value) as never);
   return (
-    <div className="w-full flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="workspace-heading"
-      >
-        <div>
-          <h2 className="text-2xl font-bold flex items-center gap-3">
-            <Database className="w-6 h-6 text-accent" />
-            {t('scan_history_title')}
-          </h2>
-          <p className="text-text-dim mt-1 text-sm">{t('history_subtitle')}</p>
+    <section className="focus-history" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+      <header className="fh-heading">
+        <div><span className="fh-eyebrow">JOESCAN / {copy('YOUR WORKSPACE', 'مساحة عملك')}</span><h1>{copy('Scan history.', 'سجل الفحوصات.')}</h1><p>{copy('A clearer view of what you’ve checked. Pick up where you left off.', 'صورة أوضح لفحوصاتك السابقة. تابع من حيث توقفت.')}</p></div>
+        <button className="fh-export" onClick={handleExportCSV} disabled={loading || !scans.length}><Download size={16}/>{copy('Export all CSV', 'تصدير الكل CSV')}</button>
+      </header>
+      <div className="fh-overview">
+        <div><span>{copy('Saved checks', 'فحوصات محفوظة')}</span><strong>{loading || (error && !scans.length) ? '—' : scans.length}<small>{copy('in your history', 'في سجلك')}</small></strong></div>
+        <div><span>{copy('High risk findings', 'نتائج عالية الخطورة')}</span><strong className="fh-amber">{loading || (error && !scans.length) ? '—' : scans.filter(scan => risk(scan) === 'high').length}<small>{copy('worth reviewing', 'تستحق المراجعة')}</small></strong></div>
+        <div className="fh-private"><Shield size={23}/><div><b>{copy('Your checks. Your record.', 'فحوصاتك وسجلك.')}</b><p>{copy('Revisit a report or remove a saved check at any time.', 'راجع تقريرًا أو احذف فحصًا محفوظًا في أي وقت.')}</p></div></div>
+      </div>
+      <div className="fh-library">
+        <div className="fh-library-title"><h2>{copy('Your reports', 'تقاريرك')}</h2><span>{copy('Most recent first', 'الأحدث أولًا')}</span></div>
+        <div className="fh-filters">
+          <label className="fh-search"><Search size={18}/><input aria-label={copy('Search scans', 'البحث في الفحوصات')} placeholder={copy('Search an email, URL or target…', 'ابحث عن إيميل أو رابط أو هدف…')} value={searchQuery} onChange={e => {setSearchQuery(e.target.value);setCurrentPage(1)}} /></label>
+          <label className="fh-select"><Filter size={15}/><select aria-label={copy('Tool filter', 'تصفية الأداة')} value={typeFilter} onChange={e => {setTypeFilter(e.target.value);setCurrentPage(1)}}>{filterTypes.map(type => <option key={type} value={type}>{type === 'all' ? copy('All tools', 'كل الأدوات') : getTypeLabel(type)}</option>)}</select></label>
+          <select className="fh-risk-filter" aria-label={copy('Risk filter', 'تصفية الخطورة')} value={riskFilter} onChange={e => {setRiskFilter(e.target.value);setCurrentPage(1)}}>{filterRisks.map(value => <option key={value} value={value}>{value === 'all' ? copy('All risk levels', 'كل مستويات الخطورة') : riskLabel(value)}</option>)}</select>
         </div>
-        <button
-          onClick={handleExportCSV}
-          disabled={scans.length === 0}
-          className="btn-glow px-5 py-2 text-sm flex items-center gap-2 disabled:opacity-50 disabled:grayscale"
-        >
-          <Download className="w-4 h-4" />
-          {t('action_export')}
-        </button>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="glass-card p-4 flex flex-col md:flex-row gap-4 justify-between"
-      >
-        <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 text-text-dim absolute top-1/2 -translate-y-1/2 left-3 rtl:left-auto rtl:right-3" />
-          <input
-            type="text"
-            placeholder={t('search_scans')}
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-            className="w-full bg-bg-base border border-border-subtle rounded-lg py-2 pl-10 pr-4 rtl:pl-4 rtl:pr-10 focus:outline-none focus:border-accent/50 text-sm"
-          />
-        </div>
-
-        <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1">
-          <div className="flex items-center gap-2 bg-bg-base border border-border-subtle rounded-lg px-2">
-            <Filter className="w-3 h-3 text-text-dim" />
-            <select
-              value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-              className="bg-transparent border-none outline-none py-2 pr-4 text-sm font-medium cursor-pointer"
-            >
-              {filterTypes.map((typeOption) => (
-                <option key={typeOption} value={typeOption} className="bg-bg-base">
-                  {typeOption === 'all' ? t('filter_all') : getTypeLabel(typeOption)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <select
-            value={riskFilter}
-            onChange={(e) => { setRiskFilter(e.target.value); setCurrentPage(1); }}
-            className="bg-bg-base border border-border-subtle rounded-lg px-4 py-2 outline-none text-sm font-medium cursor-pointer"
-          >
-            {filterRisks.map((riskOption) => (
-              <option key={riskOption} value={riskOption} className="bg-bg-base">
-                {riskOption === 'all' ? t('filter_risk') : t(`status_badge_${riskOption}` as never)}
-              </option>
-            ))}
-          </select>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="glass-card overflow-hidden"
-      >
-        {loading ? (
-          <div className="p-16 flex justify-center text-text-dim">
-            <Shield className="w-10 h-10 animate-pulse" />
-          </div>
-        ) : filteredScans.length === 0 ? (
-          <div className="p-16 text-center text-text-dim flex flex-col items-center">
-            <Database className="w-12 h-12 mb-4 opacity-50" />
-            <p className="font-medium text-lg">{t('no_history_found')}</p>
-          </div>
-        ) : (
-          <div>
-            <div className="hidden md:grid grid-cols-12 gap-4 p-4 border-b border-border-subtle bg-bg-base/50 text-xs font-mono uppercase tracking-widest text-text-dim font-bold">
-              <div className="col-span-2">Type</div>
-              <div className="col-span-4">Target</div>
-              <div className="col-span-2">Risk</div>
-              <div className="col-span-2">Date</div>
-              <div className="col-span-2 text-right">Actions</div>
-            </div>
-
-            <div className="divide-y divide-border-subtle">
-              <AnimatePresence>
-                {currentScans.map((scan) => (
-                  <motion.div
-                    key={scan.id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="p-4 md:grid md:grid-cols-12 gap-4 items-center flex flex-col hover:bg-bg-base/50 transition-colors"
-                  >
-                    <div className="col-span-2 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-text-dim font-semibold self-start md:self-auto w-full md:w-auto mb-2 md:mb-0">
-                      <div className="p-1.5 bg-bg-elevated border border-border-subtle rounded shrink-0">
-                        {getIcon(scan.type)}
-                      </div>
-                      {getTypeLabel(scan.type)}
-                    </div>
-
-                    <div className="col-span-4 font-semibold text-sm break-all w-full md:w-auto mb-2 md:mb-0">
-                      {scan.type === 'password' ? '********' : scan.target}
-                    </div>
-
-                    <div className="col-span-2 flex items-center w-full md:w-auto mb-2 md:mb-0">
-                      <span className={`px-2.5 py-1 text-xs font-bold rounded border ${getRiskStyles(scan.riskLevel || 'Low')}`}>
-                        {t(`status_badge_${(scan.riskLevel || 'Low').toLowerCase()}` as never)}
-                      </span>
-                      {scan.securityScore !== undefined && (
-                        <span className="ml-2 text-xs font-mono opacity-70 border-l border-border-subtle pl-2">
-                          {scan.securityScore}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="col-span-2 text-xs text-text-dim w-full md:w-auto mb-2 md:mb-0 tabular-nums">
-                      {scan.createdAt.toLocaleDateString()}
-                    </div>
-
-                    <div className="col-span-2 flex justify-end gap-2 w-full md:w-auto border-t border-border-subtle md:border-none pt-3 md:pt-0">
-                      <button
-                        onClick={() => setSelectedReport(scan)}
-                        className="text-text-dim hover:text-accent hover:bg-accent/10 p-2 rounded-lg transition-colors border border-transparent hover:border-accent/20"
-                        title={lang === 'ar' ? 'تصدير تقرير' : 'Generate Dossier'}
-                      >
-                        <FileText className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(scan.id)}
-                        className="text-text-dim hover:text-error hover:bg-error/10 p-2 rounded-lg transition-colors border border-transparent hover:border-error/20"
-                        title={t('delete')}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </div>
-        )}
-      </motion.div>
-
-      {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-4 py-4">
-          <button
-            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
-            disabled={currentPage === 1}
-            className="p-2 glass-surface rounded-lg disabled:opacity-50 hover:bg-bg-elevated transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5 rtl:rotate-180" />
-          </button>
-          <span className="font-mono text-sm tracking-widest">
-            {currentPage} / {totalPages}
-          </span>
-          <button
-            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
-            disabled={currentPage === totalPages}
-            className="p-2 glass-surface rounded-lg disabled:opacity-50 hover:bg-bg-elevated transition-colors"
-          >
-            <ChevronRight className="w-5 h-5 rtl:rotate-180" />
-          </button>
-        </div>
-      )}
-      {/* Intelligence Report Modal */}
-      {selectedReport && (
-        <IntelligenceReport 
-          scan={selectedReport as any} 
-          onClose={() => setSelectedReport(null)} 
-        />
-      )}
-    </div>
+        {filtered && <div className="fh-filter-note"><span>{filteredScans.length} {copy('matching checks', 'فحوصات مطابقة')}</span><button onClick={clearFilters}>{copy('Clear filters', 'مسح الفلاتر')}</button></div>}
+        {error && <div className="fh-error" role="alert">{error}<button onClick={fetchScans}>{copy('Try again', 'حاول مجددًا')}</button></div>}
+        {loading ? <div className="fh-empty" role="status"><Database size={30}/><h3>{copy('Loading your history…', 'جارٍ تحميل سجلك…')}</h3></div> : !filteredScans.length ? <div className="fh-empty"><Database size={32}/><h3>{error ? copy('History unavailable', 'السجل غير متاح') : filtered ? copy('No matching checks', 'لا توجد فحوصات مطابقة') : copy('Your story starts with a check.', 'ابدأ بفحصك الأول.')}</h3><p>{error ? copy('Retry to retrieve your saved checks.', 'حاول مجددًا لاسترجاع فحوصاتك.') : filtered ? copy('Try another search or clear your filters.', 'جرّب بحثًا آخر أو امسح الفلاتر.') : copy('Your saved checks will appear here after you use a tool.', 'ستظهر فحوصاتك المحفوظة هنا بعد استخدام إحدى الأدوات.')}</p></div> : <>
+          <div className="fh-columns" aria-hidden="true"><span>{copy('CHECK / TARGET', 'الفحص / الهدف')}</span><span>{copy('RISK / SCORE', 'الخطورة / النتيجة')}</span><span>{copy('DATE', 'التاريخ')}</span><span>{copy('REPORT', 'التقرير')}</span></div>
+          <div className="fh-rows">{currentScans.map(scan => <article key={scan.id} className="fh-row">
+            <div className="fh-target"><span className="fh-icon">{getIcon(scan.type)}</span><div><b dir="auto">{scan.target}</b><span>{getTypeLabel(scan.type)}</span></div></div>
+            <div className="fh-risk"><span className={'fh-badge fh-' + risk(scan)}>{riskLabel(risk(scan))}</span>{typeof scan.securityScore === 'number' && <small>{scan.securityScore}<span> / 100</span></small>}</div>
+            <time dateTime={scan.createdAt.toISOString()}>{scan.createdAt.toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-GB', {day:'numeric', month:'short',year:'numeric'})}<small>{scan.createdAt.toLocaleTimeString(lang === 'ar' ? 'ar-EG' : 'en-GB', {hour:'2-digit',minute:'2-digit'})}</small></time>
+            <div className="fh-actions"><button onClick={() => setSelectedReport(scan)}><FileText size={15}/>{copy('Report', 'التقرير')}</button><button className="fh-delete" aria-label={copy('Delete check: ', 'حذف الفحص: ') + scan.target} disabled={deleting === scan.id} onClick={() => handleDelete(scan.id)}><Trash2 size={16}/></button></div>
+          </article>)}</div>
+        </>}
+        {!loading && filteredScans.length > 0 && <footer className="fh-pagination"><span>{copy('Showing', 'عرض')} {(page-1)*itemsPerPage+1}–{Math.min(page*itemsPerPage, filteredScans.length)} / {filteredScans.length}</span><div><button aria-label={copy('Previous page', 'الصفحة السابقة')} disabled={page === 1} onClick={() => setCurrentPage(page-1)}><ChevronLeft size={18}/></button><span>{page} / {totalPages}</span><button aria-label={copy('Next page', 'الصفحة التالية')} disabled={page === totalPages} onClick={() => setCurrentPage(page+1)}><ChevronRight size={18}/></button></div></footer>}
+      </div>
+      <p className="fh-footnote">{copy('Results reflect the information available at the time of each check.', 'تعكس النتائج المعلومات المتاحة وقت إجراء كل فحص.')}</p>
+      {selectedReport && <IntelligenceReport scan={selectedReport as any} onClose={() => setSelectedReport(null)}/>}
+    </section>
   );
 }

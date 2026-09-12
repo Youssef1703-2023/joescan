@@ -1,295 +1,53 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Lock, CheckCircle, Loader2, Shield, MessageCircle, Tag, Sparkles } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
-import { db, auth } from '../lib/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-
-interface CheckoutModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  planName: string;
-  price: string;
-  tier: 'pro' | 'enterprise';
-  onPaymentSuccess: (tier: 'pro' | 'enterprise') => Promise<void>;
-}
-
-export default function CheckoutModal({ isOpen, onClose, planName, price, tier, onPaymentSuccess }: CheckoutModalProps) {
-  const { dir } = useLanguage();
-  
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  
-  // Promo code state
-  const [promoCode, setPromoCode] = useState('');
-  const [promoLoading, setPromoLoading] = useState(false);
-  const [promoApplied, setPromoApplied] = useState<{ code: string; discount: number } | null>(null);
-  const [promoError, setPromoError] = useState('');
-
-  const handleApplyPromo = async () => {
-    if (!promoCode.trim()) return;
-    setPromoLoading(true);
-    setPromoError('');
-    setPromoApplied(null);
-    setError(null);
-
-    const user = auth.currentUser;
-    if (!user) {
-      setPromoError('Please sign in to your account before applying a promo code');
-      setPromoLoading(false);
-      return;
-    }
-
-    try {
-      const code = promoCode.toUpperCase().trim();
-      const promoRef = doc(db, 'promoCodes', code);
-      const promoSnap = await getDoc(promoRef);
-
-      if (!promoSnap.exists()) {
-        setPromoError('Invalid promo code');
-        setPromoLoading(false);
-        return;
-      }
-
-      const data = promoSnap.data();
-      
-      if (!data.active) {
-        setPromoError('This promo code has expired');
-        setPromoLoading(false);
-        return;
-      }
-
-      if (data.targetTier && data.targetTier !== tier && data.targetTier !== 'all') {
-        setPromoError(`This code is only valid for ${data.targetTier} plan`);
-        setPromoLoading(false);
-        return;
-      }
-
-      // If discount is 100%, submit subscription request to tierRequests
-      if (data.discount >= 100) {
-        setPromoApplied({ code, discount: 100 });
-        setIsProcessing(true);
-        try {
-          await setDoc(doc(db, 'tierRequests', `${user.uid}_subscription`), {
-            userId: user.uid,
-            kind: 'subscription',
-            status: 'pending',
-            tier,
-            promoCode: code,
-            createdAt: new Date().toISOString(),
-          });
-          setIsSuccess(true);
-        } catch (err: any) {
-          setError(err.message || 'Failed to submit subscription request');
-        }
-        setIsProcessing(false);
-      } else {
-        setPromoApplied({ code, discount: data.discount });
-      }
-    } catch (err) {
-      setPromoError('Failed to verify promo code');
-    }
-
-    setPromoLoading(false);
-  };
-
-  const getDiscountedPrice = () => {
-    if (!promoApplied) return price;
-    const numericPrice = parseFloat(price.replace(/[^\d.]/g, ''));
-    const discounted = numericPrice * (1 - promoApplied.discount / 100);
-    // Keep the same currency format
-    if (price.includes('EGP') || price.includes('ج.م')) {
-      return price.includes('EGP') ? `${Math.round(discounted)} EGP` : `${Math.round(discounted)} ج.م`;
-    }
-    return `$${discounted.toFixed(0)}`;
-  };
-
-  const handleWhatsApp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    const user = auth.currentUser;
-    if (!user) {
-      setError('Please sign in to your account first before subscribing.');
-      return;
-    }
-
-    setIsProcessing(true);
-    
-    try {
-      await setDoc(doc(db, 'tierRequests', `${user.uid}_subscription`), {
-        userId: user.uid,
-        kind: 'subscription',
-        status: 'pending',
-        tier,
-        ...(promoApplied?.code ? { promoCode: promoApplied.code } : {}),
-        createdAt: new Date().toISOString(),
-      });
-    } catch (err) {
-      console.warn('Subscription request record failed (may already exist):', err);
-    }
-
-    const phoneNumber = "201123343296";
-    const promoText = promoApplied ? ` (Promo: ${promoApplied.code} - ${promoApplied.discount}% off)` : '';
-    const finalPrice = promoApplied ? getDiscountedPrice() : price;
-    const message = `Hello JoeScan Team, I would like to subscribe to the ${planName} plan (${finalPrice}/month)${promoText}. Please let me know how to proceed with the payment.`;
-    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
-    
-    setTimeout(() => {
-      window.open(whatsappUrl, '_blank');
-      setIsProcessing(false);
-      onClose();
-    }, 500);
-  };
-
-  if (!isOpen) return null;
-
-  return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md" dir={dir}>
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="w-full max-w-lg bg-[#0a0a0a] border border-white/10 rounded-3xl shadow-2xl overflow-hidden relative"
-        >
-          {/* Close Button */}
-          <button onClick={onClose} disabled={isProcessing || isSuccess} className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/5 text-text-dim hover:text-white transition-colors z-20">
-            <X className="w-5 h-5" />
-          </button>
-
-          {/* Header */}
-          <div className="p-6 pb-0">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-accent/10 border border-accent/20 flex items-center justify-center">
-                <Shield className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <h2 className="text-lg font-black uppercase tracking-widest text-white">Upgrade to {planName}</h2>
-                <p className="text-xs text-text-dim font-mono">Select your payment method</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Price Display */}
-          <div className="px-6 py-4">
-            <div className="bg-bg-surface border border-border-subtle rounded-xl p-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs text-text-dim font-mono uppercase tracking-widest">Total Amount</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  {promoApplied ? (
-                    <>
-                      <span className="text-2xl font-black text-accent">{getDiscountedPrice()}</span>
-                      <span className="text-sm line-through text-text-dim/50">{price}</span>
-                      <span className="text-xs bg-accent/20 text-accent px-2 py-0.5 rounded-full font-bold">-{promoApplied.discount}%</span>
-                    </>
-                  ) : (
-                    <span className="text-2xl font-black text-accent">{price}</span>
-                  )}
-                  <span className="text-text-dim text-xs">/mo</span>
-                </div>
-              </div>
-              <Lock className="w-5 h-5 text-text-dim/30" />
-            </div>
-          </div>
-
-          {isSuccess ? (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex flex-col items-center justify-center py-10 px-6 text-center"
-            >
-              <div className="w-20 h-20 bg-accent/20 rounded-full flex items-center justify-center mb-4">
-                <CheckCircle className="w-10 h-10 text-accent" />
-              </div>
-              <h3 className="text-xl font-bold text-white mb-1">Request Submitted</h3>
-              <p className="text-text-dim text-sm max-w-sm">Your subscription request for {planName} has been submitted for review. Your tier will be activated upon verification.</p>
-              <button onClick={onClose} className="mt-6 px-8 py-3 bg-accent text-accent-fg font-bold uppercase tracking-widest rounded-xl text-sm">
-                Continue
-              </button>
-            </motion.div>
-          ) : (
-            <div className="px-6 pb-6 space-y-4">
-              {error && (
-                <div className="text-error text-sm bg-error/10 border border-error/20 p-3 rounded-xl flex items-center gap-2">
-                  <Shield className="w-4 h-4 shrink-0" /> {error}
-                </div>
-              )}
-
-              {/* ── Promo Code Section ── */}
-              <div className="bg-bg-surface border border-border-subtle rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Tag className="w-4 h-4 text-accent" />
-                  <span className="text-xs font-bold uppercase tracking-widest text-text-dim">Promo Code</span>
-                </div>
-                
-                {promoApplied ? (
-                  <div className="flex items-center gap-3 bg-accent/10 border border-accent/30 rounded-lg p-3">
-                    <Sparkles className="w-5 h-5 text-accent" />
-                    <div className="flex-1">
-                      <p className="text-sm font-bold text-accent">{promoApplied.code} Applied!</p>
-                      <p className="text-xs text-text-dim">{promoApplied.discount}% discount active</p>
-                    </div>
-                    <button 
-                      onClick={() => { setPromoApplied(null); setPromoCode(''); }}
-                      className="text-xs text-text-dim hover:text-white transition-colors"
-                    >
-                      Remove
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={promoCode}
-                      onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoError(''); }}
-                      placeholder="ENTER CODE"
-                      className="flex-1 bg-bg-base border border-border-subtle rounded-lg px-3 py-2.5 text-sm font-mono uppercase tracking-widest text-white placeholder:text-text-dim/40 focus:outline-none focus:border-accent/50 transition-colors"
-                    />
-                    <button
-                      onClick={handleApplyPromo}
-                      disabled={promoLoading || !promoCode.trim()}
-                      className="shrink-0 px-3 sm:px-4 py-2.5 bg-accent/10 border border-accent/30 text-accent font-bold uppercase text-xs tracking-widest rounded-lg hover:bg-accent/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {promoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Apply'}
-                    </button>
-                  </div>
-                )}
-                
-                {promoError && (
-                  <p className="text-error text-xs mt-2 font-mono">{promoError}</p>
-                )}
-              </div>
-
-              {/* ── WhatsApp Payment Button ── */}
-              <button 
-                onClick={handleWhatsApp}
-                disabled={isProcessing}
-                className="w-full min-h-[3.5rem] py-3 px-2 sm:px-4 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold uppercase tracking-wide text-xs sm:text-sm rounded-xl transition-all hover:scale-[1.02] flex items-center justify-center relative overflow-hidden group disabled:opacity-70 disabled:hover:scale-100"
-              >
-                <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                <span className="relative z-10 flex items-center justify-center gap-2 max-w-full">
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" /> Redirecting...
-                    </>
-                  ) : (
-                    <>
-                      <MessageCircle className="w-5 h-5 shrink-0" />
-                      <span className="truncate whitespace-normal text-center leading-snug">Pay {promoApplied ? getDiscountedPrice() : price} via WhatsApp</span>
-                    </>
-                  )}
-                </span>
-              </button>
-
-              <p className="text-center text-[10px] text-text-dim uppercase tracking-widest">
-                Contact our team to complete payment • Instant activation
-              </p>
-            </div>
-          )}
-        </motion.div>
-      </div>
-    </AnimatePresence>
-  );
+import React,{useEffect,useRef,useState} from 'react';
+import {motion,useReducedMotion} from 'motion/react';
+import {X,ShieldCheck,Check,Loader2,MessageCircle,ArrowUpRight,Tag,LockKeyhole} from 'lucide-react';
+import {useLanguage} from '../contexts/LanguageContext';
+import {db,auth} from '../lib/firebase';
+import {doc,getDoc,setDoc,collection,query,where,getDocs} from 'firebase/firestore';
+import '../styles/focus-billing.css';
+interface Props{isOpen:boolean;onClose:()=>void;planName:string;price:string;tier:'pro'|'enterprise';onRequestSubmitted?:()=>void}
+export default function CheckoutModal({isOpen,onClose,planName,price,tier,onRequestSubmitted}:Props){
+ const {dir,lang}=useLanguage(),copy=(en:string,ar:string)=>lang==='ar'?ar:en,reduced=useReducedMotion();
+ const [busy,setBusy]=useState(false),[submitted,setSubmitted]=useState(false),[error,setError]=useState(''),[promoCode,setPromoCode]=useState(''),[promoBusy,setPromoBusy]=useState(false),[promo,setPromo]=useState<{code:string;discount:number}|null>(null),[promoError,setPromoError]=useState('');
+ const dialog=useRef<HTMLDivElement>(null),lock=useRef(false),generation=useRef(0);
+ useEffect(()=>{generation.current++;setBusy(false);setSubmitted(false);setError('');setPromoCode('');setPromo(null);setPromoError('');setPromoBusy(false);lock.current=false},[isOpen,tier,price]);
+ useEffect(()=>{if(!isOpen)return;const previous=document.activeElement as HTMLElement,overflow=document.body.style.overflow;document.body.style.overflow='hidden';dialog.current?.focus();return()=>{generation.current++;document.body.style.overflow=overflow;previous?.focus()}},[isOpen]);
+ const value=Number(price.replace(/,/g,'').replace(/[^\d.]/g,''));
+ const amount=Number.isFinite(value)?value*(1-(promo?.discount||0)/100):0;
+ const finalPrice=!promo?price:(price.includes('EGP')||price.includes('ج.م'))?`${amount.toFixed(2).replace(/\.00$/,'')} ${price.includes('EGP')?'EGP':'ج.م'}`:`$${amount.toFixed(2).replace(/\.00$/,'')}`;
+ const message=`Hello JoeScan Team, I would like to subscribe to ${planName} (${finalPrice}/month).${promo?' Promo code: '+promo.code+'.':''} My subscription request has been submitted. Please confirm payment instructions and activation.`;
+ const whatsapp='https://wa.me/201123343296?text='+encodeURIComponent(message);
+ const applyPromo=async(e:React.FormEvent)=>{
+  e.preventDefault();if(lock.current||!promoCode.trim())return;const request=generation.current;setPromoError('');setError('');
+  const code=promoCode.trim().toUpperCase();if(!/^[A-Z0-9_-]{1,32}$/.test(code)){setPromoError(copy('Enter a valid promo code.','أدخل كود خصم صحيح.'));return;}
+  if(!auth.currentUser){setPromoError(copy('Sign in before applying a code.','سجّل الدخول قبل استخدام كود الخصم.'));return;}
+  lock.current=true;setPromoBusy(true);
+  try{const snapshot=await getDoc(doc(db,'promoCodes',code));if(request!==generation.current)return;const data=snapshot.exists()?snapshot.data():null;
+   if(!data||!data.active)throw Error(copy('This code is invalid or inactive.','الكود غير صحيح أو غير فعال.'));
+   if(data.targetTier&&data.targetTier!==tier&&data.targetTier!=='all')throw Error(copy('This code does not apply to this plan.','الكود غير متاح للباقة دي.'));
+   if(typeof data.discount!=='number'||!Number.isFinite(data.discount)||data.discount<=0||data.discount>100)throw Error(copy('The discount could not be verified.','تعذر التحقق من قيمة الخصم.'));
+   setPromo({code,discount:data.discount});
+  }catch(err){if(request===generation.current)setPromoError(err instanceof Error&&!('code' in err)?err.message:copy('Could not verify the promo code. Try again.','تعذر التحقق من الكود. حاول مرة أخرى.'))}
+  finally{if(request===generation.current){setPromoBusy(false);lock.current=false}}
+ };
+ const submit=async()=>{
+  if(lock.current||submitted)return;const user=auth.currentUser;if(!user){setError(copy('Please sign in first.','سجّل الدخول أولاً.'));return;}
+  const request=generation.current;lock.current=true;setBusy(true);setError('');
+  try{
+   const existing=await getDocs(query(collection(db,'tierRequests'),where('userId','==',user.uid)));
+   const prior=existing.docs.find(d=>d.id===`${user.uid}_subscription`);
+   if(prior){const data=prior.data();if(data.status!=='pending'||data.tier!==tier||(data.promoCode||'')!==(promo?.code||''))throw Error(copy('You already have a subscription request. Contact support to review or change it.','لديك طلب اشتراك مسجل بالفعل. تواصل مع الدعم لمراجعته أو تغييره.'));}
+   else await setDoc(doc(db,'tierRequests',`${user.uid}_subscription`),{userId:user.uid,kind:'subscription',status:'pending',tier,...(promo?{promoCode:promo.code}:{}),createdAt:new Date().toISOString()});
+   if(request!==generation.current)return;setSubmitted(true);onRequestSubmitted?.();
+  }catch(err){if(request===generation.current)setError(err instanceof Error&&!('code' in err)?err.message:copy('Your request could not be saved. Please retry.','تعذر حفظ طلبك. حاول مرة أخرى.'))}
+  finally{if(request===generation.current){setBusy(false);lock.current=false}}
+ };
+ if(!isOpen)return null;
+ return <div className="billing-overlay" dir={dir} onClick={e=>{if(e.target===e.currentTarget&&!busy&&!promoBusy)onClose()}}><motion.div ref={dialog} role="dialog" aria-modal="true" aria-labelledby="checkout-title" tabIndex={-1} className="billing-dialog" initial={{opacity:0,y:reduced?0:20,scale:reduced?1:.98}} animate={{opacity:1,y:0,scale:1}} transition={{duration:reduced?0:.3}} onKeyDown={e=>{if(e.key==='Escape'&&!busy&&!promoBusy)onClose();if(e.key==='Tab'){const nodes=Array.from(dialog.current?.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input:not([disabled]),[tabindex="0"]')||[]) as HTMLElement[];const first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&(document.activeElement===first||document.activeElement===dialog.current)){e.preventDefault();last?.focus()}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus()}}}}>
+ <button className="billing-close" aria-label={copy('Close checkout','إغلاق الدفع')} disabled={busy||promoBusy} onClick={onClose}><X size={20}/></button>
+ <aside className="billing-summary"><span className="billing-eyebrow">JOESCAN / MEMBERSHIP</span><div className="billing-orbit" aria-hidden="true"><ShieldCheck size={47}/><i/><i/></div><span className="billing-plan-label">{copy('YOUR SELECTED PLAN','الباقة المختارة')}</span><h2>{planName}</h2><div className="billing-price">{finalPrice}<small>{copy('/ month','/ شهر')}</small></div>{promo&&<p className="billing-discount"><s>{price}</s><span>−{promo.discount}%</span></p>}<dl><div><dt>{copy('Billing period','فترة الاشتراك')}</dt><dd>{copy('Monthly','شهري')}</dd></div><div><dt>{copy('Activation','التفعيل')}</dt><dd>{copy('After verification','بعد التحقق')}</dd></div></dl><p className="billing-note"><LockKeyhole size={14}/>{copy('No card details are collected here.','لا يتم جمع بيانات بطاقات الدفع هنا.')}</p></aside>
+ <section className="billing-content">{submitted?<div className="billing-success" role="status"><span><Check size={32}/></span><p className="billing-eyebrow">{copy('REQUEST SAVED','تم حفظ الطلب')}</p><h1 id="checkout-title">{copy('You’re one step closer.','باقي خطوة واحدة.')}</h1><p>{copy('Your subscription request is pending. Our team will verify payment or promo eligibility before activation.','طلب اشتراكك قيد المراجعة. سيتحقق الفريق من الدفع أو صلاحية العرض قبل التفعيل.')}</p>{promo?.discount===100?<button className="billing-primary" onClick={onClose}>{copy('Done','تم')}</button>:<a className="billing-primary" href={whatsapp} target="_blank" rel="noopener noreferrer"><MessageCircle size={18}/>{copy('Continue on WhatsApp','تابع عبر WhatsApp')}<ArrowUpRight size={17}/></a>}<small>{copy('Your plan has not been activated yet.','لم يتم تفعيل الباقة بعد.')}</small></div>:<><p className="billing-eyebrow">{copy('REVIEW & CONTINUE','راجع وتابع')}</p><h1 id="checkout-title">{copy('Your next chapter.','خطوتك الجاية.')}</h1><p className="billing-intro">{copy('Review your plan, apply a code, and request your subscription.','راجع الباقة، وأضف كود خصم لو عندك، ثم قدم طلب الاشتراك.')}</p><div className="billing-method"><MessageCircle size={23}/><div><strong>{copy('Arrange payment via WhatsApp','تنسيق الدفع عبر WhatsApp')}</strong><p>{copy('Our team confirms the payment method and amount.','الفريق يؤكد وسيلة الدفع والمبلغ معك.')}</p></div><Check size={17}/></div>
+ <div className="billing-promo"><label htmlFor="checkout-promo"><Tag size={15}/>{copy('Have a promo code?','عندك كود خصم؟')}</label>{promo?<div className="billing-applied"><span><Check size={15}/>{promo.code} · {promo.discount}%</span><button disabled={busy} onClick={()=>{setPromo(null);setPromoCode('')}}>{copy('Remove','إزالة')}</button></div>:<form onSubmit={applyPromo}><input id="checkout-promo" autoComplete="off" value={promoCode} maxLength={32} disabled={busy||promoBusy} onChange={e=>{setPromoCode(e.target.value.toUpperCase());setPromoError('')}} placeholder="ENTER CODE"/><button disabled={!promoCode.trim()||busy||promoBusy}>{promoBusy?<Loader2 size={15} className="animate-spin"/>:copy('Apply','تطبيق')}</button></form>}{promoError&&<p role="alert" className="billing-error">{promoError}</p>}</div>
+ <div className="billing-total"><span>{copy('Plan amount','قيمة الباقة')}</span><strong>{finalPrice}<small> / {copy('month','شهر')}</small></strong></div>{error&&<p className="billing-error" role="alert">{error}</p>}<button className="billing-primary" disabled={busy||promoBusy} onClick={submit}>{busy?<Loader2 size={17} className="animate-spin"/>:null}{busy?copy('Saving request…','جاري حفظ الطلب…'):copy('Request subscription','طلب اشتراك')}<ArrowUpRight size={17}/></button><p className="billing-terms">{copy('No charge is made by this button. Activation follows review.','هذا الزر لا يخصم أي مبلغ. التفعيل يتم بعد المراجعة.')} <a href="/terms.en" target="_blank" rel="noopener noreferrer">{copy('Terms','الشروط')}</a> · <a href="/privacy" target="_blank" rel="noopener noreferrer">{copy('Privacy','الخصوصية')}</a></p></>}</section>
+ </motion.div></div>;
 }

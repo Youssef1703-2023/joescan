@@ -333,7 +333,7 @@ In April 2025, a hacking group announced they had obtained a database containing
 - 🔐 Authentication tokens
 
 ### Is Your Account Affected?
-Use JoeScan's **Email Audit** tool to check if your email was part of the breach.
+Use JoeScan's **Email Check** tool to check if your email was part of the breach.
 
 ### What to Do Now
 1. **Change your TikTok password immediately**

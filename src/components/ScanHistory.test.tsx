@@ -1,137 +1,16 @@
-import React from 'react';
-// @ts-ignore - types resolved at test runtime by vitest
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {render,screen,fireEvent,waitFor} from '@testing-library/react';
+import {describe,it,expect,vi,beforeEach} from 'vitest';
+const state=vi.hoisted(()=>({records:[] as any[],fail:false,remove:vi.fn()}));
+vi.mock('../lib/firebase',()=>({auth:{currentUser:{uid:'owner'}},db:{}}));
+vi.mock('../contexts/LanguageContext',()=>({useLanguage:()=>({lang:'en',t:(key:string)=>key})}));
+vi.mock('firebase/firestore',()=>({collection:vi.fn(),where:vi.fn(),orderBy:vi.fn(),query:vi.fn(),doc:vi.fn(),deleteDoc:state.remove,getDocs:async()=>{if(state.fail)throw Error('offline');return {docs:state.records.map(r=>({id:r.id,data:()=>r}))}}}));
+vi.mock('./IntelligenceReport',()=>({default:({scan}:any)=><div role="dialog">{scan.target}</div>}));
 import ScanHistory from './ScanHistory';
-
-const mocks = vi.hoisted(() => ({
-  getDocs: vi.fn(),
-  createObjectURL: vi.fn(),
-}));
-
-vi.mock('firebase/firestore', () => ({
-  collection: vi.fn(() => 'scans'),
-  query: vi.fn(() => 'history-query'),
-  where: vi.fn(),
-  orderBy: vi.fn(),
-  getDocs: mocks.getDocs,
-  deleteDoc: vi.fn(),
-  doc: vi.fn(),
-}));
-
-vi.mock('../lib/firebase', () => ({
-  auth: { currentUser: { uid: 'user-1' } },
-  db: {},
-}));
-
-vi.mock('./IntelligenceReport', () => ({ default: () => null }));
-
-vi.mock('motion/react', () => ({
-  AnimatePresence: ({ children }: any) => <>{children}</>,
-  motion: new Proxy({}, {
-    get: () => ({ children, ...props }: any) => <div {...props}>{children}</div>,
-  }),
-}));
-
-vi.mock('../contexts/LanguageContext', () => ({
-  useLanguage: () => ({
-    lang: 'en',
-    t: (key: string) => ({
-      scan_history_title: 'Scan History',
-      history_subtitle: 'All your scans',
-      action_export: 'Export',
-      search_scans: 'Search scans',
-      filter_all: 'All',
-      filter_risk: 'Risk',
-      status_badge_low: 'Low',
-      status_badge_medium: 'Medium',
-      status_badge_high: 'High',
-      nav_email: 'Email',
-      nav_password: 'Password',
-      nav_phone: 'Phone',
-      nav_url: 'URL',
-      nav_username: 'Username',
-      nav_social: 'Social',
-      nav_message: 'Message',
-      nav_ip: 'IP',
-      no_history_found: 'No history found',
-      delete: 'Delete',
-    }[key] || key),
-  }),
-}));
-
-const LEGACY_PASSWORD_TARGET = 'Qz7...';
-
-function firestoreDoc(id: string, data: any) {
-  return { id, data: () => data };
-}
-
-async function blobToText(blob: Blob): Promise<string> {
-  if (typeof (blob as any).text === 'function') {
-    return await blob.text();
-  }
-  return await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsText(blob);
-  });
-}
-
-describe('ScanHistory CSV export (S01 leak guard)', () => {
-  let capturedBlob: Blob | null = null;
-
-  beforeAll(() => {
-    Object.defineProperty(URL, 'createObjectURL', {
-      configurable: true,
-      writable: true,
-      value: mocks.createObjectURL,
-    });
-  });
-
-  beforeEach(() => {
-    vi.clearAllMocks();
-    capturedBlob = null;
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    mocks.createObjectURL.mockImplementation((blob: Blob) => {
-      capturedBlob = blob;
-      return 'blob:mock-csv';
-    });
-    mocks.getDocs.mockResolvedValue({
-      docs: [
-        firestoreDoc('p1', {
-          type: 'password',
-          target: LEGACY_PASSWORD_TARGET,
-          riskLevel: 'High',
-          securityScore: 68,
-          createdAt: { toDate: () => new Date('2026-01-02T08:30:00Z') },
-        }),
-        firestoreDoc('e1', {
-          type: 'email',
-          target: 'victim@example.com',
-          riskLevel: 'Low',
-          createdAt: { toDate: () => new Date('2026-01-01T10:00:00Z') },
-        }),
-      ],
-    });
-  });
-
-  it('exports the constant label for password scans, including legacy records with a prefixed target', async () => {
-    const user = userEvent.setup();
-    render(<ScanHistory />);
-
-    expect(await screen.findByText('victim@example.com')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: /export/i }));
-
-    expect(capturedBlob).toBeInstanceOf(Blob);
-    const csv = await blobToText(capturedBlob as Blob);
-
-    expect(csv).toContain('"password","Password check"');
-    expect(csv).not.toContain(LEGACY_PASSWORD_TARGET);
-    expect(csv).not.toContain('Qz7');
-    expect(csv).toContain('"email","victim@example.com"');
-    expect(csv).toContain('Type,Target,Risk Level,Score,Date');
-  });
+beforeEach(()=>{state.records=[];state.fail=false;state.remove.mockReset();vi.spyOn(window,'confirm').mockReturnValue(true)});
+const record=(id:string,extra:any={})=>({id,type:'email',target:id+'@example.com',riskLevel:'High',createdAt:{toDate:()=>new Date('2026-09-08T10:00:00Z')},...extra});
+describe('Focus scan history',()=>{
+ it('distinguishes load failure from an empty history',async()=>{state.fail=true;render(<ScanHistory/>);expect(await screen.findByRole('alert')).toBeTruthy();expect(screen.queryByText('Your story starts with a check.')).toBeNull()});
+ it('combines search and risk filters without treating missing risk as low',async()=>{state.records=[record('alice'),record('bob',{riskLevel:undefined})];render(<ScanHistory/>);await screen.findByText('alice@example.com');fireEvent.change(screen.getByLabelText('Risk filter'),{target:{value:'unknown'}});expect(screen.queryByText('alice@example.com')).toBeNull();expect(screen.getByText('bob@example.com')).toBeTruthy();fireEvent.change(screen.getByLabelText('Search scans'),{target:{value:'alice'}});expect(screen.getByText('No matching checks')).toBeTruthy()});
+ it('keeps password targets redacted when opening reports',async()=>{state.records=[record('pwd',{type:'password',target:'legacy-secret'})];render(<ScanHistory/>);await screen.findByRole('button',{name:'Report'});expect(screen.queryByText('legacy-secret')).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Report'}));expect(screen.getByRole('dialog').textContent).not.toContain('legacy-secret')});
+ it('returns to the previous page when its last record is deleted',async()=>{state.records=Array.from({length:9},(_,i)=>record(String(i)));render(<ScanHistory/>);await screen.findByText('0@example.com');fireEvent.click(screen.getByLabelText('Next page'));fireEvent.click(screen.getByLabelText('Delete check: 8@example.com'));await waitFor(()=>expect(screen.getByText('0@example.com')).toBeTruthy());expect(state.remove).toHaveBeenCalledTimes(1)});
 });

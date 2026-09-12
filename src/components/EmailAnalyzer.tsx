@@ -1,3 +1,4 @@
+import '../styles/focus-email.css';
 import {appAttestationHeaders} from '../lib/appAttestation';
 import AdditionalEmailSource from './AdditionalEmailSource';
 import {fetchCombinedEmailExposure} from '../lib/combinedEmailExposure';
@@ -15,7 +16,6 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { generateReportPDF } from '../lib/generatePDF';
-import MiniHistory from './MiniHistory';
 
 interface ScanResult {
   id: string;
@@ -86,9 +86,9 @@ function normalizeEmail(rawEmail: string): string {
   return `${local}@${closestDomain}`;
 }
 
-export default function EmailAnalyzer() {
+export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={}) {
   const { lang, t } = useLanguage();
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(initialValue);
   const [loading, setLoading] = useState(false);
   const [scans, setScans] = useState<ScanResult[]>([]);
   const [activeScan, setActiveScan] = useState<ScanResult | null>(null);
@@ -452,16 +452,16 @@ export default function EmailAnalyzer() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto w-full min-w-0 flex flex-col gap-8 flex-1">
+    <div className="focus-email max-w-6xl mx-auto w-full min-w-0 flex flex-col gap-8 flex-1">
       {/* Top Input Area */}
-      <section className="relative isolate w-full rounded-[28px] border border-accent/15 bg-bg-surface px-4 py-8 sm:px-8 sm:py-12">
+      <section className="fe-hero">
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 rounded-[28px] bg-[radial-gradient(ellipse_at_top,rgba(0,255,0,0.08),transparent_65%)]" />
         <div className="mx-auto mb-5 flex w-fit items-center gap-2 rounded-full border border-accent/20 bg-accent/5 px-3 py-1.5 text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-accent">
-          <Mail className="h-3.5 w-3.5" /> Email exposure check
+          <Mail className="h-3.5 w-3.5" /> JOESCAN / EMAIL CHECK
         </div>
         <div className="mx-auto max-w-3xl text-center">
-        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-text-main leading-tight">A clearer picture of<br className="hidden sm:block" /> <span className="text-accent">your email exposure.</span></h1>
-        <p className="mx-auto mt-4 mb-8 max-w-xl text-text-dim text-sm sm:text-base leading-relaxed">Check your email against available breach data. Understand what was exposed and what to do next.</p>
+        <div className="fe-orbit" aria-hidden="true"><Mail size={30}/></div><h1>Email Check<span>Know where you stand.</span></h1>
+        <p className="mx-auto mt-4 mb-8 max-w-xl text-text-dim text-sm sm:text-base leading-relaxed">Check if your email appears in known data breaches. See the findings, understand their limits, and choose your next step.</p>
         </div>
         
         <div className="relative mx-auto w-full max-w-3xl">
@@ -523,9 +523,9 @@ export default function EmailAnalyzer() {
                 className="relative mt-4 bg-bg-base/70 border border-border-subtle rounded-2xl overflow-hidden"
               >
                 <div className="p-5 text-sm text-text-dim leading-relaxed">
-                  <h3 className="font-bold text-text-main mb-2">Data source: XposedOrNot</h3>
-                  <p>Analyze sends your email to XposedOrNot and, through JoeScan, LeakCheck Public. Returned metadata is combined in your saved report. Coverage varies and a failed source is reported.</p>
-                  <p className="mt-2">HIBP and other databases are not connected. No match means no match in this source, not a guarantee of safety.</p>
+                  <h3 className="font-bold text-text-main mb-2">Sources & coverage</h3>
+                  <p>Checking sends your email to XposedOrNot and, through JoeScan, LeakCheck Public. Returned metadata is combined in your saved report. Coverage varies and a failed source is reported.</p>
+                  <p className="mt-2">Have I Been Pwned is not connected. No match means no match in the checked sources, not a guarantee of safety.</p>
                   <a className="mt-3 inline-block text-accent underline" href="https://xposedornot.com/api_doc" target="_blank" rel="noopener noreferrer">About this data source</a>
                 </div>
               </motion.div>
@@ -547,7 +547,7 @@ export default function EmailAnalyzer() {
           )}
         </AnimatePresence>
 
-        <p className="mx-auto mt-4 max-w-3xl text-xs text-text-dim">Analyze checks XposedOrNot and LeakCheck Public using your email. Source metadata is saved with your report. <a href="/privacy" className="text-accent underline">Privacy policy</a></p>
+        <p className="mx-auto mt-4 max-w-3xl text-xs text-text-dim">This check uses XposedOrNot and LeakCheck Public using your email. Source metadata is saved with your report. <a href="/privacy" className="text-accent underline">Privacy policy</a></p>
         {error && <p role="alert" className="mx-auto max-w-3xl text-error text-sm mt-4 bg-error/10 border border-error/30 p-3 rounded-xl">{error}</p>}
         <div className="mx-auto mt-7 flex max-w-3xl flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border-subtle pt-5 text-[11px] text-text-dim">
           <span className="flex items-center gap-2"><Database className="h-3.5 w-3.5 text-accent/70" /> Available breach records</span>
@@ -556,9 +556,8 @@ export default function EmailAnalyzer() {
         </div>
       </section>
 
-      {activeScan && <AdditionalEmailSource email={activeScan.emailScanned} groups={activeScan.evidenceGroups || groupEmailEvidence(activeScan.breaches || [], null)} statuses={activeScan.sourceStatuses || (activeScan.assessmentVersion === 2 ? {xposedornot:'complete',leakcheck:'not checked in this historical scan'} : undefined)} />}
       {/* Main Content Area */}
-      <div className="flex flex-col xl:grid xl:grid-cols-[280px_minmax(0,1fr)] gap-6 flex-1 items-start">
+      <div className="fe-results flex flex-col xl:grid xl:grid-cols-[250px_minmax(0,1fr)] gap-6 flex-1 items-start">
         {/* Left Column: Risk Card and History */}
         <div className="w-full flex flex-col gap-6">
           {activeScan ? (
@@ -585,135 +584,31 @@ export default function EmailAnalyzer() {
               </div>
             </div>
           ) : (
-             <div className="bg-bg-surface rounded-xl p-8 border border-border-subtle flex items-center justify-center text-center w-full min-h-[300px]">
+             <div className="fe-no-report bg-bg-surface rounded-xl p-8 border border-border-subtle flex items-center justify-center text-center w-full">
                 <p className="text-text-dim">{t('no_report')}</p>
              </div>
           )}
 
-          {/* History */}
-          <div className="w-full">
-            <div className="flex items-center justify-between mb-3 px-1">
-              <h3 className="text-sm font-mono text-text-dim uppercase tracking-wider">{t('history_title')}</h3>
-              {scans.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleExportCsv}
-                    className="text-xs flex items-center gap-1.5 text-accent hover:text-accent-fg hover:bg-accent/20 px-2 py-1 rounded transition-colors"
-                  >
-                    <Download className="w-3 h-3" />
-                    {t('export_csv')}
+          {/* Previous checks */}
+          <section className="fe-history" aria-label="Previous scans">
+            <header><span className="fe-section-number">YOUR ACTIVITY</span><div><h3>{lang === 'ar' ? 'الفحوصات السابقة' : 'Previous scans'}</h3><span className="fe-history-count">{scans.length}</span></div></header>
+            {scans.length > 0 ? <>
+              <label className="fe-history-search"><Search size={14}/><input aria-label={t('search_history')} placeholder={t('search_history')} value={historySearchQuery} onChange={e=>setHistorySearchQuery(e.target.value)} dir="ltr"/></label>
+              <div className="fe-history-tools"><button onClick={handleExportCsv}><Download size={13}/>{t('export_csv')}</button><button onClick={handleClearAllScans}><Trash2 size={13}/>{t('clear_all')}</button></div>
+              {importantEmails.length > 0 && <div className="fe-saved-emails"><span><Star size={12}/>{t('saved_emails')}</span>{importantEmails.map(value=><div key={value}><button onClick={()=>{const match=scans.find(scan=>scan.emailScanned===value);if(match)setActiveScan(match);setEmail(value)}} title={value}>{value}</button><button aria-label={t('unsave_email') + ': ' + value} onClick={e=>toggleImportantEmail(e,value)}><X size={13}/></button></div>)}</div>}
+              <div className="fe-history-list">
+                {scans.filter(scan=>scan.emailScanned.toLowerCase().includes(historySearchQuery.toLowerCase())).map(scan=><article key={scan.id} className={'fe-history-card' + (activeScan?.id===scan.id ? ' is-selected' : '')}>
+                  <button className="fe-history-open" aria-pressed={activeScan?.id===scan.id} onClick={()=>setActiveScan(scan)}>
+                    <span className="fe-history-card-top"><Mail size={14}/><span>{activeScan?.id===scan.id ? (lang==='ar' ? 'التقرير المفتوح' : 'Viewing report') : (lang==='ar' ? 'فتح التقرير' : 'Open report')}</span><ArrowRight size={13}/></span>
+                    <strong dir="ltr">{scan.emailScanned}</strong>
+                    <span className="fe-history-meta"><span className={'fe-history-risk risk-' + scan.riskLevel?.toLowerCase()}>{scan.riskLevel || 'Not assessed'}</span><time>{scan.createdAt?.toDate ? new Date(scan.createdAt.toDate()).toLocaleString(lang,{dateStyle:'short',timeStyle:'short'}) : t('just_now')}</time></span>
                   </button>
-                  <button
-                    onClick={handleClearAllScans}
-                    className="text-xs flex items-center gap-1.5 text-error hover:text-error hover:bg-error/10 px-2 py-1 rounded transition-colors"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    {t('clear_all')}
-                  </button>
-                </div>
-              )}
-            </div>
-            {scans.length > 0 && (
-              <>
-                <div className="relative mb-3">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
-                  <input
-                    type="text"
-                    value={historySearchQuery}
-                    onChange={(e) => setHistorySearchQuery(e.target.value)}
-                    placeholder={t('search_history')}
-                    className="w-full bg-bg-surface border border-border-subtle pl-9 pr-4 py-2 rounded-lg text-text-main text-sm outline-none focus:border-accent transition-colors shadow-none"
-                    dir="ltr"
-                  />
-                </div>
-                {importantEmails.length > 0 && (
-                  <div className="mb-4 bg-bg-surface border border-border-subtle p-3 rounded-xl border-dashed">
-                    <h4 className="text-[10px] font-mono text-accent uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
-                      <Star className="w-3.5 h-3.5 fill-accent text-accent" /> {t('saved_emails')}
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
-                       {importantEmails.map(imEmail => {
-                         const scanForEmail = scans.find(s => s.emailScanned === imEmail);
-                         return (
-                           <button
-                             key={imEmail}
-                             onClick={() => {
-                               if (scanForEmail) setActiveScan(scanForEmail);
-                               setEmail(imEmail);
-                               window.scrollTo({ top: 0, behavior: 'smooth' });
-                             }}
-                             className="text-[10px] font-mono bg-accent/5 text-accent hover:bg-accent/20 border border-accent/20 px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors max-w-full"
-                             dir="ltr"
-                           >
-                             <span className="truncate">{imEmail}</span>
-                             <button
-                               onClick={(e) => { e.stopPropagation(); toggleImportantEmail(e, imEmail); }}
-                               className="hover:text-text-main text-text-dim transition-colors shrink-0 p-0.5"
-                               title={t('unsave_email')}
-                             >
-                                <X className="w-2.5 h-2.5" />
-                             </button>
-                           </button>
-                         )
-                       })}
-                    </div>
-                  </div>
-                )}
-                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                  {scans.filter(s => s.emailScanned.toLowerCase().includes(historySearchQuery.toLowerCase())).map(scan => (
-                    <div
-                      key={scan.id}
-                      onClick={() => setActiveScan(scan)}
-                      role="button"
-                      tabIndex={0}
-                    className={cn(
-                      "w-full text-start p-3 rounded-lg border transition-all flex flex-col gap-1.5 relative group cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-accent",
-                      activeScan?.id === scan.id 
-                        ? `bg-bg-surface border-[${getRiskColor(scan.riskLevel).hex}] shadow-[0_0_10px_rgba(0,0,0,0.5)]`
-                        : "bg-bg-base border-border-subtle hover:bg-bg-surface"
-                    )}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="font-mono text-xs text-text-main truncate w-full block text-left" dir="ltr">{scan.emailScanned}</span>
-                      <div className="flex items-center gap-1 shrink-0 ml-2">
-                        <button
-                          onClick={(e) => toggleImportantEmail(e, scan.emailScanned)}
-                          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity px-2 py-1 flex items-center justify-center gap-1 hover:bg-accent/10 rounded text-[10px] uppercase font-mono tracking-wider"
-                          title={importantEmails.includes(scan.emailScanned) ? t('unsave_email') : t('save_email')}
-                        >
-                           <Star className={cn("w-3 h-3 shrink-0", importantEmails.includes(scan.emailScanned) ? "text-accent fill-accent" : "text-text-dim")} />
-                           <span className={cn(importantEmails.includes(scan.emailScanned) ? "text-accent" : "text-text-dim")}>
-                              {importantEmails.includes(scan.emailScanned) ? t('saved_verb') : t('save_verb')}
-                           </span>
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteScan(e, scan.id)}
-                          className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity p-1.5 flex items-center justify-center hover:bg-error/10 hover:text-error text-text-dim rounded"
-                          title={t('delete')}
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex justify-between items-center w-full mt-1">
-                      <span className="text-[11px] font-semibold tracking-wider font-mono uppercase" style={{ color: getRiskColor(scan.riskLevel).hex }}>
-                        {scan.riskLevel}
-                      </span>
-                      <span className="text-[10px] text-text-dim/80 font-mono">
-                        {scan.createdAt?.toDate ? new Date(scan.createdAt.toDate()).toLocaleString(lang, { dateStyle: 'short', timeStyle: 'short' }) : t('just_now')}
-                      </span>
-                    </div>
-                    {scan.reportText && (
-                      <div className="text-[10px] text-text-dim line-clamp-2 text-left mt-1 overflow-hidden leading-relaxed pr-2">
-                        {scan.reportText}
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  <footer><button onClick={e=>toggleImportantEmail(e,scan.emailScanned)} aria-pressed={importantEmails.includes(scan.emailScanned)}><Star size={12} fill={importantEmails.includes(scan.emailScanned) ? 'currentColor' : 'none'}/>{importantEmails.includes(scan.emailScanned) ? t('saved_verb') : t('save_verb')}</button><button aria-label={t('delete') + ': ' + scan.emailScanned} onClick={e=>handleDeleteScan(e,scan.id)}><Trash2 size={13}/></button></footer>
+                </article>)}
+                {!scans.some(scan=>scan.emailScanned.toLowerCase().includes(historySearchQuery.toLowerCase())) && <p className="fe-history-empty">{lang==='ar' ? 'لا توجد فحوصات مطابقة.' : 'No matching checks.'}</p>}
               </div>
-              </>
-            )}
-          </div>
+            </> : <p className="fe-history-empty">{lang==='ar' ? 'ستظهر فحوصاتك المحفوظة هنا.' : 'Your saved email checks will appear here.'}</p>}
+          </section>
         </div>
 
         {/* Right Column: Action Plan / Report Viewer */}
@@ -738,7 +633,7 @@ export default function EmailAnalyzer() {
                   {t('analyzing_desc')}
                 </p>
               </motion.div>
-            ) : displayScan && (
+            ) : !displayScan ? (<div className="fe-ready"><FileSearch size={32}/><span>YOUR EXPOSURE REPORT</span><h2>A little clarity starts here.</h2><p>Enter your email above to see available breach findings and practical next steps. Your report will appear in this space.</p><div><span>01 / Check sources</span><span>02 / Understand exposure</span><span>03 / Take action</span></div></div>) : displayScan && (
               <motion.div
                 key={displayScan.id}
                 initial={{ opacity: 0 }}
@@ -753,7 +648,7 @@ export default function EmailAnalyzer() {
                     {t('translating')}
                   </div>
                 )}
-                <div id="report-content" className="bg-bg-surface/50 border border-border-subtle rounded-xl p-6 md:p-8">
+                <div id="report-content" className="fe-report-shell">
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4 border-b border-border-subtle pb-4">
                     <div>
                       <h2 className="text-xl md:text-2xl font-mono text-text-main mb-2 text-left" dir="ltr">
@@ -857,87 +752,24 @@ export default function EmailAnalyzer() {
                     </div>
                   </div>
 
-                  {displayScan.securityScore !== undefined && (
-                    <div className="bg-bg-base border border-border-subtle rounded-xl p-6 mb-8 flex flex-col md:flex-row items-center md:items-start gap-8">
-                      {/* Gauge */}
-                      <div className="relative flex items-center justify-center w-32 h-32 flex-shrink-0 group cursor-help">
-                        {/* Tooltip */}
-                        <div className="absolute -top-16 lg:left-1/2 lg:-translate-x-1/2 w-48 p-2 bg-text-main text-bg-base border border-border-subtle rounded text-xs font-medium text-center opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 shadow-xl pointer-events-none">
-                          {t('security_score_tooltip')}
-                          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-text-main" />
-                        </div>
-                        <svg className="w-full h-full transform -rotate-90">
-                          <circle cx="64" cy="64" r="56" stroke="#222" strokeWidth="8" fill="transparent" />
-                          <motion.circle
-                            cx="64" cy="64" r="56" 
-                            stroke={displayScan.securityScore >= 80 ? "var(--accent)" : displayScan.securityScore >= 40 ? "var(--warning)" : "var(--error)"} 
-                            strokeWidth="8" fill="transparent"
-                            strokeLinecap="round"
-                            strokeDasharray={2 * Math.PI * 56}
-                            initial={{ strokeDashoffset: 2 * Math.PI * 56 }}
-                            animate={{ strokeDashoffset: (2 * Math.PI * 56) * (1 - displayScan.securityScore / 100) }}
-                            transition={{ duration: 1.5, ease: "easeOut" }}
-                          />
-                        </svg>
-                        <div className="absolute flex flex-col items-center justify-center mt-1">
-                          <span className="text-3xl font-mono font-bold text-text-main leading-none">{displayScan.securityScore}</span>
-                          <span className="text-[10px] uppercase tracking-widest text-text-dim">/ 100</span>
-                        </div>
-                      </div>
-                      {/* Details */}
-                      <div className="flex flex-col gap-4 w-full">
-                        <h3 className="text-lg font-bold font-mono text-text-main">{t('security_score_title')}</h3>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                          {displayScan.scoreFactors && displayScan.scoreFactors.length > 0 && (
-                            <div className="bg-error/5 border border-error/10 rounded-lg p-3">
-                              <h4 className="text-[11px] font-bold uppercase tracking-widest text-error mb-3 flex items-center gap-2">
-                                <ShieldAlert className="w-3.5 h-3.5" />
-                                {t('score_factors')}
-                              </h4>
-                              <ul className="flex flex-col gap-2">
-                                {(Array.isArray(displayScan.scoreFactors) ? displayScan.scoreFactors : [String(displayScan.scoreFactors)]).map((f, i) => (
-                                  <li key={i} className="flex items-start gap-2 text-[13px] text-text-dim text-left">
-                                    <X className="w-4 h-4 text-error shrink-0 mt-0.5" />
-                                    <span>{f}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                          {displayScan.scoreImprovement && displayScan.scoreImprovement.length > 0 && (
-                            <div className="bg-accent/5 border border-accent/10 rounded-lg p-3">
-                              <h4 className="text-[11px] font-bold uppercase tracking-widest text-accent mb-3 flex items-center gap-2">
-                                <ShieldCheck className="w-3.5 h-3.5" />
-                                {t('score_improvement')}
-                              </h4>
-                              <ul className="flex flex-col gap-2">
-                                {(Array.isArray(displayScan.scoreImprovement) ? displayScan.scoreImprovement : [String(displayScan.scoreImprovement)]).map((f, i) => (
-                                  <li key={i} className="flex items-start gap-2 text-[13px] text-text-dim text-left">
-                                    <Check className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                                    <span>{f}</span>
-                                  </li>
-                                ))}
-                              </ul>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mb-5 rounded-xl border border-border-subtle p-4 text-sm text-text-dim">
-                    <p className="mb-2 font-bold text-text-main">Saved exposure report</p>
-                    <strong className="text-text-main">{displayScan.source ? 'Source: ' + displayScan.source : 'Historical report — rescan to verify the source'}</strong>
-                    <p className="mt-1">Coverage varies by provider. This report does not include HIBP results. The score is a local estimate, not a security guarantee.</p>
-                    {!displayScan.assessmentVersion && <p className="mt-1 text-warning">This older report used the previous assessment logic. Run a new check for an updated report.</p>}
+                  <div className="fe-report-summary">
+                    <div className="fe-score"><span>SECURITY SCORE</span><strong>{displayScan.securityScore ?? '—'}<small> / 100</small></strong><p>A local assessment, not a security guarantee.</p></div>
+                    <div className="fe-verdict"><span>ASSESSMENT</span><h3>{displayScan.coverageIncomplete ? 'Coverage incomplete' : displayScan.riskLevel === 'High' ? 'Review your exposure.' : displayScan.riskLevel === 'Medium' ? 'A closer look is worthwhile.' : 'Review the available findings.'}</h3><p>{displayScan.coverageIncomplete ? 'One or more sources could not complete the check. Review available findings and retry for fuller coverage.' : 'Use the source evidence below to understand what was found and decide what to do next.'}</p><span className="fe-risk-pill">{displayScan.riskLevel} risk estimate</span></div>
                   </div>
-                  <h3 className="text-xl font-bold mb-4 font-mono text-text-main">{t('report_overview')}</h3>
-                  <div className="text-[15px] leading-relaxed text-text-dim whitespace-pre-wrap">
-                    {displayScan.reportText}
-                  </div>
-                </div>
+                  {displayScan.scoreFactors?.length ? <details className="fe-score-details"><summary>How this assessment was reached</summary><ul>{(Array.isArray(displayScan.scoreFactors) ? displayScan.scoreFactors : [String(displayScan.scoreFactors)]).map((factor,index)=><li key={index}>{factor}</li>)}</ul></details> : null}
 
-                <div className="bg-accent/[0.03] border border-dashed border-accent rounded-xl p-8">
+                  <div className="fe-report-evidence"><span className="fe-section-number">01 / SOURCE EVIDENCE</span>
+                    <h3 className="text-lg font-medium mb-3">{lang === 'ar' ? 'نتائج الفحص' : 'Findings'}</h3>
+                    {displayScan.sourceStatuses || displayScan.assessmentVersion === 2 ? (
+                      <AdditionalEmailSource embedded email={displayScan.emailScanned} groups={displayScan.evidenceGroups || groupEmailEvidence(displayScan.breaches || [], null)} statuses={displayScan.sourceStatuses || {xposedornot:'complete',leakcheck:'not checked in this historical scan'}} />
+                    ) : (
+                      <div className="text-sm leading-relaxed text-text-dim whitespace-pre-wrap">{displayScan.reportText}</div>
+                    )}
+                    <p className="mt-4 text-xs text-text-dim">Coverage varies by provider. HIBP is not connected. The score is a local estimate, not a security guarantee.</p>
+                    {!displayScan.assessmentVersion && <p className="mt-2 text-sm text-warning">This older report used previous assessment logic. Run a new check for an updated report.</p>}
+                  </div>
+
+                <div className="fe-report-plan mt-6 border-t border-border-subtle pt-6"><span className="fe-section-number">02 / YOUR NEXT STEPS</span>
                   <div className="flex items-center gap-3 mb-6">
                     <ShieldCheck className="w-6 h-6 text-accent" />
                     <h3 className="text-[20px] text-accent uppercase tracking-[1px] font-bold">
@@ -981,14 +813,12 @@ export default function EmailAnalyzer() {
                     })()}
                   </div>
                 </div>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
       </div>
-
-      {/* Mini History */}
-      <MiniHistory scanType="email" />
     </div>
   );
 }

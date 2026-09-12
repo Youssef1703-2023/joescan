@@ -1,0 +1,11 @@
+import {render,screen,fireEvent} from '@testing-library/react';
+import {it,expect,vi,beforeEach} from 'vitest';
+const state=vi.hoisted(()=>({records:[] as any[],fail:false}));
+vi.mock('../lib/firebase',()=>({auth:{currentUser:{uid:'test'}},db:{}}));
+vi.mock('../contexts/LanguageContext',()=>({useLanguage:()=>({lang:'en'})}));
+vi.mock('firebase/firestore',()=>({collection:vi.fn(),query:vi.fn(),where:vi.fn(),orderBy:vi.fn(),limit:vi.fn(),getDocs:async()=>{if(state.fail)throw Error('offline');return {docs:state.records.map((data,i)=>({id:String(i),data:()=>data}))}}}));
+import MiniHistory from './MiniHistory';
+beforeEach(()=>{state.records=[];state.fail=false});
+it('redacts legacy password targets and preserves zero scores and unknown risk',async()=>{state.records=[{target:'never-display-secret',securityScore:0}];render(<MiniHistory scanType="password"/>);expect(await screen.findByText('Password check')).toBeTruthy();expect(screen.queryByText('never-display-secret')).toBeNull();expect(screen.getByText('Not assessed')).toBeTruthy();expect(screen.getByText('0')).toBeTruthy()});
+it('shows three records first and expands to the remaining two',async()=>{state.records=Array.from({length:5},(_,i)=>({target:'target-'+i,riskLevel:'Low'}));render(<MiniHistory scanType="url"/>);await screen.findByText('target-0');expect(screen.queryByText('target-4')).toBeNull();fireEvent.click(screen.getByRole('button',{name:'Show 2 more'}));expect(screen.getByText('target-4')).toBeTruthy()});
+it('shows failure instead of a false empty history',async()=>{state.fail=true;render(<MiniHistory scanType="url"/>);expect(await screen.findByRole('alert')).toBeTruthy();expect(screen.queryByText('Your saved checks will appear here.')).toBeNull()});

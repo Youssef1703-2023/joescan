@@ -1,3 +1,4 @@
+import '../styles/focus-blog.css';
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BookOpen, Calendar, Clock, ChevronRight, ArrowRight, Tag, TrendingUp, Shield, AlertTriangle, Eye, Lock, Wifi, X, Zap, Newspaper, Filter, Search, Smartphone, Brain, Baby, Bitcoin, CreditCard, Globe, ExternalLink, Radio, RefreshCw, Link2 } from 'lucide-react';
@@ -170,7 +171,7 @@ export default function Blog() {
 
   const featured = ARTICLES.find(a => a.featured);
   const newsArticles = ARTICLES.filter(a => a.isNews).slice(0, 4);
-  const regularArticles = filteredArticles.filter(a => !a.featured || activeCategory !== 'All');
+  const regularArticles = filteredArticles;
 
   // Sort daily news by date descending (newest first) and only keep last 14 days
   const sortedDailyNews = useMemo(() => {
@@ -185,44 +186,11 @@ export default function Blog() {
   const totalArticleCount = ARTICLES.length + sortedDailyNews.length;
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6" dir={isAr ? 'rtl' : 'ltr'}>
-      {/* Header */}
-      <div className="workspace-heading">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center">
-            <BookOpen className="w-5 h-5 text-accent" />
-          </div>
-          <div>
-            <h1 className="text-xl font-black uppercase tracking-widest text-text-main">{t('header', lang)}</h1>
-            <p className="text-xs text-text-dim font-mono">{t('subtitle', lang)}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl">
-            <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" style={{ animationDuration: '3s' }} />
-            <span className="text-[10px] font-bold text-emerald-400">{t('autoDaily', lang)}</span>
-          </div>
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-accent/10 border border-accent/20 rounded-xl">
-            <Newspaper className="w-4 h-4 text-accent" />
-            <span className="text-xs font-bold text-accent">{totalArticleCount} {t('articles', lang)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Auto-Update Banner */}
-      <div className="bg-gradient-to-r from-emerald-500/10 via-cyan-500/5 to-accent/10 border border-emerald-500/20 rounded-2xl p-4 flex items-center gap-4">
-        <div className="w-10 h-10 bg-emerald-500/20 border border-emerald-500/30 rounded-xl flex items-center justify-center shrink-0">
-          <Radio className="w-5 h-5 text-emerald-400" />
-        </div>
-        <div className="flex-1">
-          <h3 className="text-sm font-bold text-text-main">{t('automatedNews', lang)}</h3>
-          <p className="text-[11px] text-text-dim mt-0.5">{t('newsDesc', lang)}</p>
-        </div>
-        <div className={`text-${isAr ? 'left' : 'right'} shrink-0`}>
-          <div className="text-[10px] text-text-dim font-mono">{t('lastUpdated', lang)}</div>
-          <div className="text-xs font-bold text-emerald-400">{dailyNewsPayload?.lastUpdated ? new Date(dailyNewsPayload.lastUpdated).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : (isLoadingNews ? '...' : '—')}</div>
-        </div>
-      </div>
+    <div className="focus-blog" dir={isAr ? 'rtl' : 'ltr'}>
+      {!selectedArticle && !selectedNews && <header className="fb-hero">
+        <div><span className="fb-eyebrow">JOESCAN / JOURNAL</span><h1>{isAr ? 'افهم أكتر.' : 'Stay curious.'}<br/><em>{isAr ? 'احمي عالمك الرقمي.' : 'Stay a step ahead.'}</em></h1><p>{t('subtitle', lang)}</p></div>
+        <div className="fb-hero-note"><BookOpen size={30}/><span>{isAr ? 'معرفة تستحق وقتك' : 'A clearer view of digital security'}</span><p>{isAr ? 'أدلة عملية وأخبار تساعدك تفهم المخاطر وتاخد الخطوة المناسبة.' : 'Practical guides, fresh perspectives, and the context behind the headlines.'}</p><a href="#journal-library">{isAr ? 'استكشف المقالات' : 'Explore the journal'} ↓</a></div>
+      </header>}
 
       <AnimatePresence mode="wait">
         {selectedNews ? (
@@ -232,7 +200,7 @@ export default function Blog() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="space-y-6"
+            className="fb-reader space-y-6"
           >
             <button
               onClick={() => setSelectedNews(null)}
@@ -275,6 +243,7 @@ export default function Blog() {
                 })}
               </div>
 
+              {/^https?:\/\//i.test(selectedNews.link) && <a className="fb-source" href={selectedNews.link} target="_blank" rel="noopener noreferrer">{isAr ? 'اقرأ المصدر الأصلي' : 'Read original source'} <ExternalLink size={16}/></a>}
               {/* Tags */}
               <div className="flex flex-wrap gap-2 pt-4 border-t border-border-subtle">
                 <span className="flex items-center gap-1 px-2 py-1 bg-bg-base border border-border-subtle rounded-lg text-[10px] text-text-dim font-mono">
@@ -296,7 +265,7 @@ export default function Blog() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="space-y-6"
+            className="fb-reader space-y-6"
           >
             <button
               onClick={() => setSelectedArticle(null)}
@@ -309,11 +278,7 @@ export default function Blog() {
             <div className="bg-bg-surface border border-border-subtle rounded-2xl p-6 sm:p-8 space-y-6">
               <div className="space-y-3">
                 <div className="flex flex-wrap items-center gap-3">
-                  {selectedArticle.isNews && (
-                    <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-red-500/30 flex items-center gap-1 animate-pulse">
-                      <Zap className="w-3 h-3" /> {t('breaking', lang)}
-                    </span>
-                  )}
+                  
                   <span className="px-3 py-1 bg-accent/10 text-accent text-[10px] font-bold uppercase tracking-widest rounded-lg border border-accent/20">
                     {getCategory(selectedArticle)}
                   </span>
@@ -365,232 +330,22 @@ export default function Blog() {
             </div>
           </motion.div>
         ) : (
-          /* Article List */
-          <motion.div
-            key="list"
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="space-y-6"
-          >
-            {/* Daily Auto-Fetched News */}
-            {isLoadingNews ? (
-              <div className="bg-gradient-to-br from-cyan-500/5 via-bg-surface to-emerald-500/5 border border-cyan-500/20 rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="px-2.5 py-1.5 bg-cyan-500/20 rounded-lg flex items-center gap-1.5">
-                    <RefreshCw className="w-3.5 h-3.5 text-cyan-400 animate-spin" />
-                    <span className="text-[10px] sm:text-[11px] font-bold text-cyan-400 uppercase tracking-wider leading-tight">{t('loadingNews', lang)}</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-2">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="h-16 bg-bg-surface/50 border border-border-subtle rounded-xl animate-pulse" />
-                  ))}
-                </div>
-              </div>
-            ) : newsLoadError ? (
-              <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-3 px-4 flex items-center gap-3 text-xs text-text-dim">
-                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                <span>{t('newsLoadError', lang)}</span>
-              </div>
-            ) : sortedDailyNews.length > 0 ? (
-              <div className="bg-gradient-to-br from-cyan-500/5 via-bg-surface to-emerald-500/5 border border-cyan-500/20 rounded-2xl p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-2 max-w-full">
-                    <div className="px-2.5 py-1.5 bg-cyan-500/20 rounded-lg flex items-center gap-1.5">
-                      <Globe className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                      <span className="text-[10px] sm:text-[11px] font-bold text-cyan-400 uppercase tracking-wider leading-tight">{t('latestNews', lang)}</span>
-                    </div>
-                  </div>
-                  <span className="text-[10px] text-text-dim font-mono whitespace-nowrap">{sortedDailyNews.length} {t('articles', lang)}</span>
-                </div>
-                <div className="grid grid-cols-1 gap-2">
-                  {sortedDailyNews.slice(0, 10).map((news: any, idx: number) => (
-                    <motion.div
-                      key={idx}
-                      onClick={() => openNews(news as DailyNewsItem)}
-                      initial={{ opacity: 0, x: isAr ? 10 : -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      whileHover={{ scale: 1.005 }}
-                      className="flex items-start gap-3 p-3 bg-bg-surface/50 border border-border-subtle rounded-xl cursor-pointer hover:border-cyan-500/30 transition-all group"
-                    >
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full mt-1.5 shrink-0" />
-                      <div className="flex-1 min-w-0" dir={newsContentDir(news)}>
-                        <h4 className={`text-xs font-bold text-text-main leading-relaxed line-clamp-2 group-hover:text-cyan-400 transition-colors ${newsTextAlign(news)}`}>{getNewsField(news, 'title', lang)}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-[10px] text-cyan-400/80 font-mono">{news.source}</span>
-                          <span className="text-[10px] text-text-dim font-mono">• {new Date(news.date).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' })}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 text-[10px] text-text-dim group-hover:text-cyan-400 shrink-0 mt-1 transition-colors font-bold">
-                        {t('read', lang)} <ChevronRight className="w-3 h-3" />
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {/* Breaking News Ticker */}
-            {newsArticles.length > 0 && (
-              <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="px-2.5 py-1 bg-red-500/20 rounded-lg flex items-center gap-1.5 animate-pulse">
-                    <Zap className="w-3.5 h-3.5 text-red-400" />
-                    <span className="text-[11px] font-bold text-red-400 uppercase tracking-wider">{t('breakingNews', lang)}</span>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {newsArticles.map(article => (
-                    <motion.div
-                      key={article.id}
-                      whileHover={{ scale: 1.01 }}
-                      onClick={() => openArticle(article)}
-                      className="flex items-start gap-3 p-3 bg-bg-surface/50 border border-red-500/10 rounded-xl cursor-pointer hover:border-red-500/30 transition-all group"
-                    >
-                      <div className="w-2 h-2 bg-red-500 rounded-full mt-1.5 shrink-0 animate-pulse" />
-                      <div>
-                        <h4 className="text-xs font-bold text-text-main leading-relaxed line-clamp-2">{getTitle(article)}</h4>
-                        <span className="text-[10px] text-text-dim font-mono mt-1 flex items-center gap-1">
-                          <Clock className="w-3 h-3" /> {getReadTime(article)}
-                        </span>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Search and Filter */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <div className="relative flex-1">
-                <Search className={`absolute ${isAr ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim`} />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
-                  placeholder={t('searchArticles', lang)}
-                  className={`w-full ${isAr ? 'pr-10 pl-4' : 'pl-10 pr-4'} py-2.5 bg-bg-surface border border-border-subtle rounded-xl text-sm text-text-main placeholder-text-dim focus:outline-none focus:border-accent/40`}
-                />
-              </div>
-            </div>
-
-            {/* Category Filter */}
-            <div className="flex flex-wrap gap-2">
-              {CATEGORIES.map((cat, idx) => (
-                <button
-                  key={cat}
-                  onClick={() => setActiveCategory(cat)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
-                    activeCategory === cat
-                      ? 'bg-accent/20 text-accent border-accent/30'
-                      : 'bg-bg-surface text-text-dim border-border-subtle hover:border-accent/20'
-                  }`}
-                >
-                  {getCategoryLabel(idx)}
-                </button>
-              ))}
-            </div>
-
-            {/* Featured Article */}
-            {activeCategory === 'All' && !searchQuery && featured && (
-              <motion.div
-                whileHover={{ scale: 1.005 }}
-                onClick={() => openArticle(featured)}
-                className="bg-gradient-to-br from-accent/10 via-bg-surface to-purple-500/5 border border-accent/20 rounded-2xl p-6 cursor-pointer hover:border-accent/40 transition-all relative overflow-hidden group"
-              >
-                <div className={`absolute top-3 ${isAr ? 'right-3' : 'left-3'} px-2 py-0.5 bg-accent/20 text-accent text-[10px] font-bold uppercase tracking-widest rounded-lg border border-accent/30 flex items-center gap-1`}>
-                  <TrendingUp className="w-3 h-3" /> {t('featured', lang)}
-                </div>
-                <div className="space-y-3 mt-6">
-                  <div className="flex items-center gap-3">
-                    <span className="px-2.5 py-0.5 bg-bg-base border border-border-subtle rounded-lg text-[10px] text-text-dim font-mono">
-                      {getCategory(featured)}
-                    </span>
-                    <span className="text-[10px] text-text-dim font-mono flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
-                      {new Date(featured.date).toLocaleDateString(dateLocale, { month: 'long', day: 'numeric' })}
-                    </span>
-                  </div>
-                  <h2 className="text-xl font-black text-text-main leading-relaxed">{getTitle(featured)}</h2>
-                  <p className="text-sm text-text-dim leading-relaxed">{getSummary(featured)}</p>
-                  <div className="flex items-center gap-2 text-accent text-xs font-bold pt-2">
-                    {t('readArticle', lang)} <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Articles Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {regularArticles.map((article, idx) => {
-                const CatIcon = CATEGORY_ICONS[article.category] || Shield;
-                return (
-                  <motion.div
-                    key={article.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    whileHover={{ scale: 1.01 }}
-                    onClick={() => openArticle(article)}
-                    className={`bg-bg-surface border rounded-2xl p-5 cursor-pointer transition-all group ${
-                      article.isNews ? 'border-red-500/20 hover:border-red-500/40' : 'border-border-subtle hover:border-accent/30'
-                    }`}
-                  >
-                    <div className="flex items-start gap-4">
-                      <div className={`w-10 h-10 border rounded-xl flex items-center justify-center shrink-0 mt-1 ${
-                        article.isNews ? 'bg-red-500/10 border-red-500/20' : 'bg-accent/10 border-accent/20'
-                      }`}>
-                        <CatIcon className={`w-5 h-5 ${article.isNews ? 'text-red-400' : 'text-accent'}`} />
-                      </div>
-                      <div className="space-y-2 flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          {article.isNews && (
-                            <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 text-[9px] font-bold rounded animate-pulse">{t('breaking', lang)}</span>
-                          )}
-                          <span className="text-[10px] text-text-dim font-mono flex items-center gap-1">
-                            <Calendar className="w-3 h-3" />
-                            {new Date(article.date).toLocaleDateString(dateLocale, { month: 'short', day: 'numeric' })}
-                          </span>
-                          <span className="text-[10px] text-text-dim font-mono">• {getReadTime(article)}</span>
-                        </div>
-                        <h3 className="font-bold text-sm text-text-main leading-relaxed line-clamp-2">{getTitle(article)}</h3>
-                        <p className="text-xs text-text-dim leading-relaxed line-clamp-2">{getSummary(article)}</p>
-                        <div className="flex items-center gap-1 text-accent text-[10px] font-bold pt-1">
-                          {t('readMore', lang)} <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {/* No Results */}
-            {regularArticles.length === 0 && (
-              <div className="text-center py-12">
-                <Search className="w-12 h-12 text-text-dim/30 mx-auto mb-3" />
-                <p className="text-sm text-text-dim">{t('noResults', lang)}</p>
-              </div>
-            )}
-
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-bg-surface border border-border-subtle rounded-xl p-3 text-center">
-                <div className="text-lg font-black text-accent">{ARTICLES.length}</div>
-                <div className="text-[10px] text-text-dim font-mono">{t('published', lang)}</div>
-              </div>
-              <div className="bg-bg-surface border border-border-subtle rounded-xl p-3 text-center">
-                <div className="text-lg font-black text-red-400">{ARTICLES.filter(a => a.isNews).length}</div>
-                <div className="text-[10px] text-text-dim font-mono">{t('breaking', lang)}</div>
-              </div>
-              <div className="bg-bg-surface border border-border-subtle rounded-xl p-3 text-center">
-                <div className="text-lg font-black text-purple-400">{CATEGORIES.length - 1}</div>
-                <div className="text-[10px] text-text-dim font-mono">{t('categories', lang)}</div>
-              </div>
-            </div>
-          </motion.div>
+          <div className="fb-list">
+            {featured && <button className="fb-featured" onClick={() => openArticle(featured)}>
+              <div className="fb-feature-art" aria-hidden="true"><div className="fb-orbit"/><Shield size={80}/><span>JOESCAN INSIGHTS / 01</span></div>
+              <div className="fb-feature-copy"><span className="fb-eyebrow">{t('featured',lang)} / {getCategory(featured)}</span><h2>{getTitle(featured)}</h2><p>{getSummary(featured)}</p><span className="fb-feature-foot">{getReadTime(featured)} <b>{t('readArticle',lang)} ↗</b></span></div>
+            </button>}
+            <section className="fb-library" id="journal-library">
+              <div className="fb-section-title"><div><span className="fb-eyebrow">02 / {isAr ? 'المكتبة' : 'THE LIBRARY'}</span><h2>{isAr ? 'معرفة لحياتك الرقمية' : 'Worth a closer look.'}</h2></div><label className="fb-search"><Search size={18}/><input aria-label={t('searchArticles',lang)} placeholder={t('searchArticles',lang)} value={searchQuery} onChange={e=>setSearchQuery(e.target.value)}/></label></div>
+              <div className="fb-categories">{CATEGORIES.map((cat,idx)=><button key={cat} aria-pressed={activeCategory===cat} onClick={()=>setActiveCategory(cat)}>{getCategoryLabel(idx)}</button>)}</div>
+              <p className="fb-results" aria-live="polite">{regularArticles.length} {t('articles',lang)}</p>
+              <div className="fb-grid">{regularArticles.map((article,idx)=>{const Icon=CATEGORY_ICONS[article.category]||Shield;return <button key={article.id} className="fb-card" onClick={()=>openArticle(article)}><div className="fb-card-art" data-variant={idx%3} aria-hidden="true"><Icon size={38}/><span>{String(idx+1).padStart(2,'0')}</span></div><div className="fb-card-copy"><span className="fb-eyebrow">{getCategory(article)}</span><h3>{getTitle(article)}</h3><p>{getSummary(article)}</p><footer><span>{new Date(article.date).toLocaleDateString(dateLocale,{month:'short',day:'numeric',year:'numeric'})} · {getReadTime(article)}</span><ArrowRight size={18}/></footer></div></button>})}</div>
+              {!regularArticles.length && <div className="fb-empty"><Search size={30}/><p>{t('noResults',lang)}</p><button onClick={()=>{setSearchQuery('');setActiveCategory('All')}}>{isAr?'عرض كل المقالات':'Show all articles'}</button></div>}
+            </section>
+            <section className="fb-news"><div className="fb-section-title"><div><span className="fb-eyebrow">03 / {isAr?'الأخبار':'NEWS DESK'}</span><h2>{t('dailyNews',lang)}</h2></div><span className="fb-results">{t('lastUpdated',lang)}: {dailyNewsPayload?.lastUpdated ? new Date(dailyNewsPayload.lastUpdated).toLocaleDateString(dateLocale) : '—'}</span></div>
+              {isLoadingNews ? <p role="status">{t('loadingNews',lang)}</p> : newsLoadError ? <p role="status">{t('newsLoadError',lang)}</p> : !sortedDailyNews.length ? <p>{isAr?'لا توجد أخبار حديثة متاحة الآن.':'No recent news is available right now.'}</p> : <div className="fb-news-grid">{sortedDailyNews.map((news,idx)=><button key={news.link+idx} onClick={()=>openNews(news)} className="fb-news-item" dir={newsContentDir(news)}><span className="fb-eyebrow">{news.source} · {new Date(news.date).toLocaleDateString(dateLocale,{month:'short',day:'numeric'})}</span><h3>{getNewsField(news,'title',lang)}</h3><p>{getNewsField(news,'summary',lang)}</p><span>{t('readMore',lang)} ↗</span></button>)}</div>}
+            </section>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -43,6 +43,8 @@ export default function NotificationCenter() {
     <div className="relative z-50" ref={dropdownRef}>
       <button 
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={lang === 'ar' ? 'الإشعارات' : 'Notifications'}
+        aria-expanded={isOpen}
         className="relative p-2 text-text-dim hover:text-text-main hover:bg-bg-base rounded-full transition-colors focus:outline-none"
       >
         <Bell className="w-5 h-5" />

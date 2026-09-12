@@ -18,10 +18,10 @@ interface TourStep {
 const STEPS: TourStep[] = [
   {
     icon: Database,
-    title: 'Command Center',
-    titleAr: 'مركز القيادة',
-    description: 'Your security nerve center. Monitor your global security posture score, recent scans, risk distribution, and quick access to all tools.',
-    descriptionAr: 'مركز التحكم الأمني. راقب درجة أمانك العامة والفحوصات الأخيرة وتوزيع المخاطر.',
+    title: 'Focus dashboard',
+    titleAr: 'لوحة التحكم',
+    description: 'Your overview and next step. Use the floating Navigate button or Ctrl/Cmd+K to find any available page or tool.',
+    descriptionAr: 'نظرة على نشاطك وخطوتك الجاية. استخدم زر تنقّل العائم أو Ctrl/Cmd+K للوصول للصفحات والأدوات.',
     tabId: 'dashboard',
     color: '#00ff88',
   },
@@ -36,22 +36,14 @@ const STEPS: TourStep[] = [
   },
   {
     icon: KeyRound,
-    title: 'Password Vault Check',
+    title: 'Password Check',
     titleAr: 'فحص كلمة المرور',
     description: 'Analyze password strength in real-time. Zero-network architecture means your password never leaves your browser.',
     descriptionAr: 'حلل قوة كلمة المرور فوراً. التحليل يتم بالكامل داخل المتصفح بدون إرسال أي بيانات.',
     tabId: 'password',
     color: '#ffbb00',
   },
-  {
-    icon: Wifi,
-    title: 'IP & Network Scanner',
-    titleAr: 'فحص الشبكة والآي بي',
-    description: 'Scan any IP for geolocation, ISP info, VPN/Tor detection, open ports, and threat intelligence.',
-    descriptionAr: 'افحص أي عنوان IP للموقع الجغرافي ومعلومات مزود الخدمة واكتشاف VPN/Tor.',
-    tabId: 'ip',
-    color: '#ff6b6b',
-  },
+
   {
     icon: Globe,
     title: 'Domain WHOIS & DNS',
@@ -61,24 +53,8 @@ const STEPS: TourStep[] = [
     tabId: 'domain',
     color: '#a855f7',
   },
-  {
-    icon: Fingerprint,
-    title: 'Browser Fingerprint',
-    titleAr: 'بصمة المتصفح',
-    description: 'See how unique your browser fingerprint is. Learn how websites track you without cookies.',
-    descriptionAr: 'اكتشف مدى تفرد بصمة متصفحك وكيف تتبعك المواقع بدون كوكيز.',
-    tabId: 'fingerprint',
-    color: '#06b6d4',
-  },
-  {
-    icon: Monitor,
-    title: 'Device Security',
-    titleAr: 'أمان الجهاز',
-    description: 'Scan your device for open ports, CVE vulnerabilities, and network exposure via Shodan InternetDB.',
-    descriptionAr: 'افحص جهازك للمنافذ المفتوحة والثغرات الأمنية والتعرض الشبكي.',
-    tabId: 'device_security',
-    color: '#f59e0b',
-  },
+
+
   {
     icon: Target,
     title: 'Live Threat Watchlist',
@@ -137,7 +113,7 @@ export default function OnboardingTour({ onComplete, onNavigate, isAr }: Props) 
   }, [next, prev]);
 
   return (
-    <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4">
+    <div role="dialog" aria-modal="true" aria-label={isAr?'جولة البداية':'Getting started'} className="fixed inset-0 z-[9998] flex items-center justify-center p-4">
       {/* Backdrop */}
       <motion.div
         className="absolute inset-0 bg-black/70 backdrop-blur-md"

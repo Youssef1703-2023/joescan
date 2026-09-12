@@ -1,3 +1,4 @@
+import '../styles/focus-referral.css';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Gift, Copy, Check, Users, Share2, MessageCircle, Trophy, Sparkles, Loader2, Star, Edit2, Shield, Gem, Crown, Clock } from 'lucide-react';
@@ -29,6 +30,15 @@ export default function ReferralSystem() {
   const [claimLoading, setClaimLoading] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [error,setError]=useState('');
+  const [loadError,setLoadError]=useState(false);
+  const [loadDetail,setLoadDetail]=useState('');
+  const [rewardsError,setRewardsError]=useState(false);
+  const [friendsError,setFriendsError]=useState(false);
+  const [leadersError,setLeadersError]=useState(false);
+  const [saving,setSaving]=useState(false);
+  const isAr=lang==='ar';
+  const label=(en:string,ar:string)=>isAr?ar:en;
   const [referredUsers, setReferredUsers] = useState<{ email: string; date: string }[]>([]);
   
   // Custom Code State
@@ -45,9 +55,11 @@ export default function ReferralSystem() {
   }, []);
 
   const loadReferralData = async () => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser) {setLoading(false);setLoadError(true);return;}
+    setLoading(true);setLoadError(false);
     const uid = auth.currentUser.uid;
 
+    let stage='invite-read';
     try {
       // Get or create referral code
       const refDoc = await getDoc(doc(db, 'referrals', uid));
@@ -63,6 +75,7 @@ export default function ReferralSystem() {
         }
       } else {
         const code = generateCode();
+        stage='invite-create';
         await setDoc(doc(db, 'referrals', uid), {
           code,
           userId: uid,
@@ -73,29 +86,29 @@ export default function ReferralSystem() {
         setReferralCode(code);
       }
 
-      // Check for pending reward requests
-      const reqSnap = await getDoc(doc(db, 'tierRequests', `${uid}_referral_reward`));
-      if (reqSnap.exists()) {
-        const reqData = reqSnap.data();
-        if (reqData.status === 'pending') {
-          setPendingRewardTier(reqData.rewardTier);
-        }
-      }
-
-      // Get referred users
-      const signupsQuery = query(collection(db, 'referralSignups'), where('referrerUid', '==', uid));
-      const signupsSnap = await getDocs(signupsQuery);
-      const users = signupsSnap.docs.map(d => ({
-        email: d.data().email || t('referral_default_email'),
-        date: d.data().createdAt || '',
-      }));
-      setReferredUsers(users);
     } catch (err) {
-      console.error('Error loading referral data:', err);
+      setLoadError(true);
+      setLoadDetail(stage + ': ' + ((err as {code?:string}).code || 'unknown'));
+      console.error('Referral code unavailable:',err);
+      setLoading(false);
+      return;
     }
+    // Optional panels must not hide a successfully loaded invitation.
+    setRewardsError(false);setFriendsError(false);
+    await Promise.all([
+      (async()=>{try {
+        const requests=await getDocs(query(collection(db,'tierRequests'),where('userId','==',uid)));
+        const pending=requests.docs.map(d=>d.data()).find(d=>d.kind==='referral_reward'&&d.status==='pending');
+        setPendingRewardTier(pending?.rewardTier??null);
+      } catch(err) {setRewardsError(true);console.error('Referral rewards unavailable:',err);}})(),
+      (async()=>{try {
+        const signups=await getDocs(query(collection(db,'referralSignups'),where('referrerUid','==',uid)));
+        setReferredUsers(signups.docs.map(d=>({email:d.data().email||t('referral_default_email'),date:d.data().createdAt||''})));
+      } catch(err) {setFriendsError(true);console.error('Referral friends unavailable:',err);}})()
+    ]);
     setLoading(false);
   };
-  
+
   const loadLeaderboard = async () => {
     try {
       const q = query(collection(db, 'referrals'), orderBy('referralCount', 'desc'), limit(5));
@@ -108,15 +121,15 @@ export default function ReferralSystem() {
         .filter(u => u.count > 0);
       setLeaders(topUsers);
     } catch(err) {
+      setLeadersError(true);
       console.error('Error loading leaderboard:', err);
     }
   }
 
-  const handleCopy = () => {
-    const text = t('referral_wa_msg') + `${referralCode}\n\nhttps://joescan.me`;
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    setError('');
+    try {await navigator.clipboard.writeText(referralCode);setCopied(true);setTimeout(()=>setCopied(false),2000);}
+    catch {setError(label('Could not copy. Select and copy the code manually.','تعذر النسخ. حدد الكود وانسخه يدوياً.'));}
   };
 
   const handleShareWhatsApp = () => {
@@ -152,7 +165,7 @@ export default function ReferralSystem() {
   };
 
   const handleClaimTier = async (tier: number) => {
-    if (!auth.currentUser || referralCount < tier || claimedTiers.includes(tier)) return;
+    if (!auth.currentUser || referralCount < tier || claimedTiers.includes(tier) || pendingRewardTier !== null || claimLoading !== null || rewardsError) return;
     setClaimLoading(tier);
     try {
       await setDoc(doc(db, 'tierRequests', `${auth.currentUser.uid}_referral_reward`), {
@@ -166,18 +179,20 @@ export default function ReferralSystem() {
       setPendingRewardTier(tier);
     } catch (err) {
       console.error('Error requesting reward claim:', err);
-      alert(lang === 'ar' ? 'لديك طلب مكافأة قيد المراجعة بالفعل.' : 'You already have a pending reward request under review.');
+      setError(label('Could not request this reward. Please try again.','تعذر طلب المكافأة. حاول مرة أخرى.'));
     } finally {
       setClaimLoading(null);
     }
   };
 
   const handleSaveCustomCode = async () => {
-    if (!customCodeInput || customCodeInput.length < 3 || customCodeInput.length > 15) {
+    if (!/^[A-Z0-9]{3,15}$/i.test(customCodeInput)) {
       setCodeError(t('referral_code_hint'));
       return;
     }
-    const cleanCode = customCodeInput.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!auth.currentUser || saving) return;
+    setSaving(true);
+    const cleanCode = customCodeInput.toUpperCase();
     
     try {
       const q = query(collection(db, 'referrals'), where('code', '==', cleanCode));
@@ -198,294 +213,28 @@ export default function ReferralSystem() {
     } catch (err) {
       setCodeError('Error saving code.');
       console.error(err);
-    }
+    } finally {setSaving(false);}
   }
 
-  const progress = Math.min((referralCount / 10) * 100, 100);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[50vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-accent" />
+  const nextTier=TIERS.find(tier=>tier.count>referralCount);
+  const progress=Math.min(100,Math.max(0,referralCount/10*100));
+  if(loading) return <div className="focus-referral fr-loading" role="status"><Loader2 className="animate-spin"/>{label('Loading your invitations…','جاري تحميل الدعوات…')}</div>;
+  if(loadError) return <div className="focus-referral fr-panel" role="alert"><h2>{label('Your invitations are unavailable','تعذر تحميل الدعوات')}</h2><code className="fr-error-code">{loadDetail}</code><p>{label('Please retry to load your code and rewards.','حاول مرة أخرى لتحميل الكود والمكافآت.')}</p><button className="fr-primary" onClick={loadReferralData}>{label('Try again','حاول مرة أخرى')}</button></div>;
+  return <div className="focus-referral" dir={dir}>
+    <header className="fr-heading"><span className="fr-kicker">JOESCAN / {label('INVITE & EARN','ادعُ واكسب')}</span><span className="fr-program"><Gift size={15}/>{label('Friends make it better','مع أصحابك أحلى')}</span></header>
+    <section className="fr-hero">
+      <div className="fr-intro"><h1>{label('Good security.','أمان أفضل.')}<br/><em>{label('Better together.','مع بعض.')}</em></h1><p>{label('Invite your friends to JoeScan. Turn shared knowledge into useful rewards — one invitation at a time.','ادعُ أصحابك إلى JoeScan. شاركهم المعرفة واستفد من مكافآت برنامج الدعوات.')}</p><div className="fr-how"><span>01 · {label('Share your code','شارك الكود')}</span><span>02 · {label('Friends sign up','أصحابك يسجلوا')}</span><span>03 · {label('Request a reward','اطلب المكافأة')}</span></div></div>
+      <div className="fr-invite fr-panel"><div className="fr-invite-top"><div className="fr-gift"><Gift size={26}/></div><span className="fr-kicker">{label('YOUR PERSONAL INVITATION','دعوتك الشخصية')}</span></div><h2>{label('Pass it on.','شاركها مع أصحابك.')}</h2><p>{label('Ask friends to enter this code when they create their account.','اطلب من أصحابك إدخال الكود عند إنشاء حسابهم.')}</p>
+        {isEditingCode ? <form onSubmit={e=>{e.preventDefault();handleSaveCustomCode()}} className="fr-edit"><label htmlFor="ref-code">{t('referral_code_label')}</label><input id="ref-code" dir="ltr" autoComplete="off" value={customCodeInput} maxLength={15} onChange={e=>setCustomCodeInput(e.target.value.toUpperCase())}/><p role={codeError?'alert':undefined}>{codeError||t('referral_code_hint')}</p><div className="fr-actions"><button className="fr-primary" disabled={saving}>{saving?label('Saving…','جاري الحفظ…'):t('referral_code_save')}</button><button type="button" disabled={saving} onClick={()=>setIsEditingCode(false)}>{label('Cancel','إلغاء')}</button></div></form> : <><div className="fr-code"><span dir="ltr">{referralCode}</span><button aria-label={label('Customize invitation code','تعديل كود الدعوة')} onClick={()=>{setIsEditingCode(true);setCustomCodeInput(referralCode.replace(/[^A-Z0-9]/g,''));setCodeError('')}}><Edit2 size={17}/></button></div><div className="fr-actions"><button className="fr-primary" onClick={handleCopy}>{copied?<Check size={17}/>:<Copy size={17}/>}<span aria-live="polite">{copied?label('Copied','تم النسخ'):label('Copy invite code','نسخ كود الدعوة')}</span></button><button className="fr-secondary" onClick={handleShareWhatsApp}><MessageCircle size={17}/>WhatsApp</button></div></>}
+        <div className="fr-invite-note"><Shield size={14}/>{label('Share with people you know. No spam.','شارك مع الناس اللي تعرفهم.')}</div>
       </div>
-    );
-  }
-
-  return (
-    <div className="w-full max-w-4xl mx-auto space-y-6" dir={dir}>
-      {/* Header */}
-      <div className="workspace-heading">
-        <div className="w-10 h-10 bg-accent/10 border border-accent/20 rounded-xl flex items-center justify-center">
-          <Gift className="w-5 h-5 text-accent" />
-        </div>
-        <div>
-          <h1 className="text-xl font-black uppercase tracking-widest text-text-main">{t('referral_title')}</h1>
-          <p className="text-xs text-text-dim font-mono">{t('referral_subtitle')}</p>
-        </div>
-      </div>
-
-      {/* Hero Card */}
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative bg-gradient-to-br from-accent/20 via-bg-surface to-purple-500/20 border-2 border-accent/40 rounded-3xl p-8 overflow-hidden shadow-2xl shadow-accent/10"
-      >
-        <div className="absolute top-0 left-0 w-40 h-40 bg-accent/20 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
-        
-        <div className="relative z-10 text-center space-y-4">
-          <div className="w-20 h-20 bg-accent/20 border-2 border-accent/40 rounded-2xl rotate-3 flex items-center justify-center mx-auto shadow-lg shadow-accent/20 backdrop-blur-md">
-            <Trophy className="w-10 h-10 text-accent -rotate-3" />
-          </div>
-          <h2 className="text-2xl font-black text-text-main tracking-tight">{t('referral_hero_title')}</h2>
-          <p className="text-sm text-text-muted max-w-lg mx-auto">
-            {t('referral_hero_desc')}
-          </p>
-        </div>
-      </motion.div>
-
-      {/* Referral Code System */}
-      <div className="bg-bg-surface border border-border-subtle rounded-3xl p-6 space-y-6 shadow-xl shadow-black/20 relative overflow-hidden">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-mono uppercase tracking-widest text-text-dim">{t('referral_code_label')}</p>
-          <button 
-            onClick={() => {
-              setIsEditingCode(!isEditingCode);
-              setCustomCodeInput(referralCode);
-              setCodeError('');
-            }}
-            className="flex items-center gap-2 text-xs font-bold text-accent hover:text-accent-bright"
-          >
-            <Edit2 className="w-3 h-3" />
-            {t('referral_custom_code')}
-          </button>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {isEditingCode ? (
-            <motion.div 
-              key="edit"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="space-y-3"
-            >
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={customCodeInput}
-                  onChange={(e) => setCustomCodeInput(e.target.value.toUpperCase())}
-                  maxLength={15}
-                  className="flex-1 bg-bg-base border-2 border-accent/40 rounded-xl px-5 py-4 text-center text-xl font-bold tracking-widest text-text-main focus:outline-none focus:border-accent"
-                  placeholder="JOE-HACKER"
-                />
-                <button 
-                  onClick={handleSaveCustomCode}
-                  className="bg-accent text-accent-fg font-bold px-6 rounded-xl hover:bg-accent-active transition-colors"
-                >
-                  {t('referral_code_save')}
-                </button>
-              </div>
-              <p className={`text-xs ${codeError ? 'text-red-400' : 'text-text-dim'} text-center`}>
-                {codeError || t('referral_code_hint')}
-              </p>
-            </motion.div>
-          ) : (
-            <motion.div 
-              key="view"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="flex items-center gap-3 flex-wrap sm:flex-nowrap"
-            >
-              <div className="flex-1 w-full sm:w-auto bg-bg-base border-2 border-dashed border-accent/40 rounded-xl px-5 py-4 text-center group hover:border-accent transition-colors relative overflow-hidden">
-                <div className="absolute inset-0 bg-accent/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="text-2xl font-black tracking-[0.3em] text-black dark:text-white font-mono relative z-10">{referralCode}</span>
-              </div>
-              <button
-                onClick={handleCopy}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  copied 
-                    ? 'bg-accent/20 border-accent/50 text-accent scale-105' 
-                    : 'bg-bg-surface border-border-subtle text-text-dim hover:text-accent hover:border-accent/40'
-                }`}
-              >
-                {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* Share Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3 pt-2">
-          <button
-            onClick={handleShareWhatsApp}
-            className="flex-1 w-full flex items-center justify-center gap-2 py-4 px-4 bg-[#25D366] hover:bg-[#20BD5A] text-white font-bold rounded-xl transition-all hover:scale-[1.02] text-sm shadow-lg shadow-[#25D366]/20"
-          >
-            <MessageCircle className="w-5 h-5" />
-            {t('share_whatsapp')}
-          </button>
-          <button
-            onClick={handleCopy}
-            className="flex-1 w-full flex items-center justify-center gap-2 py-4 px-4 bg-bg-elevated border border-border-subtle text-text-main font-bold rounded-xl transition-all hover:border-accent/30 text-sm"
-          >
-            <Share2 className="w-5 h-5" />
-            {t('copy_link')}
-          </button>
-        </div>
-      </div>
-
-      {/* Tiered Progress System */}
-      <div className="bg-bg-surface border border-border-subtle rounded-3xl p-6 space-y-6 shadow-xl shadow-black/20">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-mono uppercase tracking-widest text-text-dim">{t('your_progress')}</p>
-          <span className="text-sm font-bold text-accent px-3 py-1 bg-accent/10 rounded-lg">{referralCount} {t('friend_count')}s</span>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="relative h-6 bg-bg-base rounded-full overflow-hidden border-2 border-bg-elevated shadow-inner">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 1.5, ease: 'easeOut' }}
-            className={`h-full bg-gradient-to-r ${dir === 'rtl' ? 'from-green-500 to-accent' : 'from-accent to-green-500'} rounded-full relative shadow-[0_0_15px_rgba(139,92,246,0.5)]`}
-          >
-            <div className="absolute inset-0 bg-white/20 animate-[pulse_2s_ease-in-out_infinite] rounded-full" />
-            <div className="absolute top-0 bottom-0 left-0 right-0 overflow-hidden rounded-full">
-              <div className="w-[200%] h-full bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.2)_50%,transparent_75%,transparent_100%)] bg-[length:20px_20px] animate-[shimmer_1s_linear_infinite]" />
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Tiers List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {TIERS.map((tier) => {
-            const isUnlocked = referralCount >= tier.count;
-            const isClaimed = claimedTiers.includes(tier.count);
-            const isPending = pendingRewardTier === tier.count;
-            const canClaim = isUnlocked && !isClaimed && !isPending;
-            
-            return (
-              <div 
-                key={tier.count} 
-                className={`flex flex-col items-center text-center p-4 rounded-2xl border-2 transition-all ${
-                  isClaimed ? 'bg-accent/10 border-accent/40' : 
-                  isPending ? 'bg-yellow-500/10 border-yellow-500/40' :
-                  canClaim ? 'bg-bg-surface border-accent shadow-[0_0_20px_rgba(139,92,246,0.3)] scale-105' : 
-                  'bg-bg-base border-border-subtle opacity-60'
-                }`}
-              >
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 ${
-                  isClaimed || canClaim ? 'bg-accent/20 text-accent' : 
-                  isPending ? 'bg-yellow-500/20 text-yellow-400' : 'bg-bg-elevated text-text-dim'
-                }`}>
-                  <tier.icon className="w-6 h-6" />
-                </div>
-                <h3 className="font-bold text-sm text-text-main mb-1">
-                  {tier.count} {t('friend_count')}
-                </h3>
-                <p className="text-xs text-text-dim mb-4 h-8 max-w-[120px]">
-                  {/* We are casting here because dynamic key lookup requires it, or just use string index */}
-                  {t(tier.nameKey as any)}
-                </p>
-                
-                {isClaimed ? (
-                  <span className="text-xs font-bold text-accent flex items-center gap-1 bg-accent/10 px-3 py-1.5 rounded-full">
-                    <Check className="w-3 h-3" /> {t('reward_claimed_msg').split('!')[0]}
-                  </span>
-                ) : isPending ? (
-                  <span className="text-xs font-bold text-yellow-400 flex items-center gap-1 bg-yellow-500/10 border border-yellow-500/30 px-3 py-1.5 rounded-full">
-                    <Clock className="w-3 h-3 animate-pulse" /> {lang === 'ar' ? 'قيد المراجعة' : 'Pending Review'}
-                  </span>
-                ) : canClaim ? (
-                  <button 
-                    onClick={() => handleClaimTier(tier.count)}
-                    disabled={claimLoading === tier.count}
-                    className="text-xs font-bold bg-accent text-accent-fg w-full py-2 rounded-xl hover:bg-accent-active shadow-lg shadow-accent/20 transition-all hover:scale-105 disabled:opacity-50"
-                  >
-                    {claimLoading === tier.count ? (
-                      <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                    ) : (
-                      t('claim_reward')
-                    )}
-                  </button>
-                ) : (
-                  <span className="text-[10px] text-text-muted font-mono uppercase tracking-widest border border-border-subtle px-2 py-1 rounded-md">
-                    {t('referral_tier_0').replace('1', tier.count.toString())}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Leaderboard */}
-        <div className="bg-bg-surface border border-border-subtle rounded-3xl p-6 space-y-4 shadow-xl shadow-black/20">
-          <p className="text-xs font-mono uppercase tracking-widest text-accent flex items-center gap-2">
-            <Trophy className="w-4 h-4" />
-            {t('referral_top_inviters')}
-          </p>
-          <div className="space-y-3">
-            {leaders.length === 0 ? (
-              <div className="text-center py-6 border border-dashed border-border-subtle rounded-2xl">
-                <p className="text-sm text-text-dim">{t('referral_no_leaders')}</p>
-              </div>
-            ) : (
-              leaders.map((leader, i) => (
-                <div key={i} className="flex items-center justify-between bg-bg-base border border-border-subtle rounded-2xl p-3 px-4">
-                  <div className="flex items-center gap-3">
-                    <span className={`w-6 h-6 flex items-center justify-center rounded-full text-xs font-bold ${
-                      i === 0 ? 'bg-yellow-500/20 text-yellow-500' :
-                      i === 1 ? 'bg-gray-400/20 text-gray-400' :
-                      i === 2 ? 'bg-amber-700/20 text-amber-700' :
-                      'bg-bg-elevated text-text-dim'
-                    }`}>
-                      {i + 1}
-                    </span>
-                    <span className="text-sm font-mono text-text-main truncate max-w-[120px]">
-                      {leader.email.split('@')[0]}
-                    </span>
-                  </div>
-                  <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-1 rounded-md">
-                    {leader.count}
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
-        {/* Referred Users List */}
-        <div className="bg-bg-surface border border-border-subtle rounded-3xl p-6 space-y-4 shadow-xl shadow-black/20">
-          <p className="text-xs font-mono uppercase tracking-widest text-text-dim flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            {t('referred_friends')} ({referredUsers.length})
-          </p>
-          {referredUsers.length === 0 ? (
-            <div className="text-center py-6 border border-dashed border-border-subtle rounded-2xl">
-              <p className="text-sm text-text-dim">Invite someone to see them here.</p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-[250px] overflow-y-auto pr-2 custom-scrollbar">
-              {referredUsers.map((user, i) => (
-                <div key={i} className="flex items-center justify-between bg-bg-base border border-border-subtle rounded-2xl p-3 px-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-text-main font-mono truncate">
-                      {user.email.replace(/(.{3}).+(@.+)/, '$1***$2')}
-                    </p>
-                    <p className="text-[10px] sm:text-xs text-text-dim">
-                      {user.date ? new Date(user.date).toLocaleDateString(lang === 'ar' ? 'ar-EG' : 'en-US') : ''}
-                    </p>
-                  </div>
-                  <Check className="w-4 h-4 text-green-400 shrink-0" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
+    </section>
+    {error&&<p className="fr-error" role="alert">{error}</p>}
+    <section className="fr-stats"><div><Users/><span>{label('Friends referred','إحالاتك')}</span><strong>{referralCount}</strong></div><div><Gift/><span>{label('Rewards claimed','مكافآت مستلمة')}</span><strong>{claimedTiers.length}</strong></div><div><Clock/><span>{label('Awaiting review','قيد المراجعة')}</span><strong>{rewardsError?'—':pendingRewardTier===null?'0':'1'}</strong></div></section>
+    <section className="fr-rewards fr-panel"><div className="fr-section-head"><div><span className="fr-kicker">{label('YOUR REWARD PATH','طريق المكافآت')}</span><h2>{label('A little sharing. A little more back.','كل دعوة تقرّبك من مكافأة.')}</h2></div><p>{nextTier?label((nextTier.count-referralCount)+' more to your next milestone','باقي '+(nextTier.count-referralCount)+' للمرحلة القادمة'):label('All milestones reached','وصلت لكل المراحل')}</p></div><div className="fr-progress" role="progressbar" aria-label={label('Referral milestones','مراحل الإحالات')} aria-valuemin={0} aria-valuemax={10} aria-valuenow={Math.min(10,referralCount)}><span style={{width:progress+'%'}}/></div>
+      <div className="fr-tier-grid">{TIERS.map(tier=>{const claimed=claimedTiers.includes(tier.count),pending=pendingRewardTier===tier.count,unlocked=referralCount>=tier.count;return <article key={tier.count} className="fr-tier" data-unlocked={unlocked}><div className="fr-tier-top"><tier.icon size={24}/><span>{String(tier.count).padStart(2,'0')}</span></div><p>{tier.count} {label(tier.count===1?'friend':'friends','إحالات')}</p><h3>{t(tier.nameKey as any)}</h3>{claimed?<span className="fr-status"><Check size={14}/>{label('Claimed','تم الاستلام')}</span>:pending?<span className="fr-status fr-pending"><Clock size={14}/>{label('Under review','قيد المراجعة')}</span>:unlocked?<button className="fr-claim" disabled={rewardsError||pendingRewardTier!==null||claimLoading!==null} onClick={()=>handleClaimTier(tier.count)}>{claimLoading===tier.count?label('Sending…','جاري الإرسال…'):t('claim_reward')}</button>:<span className="fr-locked">{label('Unlock at '+tier.count+' referrals','تفتح عند '+tier.count+' إحالات')}</span>}</article>})}</div>{rewardsError&&<p role="status" className="fr-error">{label('Reward status could not load. Claims are paused until retry.','تعذر تحميل حالة المكافآت. أعد المحاولة قبل طلب مكافأة.')} <button onClick={loadReferralData}>{label('Retry','إعادة المحاولة')}</button></p>}<p className="fr-review-note">{label('Rewards are reviewed after you request them. Only one reward request can be pending at a time.','المكافآت تخضع للمراجعة بعد طلبها. يمكن وجود طلب واحد قيد المراجعة في نفس الوقت.')}</p>
+    </section>
+    <div className="fr-bottom"><section className="fr-panel"><div className="fr-section-head"><h2>{t('referred_friends')}</h2><span className="fr-count">{referredUsers.length}</span></div>{friendsError?<p role="status" className="fr-empty">{label('Invited friends could not load.','تعذر تحميل قائمة المدعوين.')} <button onClick={loadReferralData}>{label('Retry','إعادة المحاولة')}</button></p>:!referredUsers.length?<div className="fr-empty"><Users size={30}/><h3>{label('Your circle starts here.','دايرتك تبدأ هنا.')}</h3><p>{label('Share your code. Friends who use it will appear here.','شارك الكود. أصحابك اللي يستخدموه هيظهروا هنا.')}</p></div>:<div className="fr-people">{referredUsers.map((user,i)=><div className="fr-person" key={i}><span className="fr-avatar"><Users size={16}/></span><div><strong>{user.email.replace(/(.{3}).+(@.+)/,'$1***$2')}</strong><small>{user.date?new Date(user.date).toLocaleDateString(isAr?'ar-EG':'en-US'):'—'}</small></div><Check size={16}/></div>)}</div>}</section>
+      <section className="fr-panel"><div className="fr-section-head"><h2>{t('referral_top_inviters')}</h2><Trophy size={20}/></div>{leadersError?<p className="fr-empty">{label('Leaderboard is unavailable right now.','الترتيب غير متاح حالياً.')}</p>:!leaders.length?<div className="fr-empty"><Trophy size={30}/><h3>{label('Room at the top.','مكانك في المقدمة.')}</h3><p>{t('referral_no_leaders')}</p></div>:<div className="fr-people">{leaders.map((leader,i)=><div className="fr-person" key={i}><span className="fr-rank">{String(i+1).padStart(2,'0')}</span><strong>{leader.email.split('@')[0]}</strong><b>{leader.count}</b></div>)}</div>}</section></div>
+  </div>;
 }

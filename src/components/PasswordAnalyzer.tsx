@@ -1,3 +1,4 @@
+import '../styles/focus-password.css';
 import { useState, useEffect } from 'react';
 import { serverTimestamp } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
@@ -20,9 +21,10 @@ interface ScanResult {
   scoreImprovement?: string[];
 }
 
-export default function PasswordAnalyzer() {
+export default function PasswordAnalyzer({initialValue=""}:{initialValue?:string}={}) {
   const { lang, t } = useLanguage();
-  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [password, setPassword] = useState(initialValue);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -192,17 +194,17 @@ export default function PasswordAnalyzer() {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto min-w-0 flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="focus-password w-full max-w-6xl mx-auto min-w-0 flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="scan-hero bg-bg-base border border-border-subtle p-6 md:p-8 rounded-xl shadow-lg relative overflow-hidden flex flex-col gap-6"
+        className="fp-hero scan-hero bg-bg-base border border-border-subtle p-6 md:p-8 rounded-xl shadow-lg relative overflow-hidden flex flex-col gap-6"
       >
         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
           <KeyRound className="w-48 h-48 -mt-8 -mr-8" />
         </div>
         
-        <div className="scan-heading-group relative z-10 gap-4">
+        <span className="fp-eyebrow">JOESCAN / PASSWORD CHECK</span><div className="scan-heading-group relative z-10 gap-4">
           <div>
             <h2 className="scan-title text-2xl font-bold font-mono tracking-tight uppercase mb-2 text-text-main flex items-center gap-3">
               <KeyRound className="w-6 h-6 text-accent" /> {t('pwd_vault_title')}
@@ -289,7 +291,7 @@ export default function PasswordAnalyzer() {
          )}
        </AnimatePresence>
 
-        <div className="flex flex-col gap-4 relative z-10 w-full">
+        <div className="fp-input flex flex-col gap-4 relative z-10 w-full"><label className="fp-input-label">{lang === "ar" ? "كلمة المرور" : "Password"}<button type="button" aria-pressed={showPassword} onClick={()=>setShowPassword(value=>!value)}>{showPassword ? (lang === "ar" ? "إخفاء" : "Hide password") : (lang === "ar" ? "إظهار" : "Show password")}</button></label>
            <div className="relative">
              <input
                type="text"
@@ -305,6 +307,7 @@ export default function PasswordAnalyzer() {
              {password && (
                <button
                  type="button"
+                 aria-label="Clear password"
                  onClick={() => setPassword('')}
                  className="absolute right-4 top-1/2 -translate-y-1/2 text-text-dim hover:text-text-main transition-colors"
                >
@@ -377,7 +380,8 @@ export default function PasswordAnalyzer() {
           </div>
         )}
         
-        {error && <p className="text-error text-sm relative z-10">{error}</p>}
+        <p className="fp-privacy">Strength is evaluated locally. Breach lookup uses a hash prefix; your password is not sent as plain text or saved in your scan history.</p>
+        {error && <p role="alert" className="text-error text-sm relative z-10">{error}</p>}
       </motion.div>
 
       <AnimatePresence mode="wait">
@@ -386,7 +390,7 @@ export default function PasswordAnalyzer() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className={cn(
-              "w-full border rounded-xl overflow-hidden p-6 md:p-8 transition-all",
+              "fp-report w-full border rounded-xl overflow-hidden p-6 md:p-8 transition-all",
               getRiskColor(result.riskLevel)
             )}
           >

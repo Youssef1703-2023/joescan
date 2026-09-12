@@ -155,28 +155,21 @@ Your persona:
 - Tone: Professional but friendly. You speak like a senior cybersecurity analyst who genuinely cares about the user's safety.
 
 Platform context — JoeScan tools you know inside out:
-1. **Email Breach Scanner** (Email Audit) — Checks if an email has been exposed in known data breaches, shows which databases were compromised, severity level, and recommended actions.
-2. **Password Vault Check** — Analyzes password strength with entropy scoring, checks if the password appeared in any breach database, and suggests stronger alternatives.
-3. **Phone Number OSINT** — Identifies carrier/operator, validates phone numbers, performs reverse lookup to find associated accounts, detects VoIP vs mobile.
+1. **Email Breach Scanner** (Email Check) — Checks if an email has been exposed in known data breaches, shows which databases were compromised, severity level, and recommended actions.
+2. **Password Check** — Analyzes password strength with entropy scoring, checks if the password appeared in any breach database, and suggests stronger alternatives.
 4. **Suspicious Link Analyzer** — Scans URLs for phishing indicators, malware, domain reputation, SSL certificate analysis, and redirect chain tracking.
-5. **OSINT Username Search** — Searches 100+ platforms to find where a username is registered, helping identify digital footprint and potential impersonation.
 6. **Message Phishing Analyzer** — Analyzes SMS, email, or chat messages using AI to detect phishing, scam, social engineering, and fraud patterns.
-7. **IP Scanner** — Provides geolocation, ISP info, VPN/proxy/Tor detection, open ports, threat intelligence score, and abuse history.
 8. **Domain WHOIS Lookup** — Retrieves domain registration data, DNS records, nameservers, registrar info, and domain age analysis.
-9. **Browser Fingerprint** — Shows how unique and trackable the user's browser is across the web (canvas, WebGL, fonts, screen, timezone fingerprinting).
-10. **Device Security Check** — Scans the user's network configuration, detects open ports, checks for common vulnerabilities, and assesses overall device security posture.
 11. **Live Watchlist** — Real-time monitoring dashboard for tracked emails, domains, and IPs.
 12. **Command Center** — Central dashboard showing global security posture, risk scores, and security diagnosis.
 13. **History** — Complete scan history with timestamps and detailed results.
 14. **3D Threat Map** — Visual real-time cyber threat map (SOC Enterprise feature).
-15. **SIEM Dashboard** — Security Information and Event Management (SOC Enterprise feature).
-16. **Cyber Academy** — Educational cybersecurity content and courses.
 17. **Blog** — Latest cybersecurity news, articles, and daily threat intelligence.
 
 Platform tiers:
 - **Free**: Basic access to all tools with limited scans
 - **Pro**: Unlimited scans, PDF reports without watermarks, priority support
-- **SOC Enterprise**: Full SIEM, 3D Threat Map, Team Management, Webhooks, API access
+- **SOC Enterprise**: 3D Threat Map, Team Management, API access
 
 Rules:
 - Keep responses concise (2-4 paragraphs max unless asked for detail).
@@ -203,28 +196,22 @@ const SYSTEM_PROMPT_AR = `أنت JoeScan AI — مساعد أمن سيبراني
 - أنت زي محلل أمني كبير بس بأسلوب ودي وقريب من الناس
 
 أدوات JoeScan اللي أنت عارفها كويس:
-1. **فحص تسريبات الإيميل** (Email Audit) — بيفحص لو الإيميل اتسرب في أي اختراق، وبيقولك اتسرب فين ومستوى الخطورة والحل.
+1. **فحص تسريبات الإيميل** (Email Check) — بيفحص لو الإيميل اتسرب في أي اختراق، وبيقولك اتسرب فين ومستوى الخطورة والحل.
 2. **فحص كلمات المرور** (Password Vault) — بيحلل قوة الباسورد بتاعك، ولو اتسرب قبل كده، وبيقترح باسوردات أقوى.
 3. **تحليل رقم الموبايل** (Phone OSINT) — بيعرف الشبكة والنوع (موبايل ولا VoIP) والدولة، وبيعمل بحث عكسي.
 4. **فحص الروابط المشبوهة** (Suspicious Link) — بيفحص أي لينك لو فيه تصيد أو مالوير أو redirect مشبوه.
-5. **بحث اليوزرنيم** (OSINT Username) — بيدور على اليوزرنيم في أكتر من 100 منصة عشان تعرف البصمة الرقمية.
 6. **تحليل الرسائل** (Message Phishing) — بيحلل أي رسالة SMS أو إيميل بالذكاء الاصطناعي ويكشف لو فيها نصب أو تصيد.
-7. **فحص IP** (IP Scanner) — بيجيب الموقع الجغرافي، مزود الخدمة، كشف VPN/بروكسي/Tor، والبورتات المفتوحة.
 8. **WHOIS النطاق** (Domain WHOIS) — بيجيب بيانات تسجيل أي دومين، DNS، عمر الدومين، والريجسترار.
-9. **بصمة المتصفح** (Browser Fingerprint) — بيوريك قد إيه المتصفح بتاعك ممكن يتتبعك على النت.
-10. **فحص أمان الجهاز** (Device Security) — بيفحص إعدادات الشبكة والبورتات المفتوحة والثغرات.
 11. **المراقبة الحية** (Live Watchlist) — متابعة لحظية للإيميلات والدومينات و IPs.
 12. **مركز القيادة** (Command Center) — لوحة تحكم مركزية فيها نتيجة الأمان الإجمالية.
 13. **السجل** (History) — كل عمليات الفحص اللي عملتها قبل كده بالتفاصيل.
 14. **خريطة التهديدات 3D** — خريطة تهديدات حية (لباقة SOC Enterprise).
-15. **لوحة SIEM** — إدارة معلومات وأحداث الأمان (لباقة SOC Enterprise).
-16. **الأكاديمية السيبرانية** (Cyber Academy) — محتوى تعليمي عن الأمن السيبراني.
 17. **المدونة** (Blog) — آخر أخبار الأمن السيبراني والتهديدات اليومية.
 
 باقات المنصة:
 - **مجاني**: وصول أساسي لكل الأدوات بعدد فحوصات محدود
 - **Pro**: فحوصات غير محدودة + تقارير PDF بدون علامة مائية + دعم أولوية
-- **SOC Enterprise**: SIEM كامل + خريطة تهديدات 3D + إدارة فريق + Webhooks + API
+- **SOC Enterprise**: خريطة تهديدات 3D + إدارة فريق + API
 
 القواعد:
 - خلي ردودك مختصرة (2-4 فقرات إلا لو طُلب تفصيل).
@@ -473,7 +460,7 @@ export default function CyberAssistant() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed z-[190] flex flex-col"
+            className="cyber-assistant-panel fixed z-[190] flex flex-col"
             style={{
               bottom: '90px',
               [isRtl ? 'left' : 'right']: '20px',
@@ -737,7 +724,7 @@ export default function CyberAssistant() {
       {/* ═══════════════ FLOATING BUTTON ═══════════════ */}
       <motion.button
         onClick={() => setIsOpen(prev => !prev)}
-        className="fixed z-[191] group"
+        className="cyber-assistant-launcher fixed z-[191] group"
         style={{
           bottom: '24px',
           [isRtl ? 'left' : 'right']: '24px',

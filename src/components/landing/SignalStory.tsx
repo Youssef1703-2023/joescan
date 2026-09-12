@@ -1,0 +1,7 @@
+export default function SignalStory({paused}:{paused:boolean}) {
+ return <section className={'signal-cinematic-story'+(paused?' is-paused':'')} id="signal-experience" aria-labelledby="signal-story-title">
+  <article className="signal-cinematic-chapter"><div><p className="signal-eyebrow">01 / DISCOVER YOUR EXPOSURE</p><h2 id="signal-story-title">Every digital life<br/>leaves a <em>trace.</em></h2><p>An email. A password. A link you are about to open. Choose a JoeScan tool to explore what the available sources can tell you.</p><a href="/tools/">Find your first check ↗</a><span className="signal-cinema-hint">SCROLL TO CONNECT THE SIGNALS ↓</span></div></article>
+  <article className="signal-cinematic-chapter"><div><p className="signal-eyebrow">02 / CONNECT THE SIGNALS</p><h2>Less noise.<br/><em>More context.</em></h2><p>Read the source, the exposed data and the limits behind each finding. No matches does not mean no risk.</p><span className="signal-cinema-hint">EXPOSURE → EVIDENCE → UNDERSTANDING</span></div></article>
+  <article className="signal-cinematic-chapter"><div><p className="signal-eyebrow">03 / MAKE YOUR NEXT MOVE</p><h2>Turn awareness<br/>into <em>action.</em></h2><p>Replace reused passwords. Enable two-factor authentication. Review affected accounts. A clearer picture helps you decide where to start.</p><a href="/tools/password-vault/">Build better security habits ↗</a><span className="signal-cinema-hint">ILLUSTRATION · NOT LIVE SCAN DATA</span></div></article>
+ </section>;
+}

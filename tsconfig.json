@@ -27,6 +27,12 @@
     "functions",
     "workers",
     "dist",
-    "node_modules"
+    "node_modules",
+    "reports",
+    "design",
+    ".tools",
+    ".pages-deploy",
+    ".pages-deploy-v2",
+    ".pages-deploy-v4"
   ]
 }

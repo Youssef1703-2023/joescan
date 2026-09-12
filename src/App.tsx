@@ -2,29 +2,27 @@ import {hasVerifiedSignIn} from './lib/verifiedSignIn';
 import EmailVerificationGate from './components/EmailVerificationGate';
 import {clearPrivateSession} from './lib/privateSession';
 import './styles/workspace.css';
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
 import { auth, db, isUserBanned, logActivity, ADMIN_EMAIL, getUserTier, getUserProfile, ensureUserProfile } from './lib/firebase';
 import { LanguageProvider, useLanguage, LANGUAGE_OPTIONS } from './contexts/LanguageContext';
-import { NotificationProvider } from './contexts/NotificationContext';
-import Sidebar, { TabId, TAB_TO_PATH, PATH_TO_TAB } from './components/Sidebar';
+import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
+import {type TabId,TAB_TO_PATH,PATH_TO_TAB} from './lib/workspaceRoutes';
+import SignalNavigation from './components/navigation/SignalNavigation';
+import ProfileRibbon from './components/navigation/ProfileRibbon';
+import {getSignalTabs} from './components/navigation/signalPages';
 import NotificationCenter from './components/NotificationCenter';
-import { Shield, LogOut, Moon, Sun, User as UserIcon, BrainCircuit, Menu, Loader2, AlertTriangle, Wrench, Info } from 'lucide-react';
+import { Shield, LogOut, Moon, Sun, BrainCircuit, Loader2, AlertTriangle, Wrench } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
 // Lazy-loaded page components (code splitting)
 const LandingPage = lazy(() => import('./components/LandingPage'));
 const EmailAnalyzer = lazy(() => import('./components/EmailAnalyzer'));
 const PasswordAnalyzer = lazy(() => import('./components/PasswordAnalyzer'));
-const PhoneAnalyzer = lazy(() => import('./components/PhoneAnalyzer'));
 const UrlAnalyzer = lazy(() => import('./components/UrlAnalyzer'));
-const UsernameAnalyzer = lazy(() => import('./components/UsernameAnalyzer'));
 const MessageAnalyzer = lazy(() => import('./components/MessageAnalyzer'));
-const IpAnalyzer = lazy(() => import('./components/IpAnalyzer'));
 const SocialOsintScanner = lazy(() => import('./components/SocialOsintScanner'));
 const DomainLookup = lazy(() => import('./components/DomainLookup'));
-const BrowserFingerprint = lazy(() => import('./components/BrowserFingerprint'));
-const DeviceSecurityCheck = lazy(() => import('./components/DeviceSecurityCheck'));
 const Watchlist = lazy(() => import('./components/Watchlist'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const ScanHistory = lazy(() => import('./components/ScanHistory'));
@@ -34,15 +32,12 @@ const Pricing = lazy(() => import('./components/Pricing'));
 const MfaGate = lazy(() => import('./components/MfaGate'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
 const ThreatMap = lazy(() => import('./components/ThreatMap'));
-const SiemWebhooks = lazy(() => import('./components/SiemWebhooks'));
 const TeamManagement = lazy(() => import('./components/TeamManagement'));
 const ThreatMap3D = lazy(() => import('./components/ThreatMap3D'));
 const ReferralSystem = lazy(() => import('./components/ReferralSystem'));
 const Blog = lazy(() => import('./components/Blog'));
-const CyberAcademy = lazy(() => import('./components/CyberAcademy'));
 import LoadingSkeleton from './components/LoadingSkeleton';
 import ToastContainer from './components/Toast';
-import CommandPalette from './components/CommandPalette';
 import OnboardingTour from './components/OnboardingTour';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import SEOHead from './components/SEOHead';
@@ -72,11 +67,11 @@ function AppContent() {
   const [verifiedSession, setVerifiedSession] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [showProfileSettings, setShowProfileSettings] = useState(false);
+  const {unreadCount} = useNotifications();
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [customAvatar, setCustomAvatar] = useState<string | null>(null);
+  const [checkDraft,setCheckDraft]=useState('');
   const [activeTab, setActiveTabState] = useState<TabId>(getTabFromUrl);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [mfaPassed, setMfaPassed] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
   const [banReason, setBanReason] = useState('');
@@ -86,6 +81,11 @@ function AppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const workspaceScroll = useRef<HTMLElement>(null);
+  const isAdministrator = user?.email === ADMIN_EMAIL;
+  const navigationTabs = useMemo(()=>getSignalTabs(userTier,isAdministrator),[userTier,isAdministrator]);
+  const navigationBlocked = showProfileSettings || showApiSettings || showOnboarding;
+  useEffect(()=>{workspaceScroll.current?.scrollTo({top:0,behavior:'instant' as ScrollBehavior})},[activeTab]);
 
   // Close settings dropdown on click outside or Escape
   useEffect(() => {
@@ -114,6 +114,8 @@ function AppContent() {
 
   // URL-based routing: sync URL with active tab
   const setActiveTab = (tab: TabId) => {
+    if (!navigationTabs.includes(tab)) return;
+    setCheckDraft('');
     setActiveTabState(tab);
     const path = TAB_TO_PATH[tab] || '/';
     if (window.location.pathname !== path) {
@@ -124,7 +126,8 @@ function AppContent() {
   // Handle browser back/forward buttons
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
-      const tab = e.state?.tab || getTabFromUrl();
+      const tab = getTabFromUrl();
+      setCheckDraft('');
       setActiveTabState(tab);
     };
     window.addEventListener('popstate', handlePopState);
@@ -311,50 +314,90 @@ function AppContent() {
   }
 
   return (
-    <div className="h-screen flex font-sans bg-bg-base text-text-main relative overflow-hidden" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="signal-workspace h-screen flex font-sans bg-bg-base text-text-main relative overflow-hidden" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <div className="mesh-bg" />
       <div className="grid-overlay" />
 
-      {/* Sidebar Component */}
-      <Sidebar 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
-        isCollapsed={isSidebarCollapsed} 
-        setIsCollapsed={setIsSidebarCollapsed}
-        isMobileOpen={isMobileMenuOpen}
-        setIsMobileOpen={setIsMobileMenuOpen}
-      />
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative z-10 w-full">
-        {/* Simplified Header */}
-        <header className="glass-surface border-b border-border-subtle px-4 py-3 sm:py-4 flex flex-col justify-center sticky top-0 z-50 shrink-0">
-          <div className="flex justify-between items-center gap-3">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <button 
-                onClick={() => setIsMobileMenuOpen(true)}
-                className="md:hidden p-2 text-text-dim hover:text-text-main hover:bg-bg-elevated rounded-lg transition-colors"
-                title="Menu"
-              >
-                <Menu className="w-5 h-5" />
-              </button>
-              
-              <div className="flex items-center gap-2 cursor-default">
-                <img src="/icon-512.png" alt="JoeScan" className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg" />
-                <div className="font-mono text-xl sm:text-2xl uppercase tracking-tight flex items-center" dir="ltr">
-                  <span className="font-light text-text-main">JOE</span>
-                  <span className="font-black text-accent ml-0.5">SCAN</span>
-                  <div className="w-1.5 h-1.5 bg-accent rounded-full ml-1 animate-pulse" />
-                </div>
-              </div>
-            </div>
+      <div className="signal-workspace-shell flex-1 flex flex-col h-screen overflow-hidden relative z-10 w-full">
+        <header className="signal-account-header glass-surface border-b border-border-subtle sticky top-0 z-50 shrink-0">
+          <button className="signal-workspace-brand" onClick={()=>setActiveTab('dashboard')} aria-label={lang==='ar'?'JoeScan — لوحة التحكم':'JoeScan — dashboard'}><img src="/icon-192.png" alt=""/><span dir="ltr">JoeScan</span></button>
+          <ProfileRibbon name={user.displayName || (lang==='ar'?'حسابك':'Your account')} avatarUrl={customAvatar || user.photoURL} unreadCount={unreadCount} lang={lang} onOpen={()=>setShowProfileSettings(true)}/>
+        </header>
 
-            {/* Right side of header */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* Unified Settings Dropdown */}
+        <main ref={workspaceScroll} className="signal-workspace-scroll flex-1 w-full flex flex-col items-center p-4 md:p-8 overflow-y-auto overflow-x-hidden relative scrollbar-hide">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="workspace-page w-full flex-1 flex flex-col max-w-6xl"
+            data-page={activeTab}
+          >
+            <Suspense fallback={<PageLoader />}>
+            <SEOHead path={TAB_TO_PATH[activeTab] || '/'} />
+            {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab as any} onStart={(kind,value)=>{setActiveTab(kind);setCheckDraft(value)}} />}
+            {activeTab === 'history' && <ScanHistory />}
+            {activeTab === 'watchlist' && <Watchlist />}
+            {activeTab === 'email' && <EmailAnalyzer initialValue={checkDraft} />}
+            {activeTab === 'password' && <PasswordAnalyzer initialValue={checkDraft} />}
+            {activeTab === 'url' && <UrlAnalyzer initialValue={checkDraft} />}
+            { activeTab === 'message' && <MessageAnalyzer /> }
+            { activeTab === 'social' && <SocialOsintScanner /> }
+            { activeTab === 'domain' && <DomainLookup /> }
+            { activeTab === 'pricing' && <Pricing /> }
+            { activeTab === 'threat_map' && <ThreatMap /> }
+            { activeTab === 'team' && (userTier === 'enterprise' || auth.currentUser?.email === ADMIN_EMAIL) && <TeamManagement /> }
+            { activeTab === 'threat_3d' && (userTier === 'enterprise' || auth.currentUser?.email === ADMIN_EMAIL) && <ThreatMap3D /> }
+            { activeTab === 'admin' && auth.currentUser?.email === ADMIN_EMAIL && <AdminDashboard /> }
+            { activeTab === 'referral' && <ReferralSystem /> }
+            { activeTab === 'blog' && <Blog /> }
+            </Suspense>
+          </motion.div>
+          </AnimatePresence>
+          {/* Legal footer */}
+          <footer className="w-full max-w-6xl mx-auto px-4 pb-6 pt-2 text-center text-[11px] text-text-dim/70 font-mono shrink-0">
+            <a href="/privacy" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Privacy</a>
+            <span className="mx-2 opacity-40">·</span>
+            <a href="/about" target="_blank" rel="noopener" className="hover:text-accent transition-colors">{lang === 'ar' ? 'من نحن' : 'About'}</a>
+            <span className="mx-2 opacity-40">·</span>
+            <a href="/terms" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Terms</a>
+            <span className="mx-2 opacity-40">·</span>
+            <a href="/security.en" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Security</a>
+          </footer>
+        </main>
+      </div>
+
+      <SignalNavigation activeTab={activeTab} allowedTabs={navigationTabs} onNavigate={setActiveTab} lang={lang} disabled={navigationBlocked}/>
+      <KeyboardShortcuts onNavigate={setActiveTab} allowedTabs={navigationTabs} enabled={!!user && mfaPassed && !navigationBlocked}/>
+
+      {/* Onboarding Tour (first visit only) */}
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingTour
+            isAr={lang === 'ar'}
+            onNavigate={(id) => setActiveTab(id as TabId)}
+            onComplete={() => {
+              setShowOnboarding(false);
+              if (user) localStorage.setItem(`onboarding_${user.uid}`, 'done');
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Modals outside the flex layout */}
+      <AnimatePresence>
+        {showProfileSettings && (
+          <ProfileSettings
+            onClose={() => {setShowProfileSettings(false);setIsSettingsOpen(false);requestAnimationFrame(()=>document.querySelector<HTMLButtonElement>('.signal-account-header .profile-ribbon')?.focus())}}
+            onLogout={handleLogout}
+            toolbar={<div className="account-toolbar" dir={lang==='ar'?'rtl':'ltr'}><span>{lang==='ar'?'إعدادات وإشعارات الحساب':'Preferences & notifications'}</span><div className="account-toolbar-actions">            {/* Unified Settings Dropdown */}
             <div className="relative" ref={settingsRef}>
               <button
                 onClick={() => setIsSettingsOpen((prev) => !prev)}
                 title={lang === 'ar' ? 'الإعدادات' : 'Settings'}
+                aria-label={lang === 'ar' ? 'الإعدادات' : 'Settings'}
                 aria-expanded={isSettingsOpen}
                 className="text-text-dim hover:text-accent transition-all flex items-center justify-center glass-surface p-2 rounded-xl hover:border-accent/30"
               >
@@ -413,131 +456,18 @@ function AppContent() {
               )}
             </div>
 
-            <div className="hidden sm:flex items-center gap-2 border-l border-border-subtle pl-2">
-              <NotificationCenter />
-            </div>
-
-            <div className="flex items-center gap-2 md:gap-3 border-l border-border-subtle pl-2 sm:pl-3">
-              <button
-                onClick={() => setShowProfileSettings(true)}
-                className="flex items-center gap-2 text-left hover:opacity-80 transition-opacity"
-              >
-                <div className="hidden lg:flex flex-col items-end mr-1 text-right">
-                  <span className="text-sm font-bold text-text-main">{user.displayName || 'Security Operator'}</span>
-                  <span className="text-[10px] text-text-dim font-mono tracking-widest uppercase">{user.email || 'operator@joescan.cloud'}</span>
-                </div>
-                {(customAvatar || user.photoURL) ? (
-                  <img src={customAvatar || user.photoURL!} alt="Profile" className="w-8 h-8 md:w-9 md:h-9 rounded-full border-2 border-accent/40 shadow-sm shadow-accent/10 object-cover" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-bg-elevated border-2 border-border-subtle flex justify-center items-center">
-                    <UserIcon className="w-3.5 h-3.5 md:w-4 md:h-4 text-text-dim" />
-                  </div>
-                )}
-              </button>
-              <button
-                onClick={handleLogout}
-                title={t('logout')}
-                className="text-text-dim hover:text-error transition-colors p-1"
-              >
-                <LogOut className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-        <main className="flex-1 w-full flex flex-col items-center p-4 md:p-8 overflow-y-auto overflow-x-hidden relative scrollbar-hide">
-        <section role="note" className="w-full max-w-7xl mb-4 rounded-xl border border-amber-400/20 bg-amber-400/5 px-4 py-3 flex gap-3 text-xs text-text-dim">
-          <Info className="w-4 h-4 shrink-0 text-amber-300 mt-0.5" />
-          <p>{lang === 'ar'
-            ? 'نتائج JoeScan تقييم أولي وليست ضماناً للأمان. استخدم كلمة مرور فريدة وقوية، فعّل المصادقة الثنائية (2FA)، وحدّث أجهزتك وتحقق من الروابط قبل إدخال أي بيانات.'
-            : 'JoeScan results are an initial assessment, not a security guarantee. Use unique strong passwords, enable two-factor authentication (2FA), update your devices, and verify links before entering data.'}</p>
-        </section>
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="workspace-page w-full flex-1 flex flex-col max-w-6xl"
-            data-page={activeTab}
-          >
-            <Suspense fallback={<PageLoader />}>
-            <SEOHead path={TAB_TO_PATH[activeTab] || '/'} />
-            {activeTab === 'dashboard' && <Dashboard onNavigate={setActiveTab as any} />}
-            {activeTab === 'history' && <ScanHistory />}
-            {activeTab === 'watchlist' && <Watchlist />}
-            {activeTab === 'email' && <EmailAnalyzer />}
-            {activeTab === 'password' && <PasswordAnalyzer />}
-            {activeTab === 'phone' && <PhoneAnalyzer />}
-            {activeTab === 'url' && <UrlAnalyzer />}
-            {activeTab === 'username' && <UsernameAnalyzer />}
-            { activeTab === 'message' && <MessageAnalyzer /> }
-            { activeTab === 'ip' && <IpAnalyzer /> }
-            { activeTab === 'social' && <SocialOsintScanner /> }
-            { activeTab === 'domain' && <DomainLookup /> }
-            { activeTab === 'fingerprint' && <BrowserFingerprint /> }
-            { activeTab === 'device_security' && <DeviceSecurityCheck /> }
-            { activeTab === 'pricing' && <Pricing /> }
-            { activeTab === 'threat_map' && <ThreatMap /> }
-            { activeTab === 'siem' && (userTier === 'enterprise' || auth.currentUser?.email === ADMIN_EMAIL) && <SiemWebhooks /> }
-            { activeTab === 'team' && (userTier === 'enterprise' || auth.currentUser?.email === ADMIN_EMAIL) && <TeamManagement /> }
-            { activeTab === 'threat_3d' && (userTier === 'enterprise' || auth.currentUser?.email === ADMIN_EMAIL) && <ThreatMap3D /> }
-            { activeTab === 'admin' && auth.currentUser?.email === ADMIN_EMAIL && <AdminDashboard /> }
-            { activeTab === 'referral' && <ReferralSystem /> }
-            { activeTab === 'blog' && <Blog /> }
-            { activeTab === 'academy' && <CyberAcademy /> }
-            </Suspense>
-          </motion.div>
-          </AnimatePresence>
-          {/* Legal footer */}
-          <footer className="w-full max-w-6xl mx-auto px-4 pb-6 pt-2 text-center text-[11px] text-text-dim/70 font-mono shrink-0">
-            <a href="/privacy" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Privacy</a>
-            <span className="mx-2 opacity-40">·</span>
-            <a href="/about" target="_blank" rel="noopener" className="hover:text-accent transition-colors">{lang === 'ar' ? 'من نحن' : 'About'}</a>
-            <span className="mx-2 opacity-40">·</span>
-            <a href="/terms" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Terms</a>
-            <span className="mx-2 opacity-40">·</span>
-            <a href="/security.en" target="_blank" rel="noopener" className="hover:text-accent transition-colors">Security</a>
-          </footer>
-        </main>
-      </div>
-
-      {/* Command Palette (Ctrl+K) */}
-      <CommandPalette onNavigate={(id) => setActiveTab(id as TabId)} />
-      <KeyboardShortcuts onNavigate={(id) => setActiveTab(id as TabId)} enabled={!!user && mfaPassed} />
-
-      {/* Onboarding Tour (first visit only) */}
-      <AnimatePresence>
-        {showOnboarding && (
-          <OnboardingTour
-            isAr={lang === 'ar'}
-            onNavigate={(id) => setActiveTab(id as TabId)}
-            onComplete={() => {
-              setShowOnboarding(false);
-              if (user) localStorage.setItem(`onboarding_${user.uid}`, 'done');
-            }}
+<NotificationCenter /></div></div>}
           />
         )}
       </AnimatePresence>
 
-      {/* Modals outside the flex layout */}
-      <AnimatePresence>
-        {showProfileSettings && (
-          <ProfileSettings
-            onClose={() => setShowProfileSettings(false)}
-            onLogout={handleLogout}
-          />
-        )}
-      </AnimatePresence>
-
-      <ApiSettingsModal key={user?.uid || "signed-out"}
+      <ApiSettingsModal key={`api-settings-${user?.uid || "signed-out"}`}
         isOpen={showApiSettings}
         onClose={() => setShowApiSettings(false)}
       />
 
       {/* AI Cyber Assistant — floating chatbot */}
-      {user && <div key={user.uid}><CyberAssistant /></div>}
+      {user && <div key={`assistant-${user.uid}`}><CyberAssistant /></div>}
     </div>
   );
 }
@@ -553,3 +483,4 @@ export default function App() {
     </HelmetProvider>
   );
 }
+

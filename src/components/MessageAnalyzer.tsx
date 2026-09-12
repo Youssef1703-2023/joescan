@@ -1,3 +1,4 @@
+import '../styles/focus-message.css';
 import React, { useState } from 'react';
 import { serverTimestamp } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
@@ -28,6 +29,8 @@ export default function MessageAnalyzer() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [historyKey, setHistoryKey] = useState(0);
+  const [reportTarget, setReportTarget] = useState('');
   const [isExporting, setIsExporting] = useState(false);
 
   const handleScan = async (e: React.FormEvent) => {
@@ -41,6 +44,7 @@ export default function MessageAnalyzer() {
     try {
       const scanResult = await analyzeMessage(message, lang);
       setResult(scanResult);
+      setReportTarget(message.substring(0, 30) + '...');
 
       if (auth.currentUser) {
         await saveScan({
@@ -80,25 +84,26 @@ export default function MessageAnalyzer() {
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto min-w-0 flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="focus-message w-full max-w-6xl mx-auto min-w-0 flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="scan-hero bg-bg-base border border-border-subtle p-6 rounded-xl shadow-lg relative overflow-hidden"
+        className="fm-hero scan-hero bg-bg-base border border-border-subtle p-6 rounded-xl shadow-lg relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
           <MessageSquareWarning className="w-32 h-32" />
         </div>
         
-        <h2 className="scan-title text-xl font-bold font-mono tracking-tight uppercase mb-2 text-text-main flex items-center gap-2">
+        <span className="fm-eyebrow">JOESCAN / MESSAGE PHISHING</span><h2 className="scan-title text-xl font-bold font-mono tracking-tight uppercase mb-2 text-text-main flex items-center gap-2">
           <MessageSquareWarning className="w-5 h-5 text-accent" /> {t('message_title')}
         </h2>
         <p className="text-text-dim mb-6 text-sm">
-          {t('message_desc')}
+          {lang === 'ar' ? 'راجع الرسالة قبل الرد. افهم علامات التصيد ومحاولات الضغط وانتحال الهوية.' : 'Pause before you reply. Look for phishing signals, pressure tactics and impersonation.'}
         </p>
 
         <form onSubmit={handleScan} className="flex flex-col gap-3 relative z-10 w-full max-w-2xl">
-          <textarea 
+          <div className="fm-input-head"><label htmlFor="message-check-text">{lang === "ar" ? "نص الرسالة" : "Message text"}</label><button type="button" disabled={loading || !message} onClick={()=>setMessage('')}>{lang === "ar" ? "مسح" : "Clear"}</button></div>
+          <textarea id="message-check-text" disabled={loading} 
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder={t('message_placeholder')}
@@ -110,19 +115,21 @@ export default function MessageAnalyzer() {
             disabled={loading || !message.trim()}
             className="bg-accent text-accent-fg px-6 py-3 self-start rounded-lg font-bold tracking-wider uppercase hover:bg-opacity-90 disabled:opacity-50 transition-all flex items-center justify-center min-w-[120px]"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('audit')}
+            {loading ? <><Loader2 className="w-5 h-5 animate-spin" />{lang === 'ar' ? 'جارٍ التحليل…' : 'Checking…'}</> : <>{lang === 'ar' ? 'فحص الرسالة' : 'Check message'}<ArrowRight size={15}/></>}
           </button>
         </form>
-        {error && <p className="text-error text-sm mt-3">{error}</p>}
+        <p className="fm-note">{lang === "ar" ? "احذف المعلومات الحساسة قبل إرسال النص للتحليل. النتائج تقييم أولي وليست تأكيدًا لهوية المرسل." : "Remove sensitive details before submitting text for analysis. Findings are an initial assessment, not verification of the sender."}</p>
+        {error && <p role="alert" className="text-error text-sm mt-3">{error}</p>}
       </motion.div>
 
+      {!result && !loading && <div className="fm-ready"><MessageSquareWarning size={23}/><div><h3>{lang === 'ar' ? 'وضوح أكثر، قبل الخطوة التالية.' : 'A clearer picture before your next move.'}</h3><p>{lang === 'ar' ? 'ستظهر علامات الاشتباه والتوصيات هنا بعد الفحص.' : 'The assessment, suspicious signals and recommended actions will appear here.'}</p></div></div>}
       <AnimatePresence mode="wait">
         {result && (
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             className={cn(
-              "w-full border rounded-xl overflow-hidden p-6 transition-all",
+              "fm-report w-full border rounded-xl overflow-hidden p-6 transition-all",
               getRiskColor(result.riskLevel)
             )}
           >
@@ -141,7 +148,7 @@ export default function MessageAnalyzer() {
                       if (!result || isExporting) return;
                       setIsExporting(true);
                       try {
-                        await generateReportPDF({ ...result, target: message.substring(0, 30) + '...' }, 'message', lang);
+                        await generateReportPDF({ ...result, target: reportTarget }, 'message', lang);
                       } finally {
                         setIsExporting(false);
                       }
@@ -154,12 +161,12 @@ export default function MessageAnalyzer() {
                   </button>
                 </div>
 
-                <div className="text-sm opacity-90 leading-relaxed font-medium">
+                <div className="fm-summary text-sm opacity-90 leading-relaxed font-medium">
                   {result.reportText}
                 </div>
 
                 {(result.fraudProbability || result.psychologicalTactics || result.spoofedContext) && (
-                  <div className="pt-4 border-t border-[currentColor]/10 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="fm-signals pt-4 border-t border-[currentColor]/10 grid grid-cols-1 md:grid-cols-3 gap-4">
                     {result.fraudProbability && (
                       <div className="bg-bg-base/40 p-3 rounded-lg">
                         <Activity className="w-4 h-4 mb-2 opacity-70" />
@@ -194,15 +201,15 @@ export default function MessageAnalyzer() {
                   </div>
                 )}
 
-                <div className="bg-bg-base/40 rounded-lg p-4 mt-2">
+                <div className="fm-actions bg-bg-base/40 rounded-lg p-4 mt-2">
                   <h4 className="font-bold text-xs uppercase tracking-widest opacity-80 mb-3 flex items-center gap-2">
                     <ArrowRight className="w-4 h-4" /> {t('action_plan')}
                   </h4>
                   <ul className="space-y-2 text-sm opacity-90">
-                    {(result.actionPlan || '').split('\\n').filter(Boolean).map((step, i) => (
+                    {(result.actionPlan || '').split(/\r?\n|\\n/).filter(Boolean).map((step, i) => (
                       <li key={i} className="flex gap-2">
                         <span className="font-mono opacity-50">{i + 1}.</span>
-                        <span>{step.replace(/^\\d+\\.\\s*/, '')}</span>
+                        <span>{step.replace(/^\d+[.)]\s*/, '')}</span>
                       </li>
                     ))}
                   </ul>
@@ -213,7 +220,7 @@ export default function MessageAnalyzer() {
         )}
       </AnimatePresence>
 
-      <MiniHistory scanType="message" />
+      <MiniHistory scanType="message" refreshKey={historyKey} />
     </div>
   );
 }

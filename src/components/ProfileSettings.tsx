@@ -1,3 +1,4 @@
+import '../styles/account-space.css';
 import {appAttestationHeaders} from '../lib/appAttestation';
 import React, { useState, useRef, useEffect } from 'react';
 import { updateProfile, deleteUser, updateEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider, sendPasswordResetEmail, multiFactor, TotpMultiFactorGenerator } from 'firebase/auth';
@@ -13,10 +14,16 @@ import { useServiceWorker } from '../hooks/useServiceWorker';
 interface ProfileSettingsProps {
   onClose: () => void;
   onLogout: () => void;
+  toolbar?: React.ReactNode;
 }
 
-export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsProps) {
+export default function ProfileSettings({ onClose, onLogout, toolbar }: ProfileSettingsProps) {
   const { dir, t } = useLanguage();
+  const ar = dir === 'rtl';
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
+  useEffect(()=>{const dialog=dialogRef.current;if(dialog&&!dialog.open)dialog.showModal();return()=>{dialog?.close()}},[]);
   const user = auth.currentUser;
   
   const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'achievements' | 'notifications' | 'updates'>('profile');
@@ -73,6 +80,7 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
     return () => { cancelled = true; };
   }, [user]);
 
+  const [deletingAccount, setDeletingAccount] = useState(false);
   if (!user) return null;
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
@@ -111,12 +119,8 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
         }));
       }
 
-      if (promises.length > 0) {
-        await Promise.all(promises);
-        setSuccess(successMessages.join(" "));
-      } else {
-        setSuccess("No changes were made.");
-      }
+      await Promise.all(promises);
+      setSuccess(successMessages.length ? successMessages.join(" ") : "No changes were made.");
     } catch (err: any) {
       if (err.code === 'auth/requires-recent-login') {
         setError("Updating email requires a recent login to confirm your identity. Please log out and back in, then try again.");
@@ -243,7 +247,7 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
     reader.readAsDataURL(file);
   };
 
-  const [deletingAccount, setDeletingAccount] = useState(false);
+
   const handleDeleteAccount = async () => {
     if (deletingAccount) return;
     if (confirm("Are you entirely sure? This action is irreversible.")) {
@@ -276,98 +280,55 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" dir={dir}>
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        exit={{ opacity: 0, scale: 0.95 }}
-        className="w-full max-w-md bg-bg-base border border-border-subtle rounded-2xl shadow-2xl overflow-hidden relative flex flex-col max-h-[90vh]"
-      >
-        {/* Header */}
-        <div className="bg-bg-surface px-6 pt-4 border-b border-border-subtle shrink-0">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2 text-text-main font-bold">
-              <UserIcon className="w-5 h-5 text-accent" />
-              <span>{t('profile_settings')}</span>
-            </div>
-            <button onClick={onClose} className="p-2 -mr-2 hover:bg-black/10 rounded-full transition-colors text-text-dim hover:text-text-main">
-              <X className="w-4 h-4" />
-            </button>
+    <dialog ref={dialogRef} className="account-space" aria-label={ar?'مساحتك الشخصية':'Your personal space'} onCancel={e=>{e.preventDefault();closeRef.current()}} dir={dir}>
+      <div className="as-topbar">
+        <button className="as-brand" onClick={onClose} aria-label={ar?'العودة إلى JoeScan':'Back to JoeScan'}><img src="/icon-192.png" alt=""/>JoeScan<span>/</span><small>{ar?'الحساب':'Account'}</small></button>
+        <div className="as-top-actions">{toolbar}<button className="as-close" onClick={onClose} aria-label={ar?'إغلاق الحساب':'Close account'}><X size={18}/></button></div>
+      </div>
+      <div className="as-scroll">
+      <div className="as-layout">
+        <aside className="as-identity">
+          <div className="as-passport">
+            <div className="as-passport-top"><span>{ar?'هويتك على JOESCAN':'JOESCAN / PERSONAL ID'}</span><Fingerprint size={20}/></div>
+            <div className="as-portrait-stage"><i/><i/><div className="as-avatar">{(photoURL || user.photoURL)?<img src={photoURL || user.photoURL!} alt="" referrerPolicy="no-referrer" onLoad={e=>{e.currentTarget.style.display='block'}} onError={e=>{e.currentTarget.style.display='none'}}/>:null}<span>{(displayName || user.displayName || 'J').slice(0,2).toUpperCase()}</span></div><span className="as-corner"/></div>
+            <div className="as-passport-name"><small>{ar?'مساحتك الشخصية':'YOUR PERSONAL SPACE'}</small><h2>{displayName || user.displayName || (ar?'حسابك':'Your account')}</h2><p dir="ltr">{user.email}</p></div>
+            <div className="as-passport-foot"><span>01 / IDENTITY</span><div aria-hidden="true" className="as-barcode"/></div>
           </div>
-          
-          <div className="flex gap-4">
-            <button 
-              onClick={() => switchTab('profile')}
-              className={`pb-2.5 font-bold uppercase tracking-wider text-[11px] border-b-2 transition-colors ${activeTab === 'profile' ? 'border-accent text-accent' : 'border-transparent text-text-dim hover:text-text-main'}`}
-            >
-              {t('tab_general')}
-            </button>
-            <button 
-              onClick={() => switchTab('security')}
-              className={`pb-2.5 font-bold uppercase tracking-wider text-[11px] border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'security' ? 'border-accent text-accent' : 'border-transparent text-text-dim hover:text-text-main'}`}
-            >
-              <Lock className="w-3 h-3" /> {t('tab_security')}
-            </button>
-            <button 
-              onClick={() => switchTab('achievements')}
-              className={`pb-2.5 font-bold uppercase tracking-wider text-[11px] border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'achievements' ? 'border-accent text-accent' : 'border-transparent text-text-dim hover:text-text-main'}`}
-            >
-              <Trophy className="w-3 h-3" /> {t('achievements_tab' as any) || 'Achievements'}
-            </button>
-            <button 
-              onClick={() => switchTab('notifications')}
-              className={`pb-2.5 font-bold uppercase tracking-wider text-[11px] border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'notifications' ? 'border-accent text-accent' : 'border-transparent text-text-dim hover:text-text-main'}`}
-            >
-              <Bell className="w-3 h-3" /> Alerts
-            </button>
-            <button 
-              onClick={() => switchTab('updates')}
-              className={`pb-2.5 font-bold uppercase tracking-wider text-[11px] border-b-2 transition-colors flex items-center gap-1.5 ${activeTab === 'updates' ? 'border-accent text-accent' : 'border-transparent text-text-dim hover:text-text-main'}`}
-            >
-              <RefreshCw className="w-3 h-3" /> {t('tab_updates')}
-              {sw.updateAvailable && <span className="w-2 h-2 bg-accent rounded-full animate-pulse" />}
-            </button>
-          </div>
-        </div>
-
-        {/* Form Body */}
-        <div className="p-6 overflow-y-auto">
+          <nav className="as-sections" aria-label={ar?'أقسام الحساب':'Account sections'}>
+            {([
+              ['profile',ar?'البروفايل':'Identity',UserIcon],
+              ['security',ar?'الأمان':'Security',Lock],
+              ['notifications',ar?'الإشعارات':'Notifications',Bell],
+              ['achievements',ar?'الإنجازات':'Achievements',Trophy],
+              ['updates',ar?'التحديثات':'App updates',RefreshCw],
+            ] as const).map(([id,label,Icon],index)=><button key={id} type="button" aria-current={activeTab===id?'page':undefined} onClick={()=>switchTab(id)}><span className="as-nav-number">0{index+1}</span><Icon size={16}/><span>{label}</span><span className="as-nav-dot"/>{id==='updates'&&sw.updateAvailable&&<span className="as-update-dot"/>}</button>)}
+          </nav>
+          <button className="as-signout" onClick={onLogout}><LogOut size={15}/>{t('logout')}</button>
+        </aside>
+        <section className="as-main">
+          <header className="as-heading"><span className="as-eyebrow">{ar?'حسابك، على طريقتك':'YOUR ACCOUNT, YOUR WAY'}</span><h1>{activeTab==='profile'?(ar?'مساحة تشبهك.':'A space that’s yours.'):activeTab==='security'?(ar?'أمانك يبدأ هنا.':'Keep it yours.'):activeTab==='notifications'?(ar?'اختار اللي يوصلك.':'Your signal. Your choice.'):activeTab==='achievements'?(ar?'كل خطوة تفرق.':'Every step counts.'):(ar?'دايمًا على اطلاع.':'Stay up to date.')}</h1><p>{activeTab==='profile'?(ar?'التفاصيل الصغيرة اللي بتخلي JoeScan مساحتك.':'The little details that make JoeScan feel like you.'):activeTab==='security'?(ar?'كلمة المرور وطرق حماية الدخول لحسابك.':'Manage your password and how you protect access.'):activeTab==='notifications'?(ar?'تحكّم في التنبيهات اللي تهمك.':'Choose which updates deserve your attention.'):activeTab==='achievements'?(ar?'راجع إنجازاتك خلال رحلتك.':'A record of your progress along the way.'):(ar?'راجع إصدار التطبيق والتحديثات المتاحة.':'Keep your workspace running smoothly.')}</p></header>
+          <div className="as-panel" key={activeTab}>
+            <div className="as-panel-heading"><span>{activeTab==='profile'?(ar?'تفاصيل البروفايل':'Profile details'):activeTab==='security'?(ar?'حماية الحساب':'Account protection'):activeTab==='notifications'?(ar?'تفضيلات التنبيهات':'Notification preferences'):activeTab==='achievements'?(ar?'إنجازاتك':'Your achievements'):(ar?'تحديثات التطبيق':'Workspace updates')}</span><small>JOESCAN / {activeTab.toUpperCase()}</small></div>
+            <div className="as-form-body">
           {error && (
-            <div className="bg-error/10 border border-error/20 text-error p-3 rounded-lg text-sm mb-4 flex gap-2 items-start text-left">
+            <div role="alert" className="bg-error/10 border border-error/20 text-error p-3 rounded-lg text-sm mb-4 flex gap-2 items-start text-left">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>{error}</span>
             </div>
           )}
           
           {success && (
-            <div className="bg-accent/10 border border-accent/20 text-accent p-3 rounded-lg text-sm mb-4 text-left">
+            <div role="status" className="bg-accent/10 border border-accent/20 text-accent p-3 rounded-lg text-sm mb-4 text-left">
               {success}
             </div>
           )}
 
           {activeTab === 'profile' ? (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
-              <div className="flex items-center gap-4">
-                {(customAvatar || photoURL || user.photoURL) ? (
-                  <img src={customAvatar || photoURL || user.photoURL!} alt="Avatar" className="w-16 h-16 rounded-full border-2 border-border-subtle object-cover shrink-0" referrerPolicy="no-referrer" />
-                ) : (
-                  <div className="w-16 h-16 rounded-full bg-bg-surface border-2 border-border-subtle flex items-center justify-center shrink-0">
-                    <UserIcon className="w-8 h-8 text-text-dim" />
-                  </div>
-                )}
-                <div className="flex flex-col text-left overflow-hidden">
-                  <span className="font-mono text-xs text-text-dim tracking-wider uppercase mb-1">{t('internal_uid')}</span>
-                  <div className="flex items-center gap-1.5 bg-bg-surface border border-border-subtle px-2 py-1 rounded max-w-full">
-                    <Fingerprint className="w-3 h-3 text-accent shrink-0" />
-                    <span className="font-mono text-[10px] text-text-main truncate" dir="ltr">{user.uid}</span>
-                  </div>
-                </div>
-              </div>
-
-              <form onSubmit={handleUpdateProfile} className="space-y-4">
+              <form onSubmit={handleUpdateProfile} className="as-profile-form space-y-4">
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5 text-left">{t('display_name')}</label>
-                  <input 
+                  <label htmlFor="account-name" className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5 text-left">{t('display_name')}</label>
+                  <input id="account-name" 
                     type="text" 
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
@@ -378,8 +339,8 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
                 </div>
                 
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5 text-left">{t('account_email')}</label>
-                  <input 
+                  <label htmlFor="account-email" className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5 text-left">{t('account_email')}</label>
+                  <input id="account-email" 
                     type="email" 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -416,11 +377,12 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
                       value={photoURL}
                       onChange={(e) => setPhotoURL(e.target.value)}
                       className="w-full bg-bg-surface border border-border-subtle rounded-lg px-3 py-2 text-text-main focus:border-accent outline-none transition-colors"
-                      placeholder="https://example.com/avatar.png"
+                      aria-label={ar?'رابط الصورة':'Avatar image URL'} placeholder="https://example.com/avatar.png"
                       dir="ltr"
                     />
                   ) : (
                     <div 
+                      role="button" tabIndex={0} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();fileInputRef.current?.click()}}}
                       onClick={() => fileInputRef.current?.click()}
                       className="w-full border-2 border-dashed border-border-subtle hover:border-accent bg-bg-surface/50 hover:bg-bg-surface rounded-lg p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors text-text-dim hover:text-accent group"
                     >
@@ -450,8 +412,8 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
               <form onSubmit={handleUpdatePassword} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5 text-left">{t('old_password') || 'Current Password'}</label>
-                  <input 
+                  <label htmlFor="account-old-password" className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5 text-left">{t('old_password') || 'Current Password'}</label>
+                  <input id="account-old-password" 
                     type="password" 
                     value={oldPassword}
                     onChange={(e) => setOldPassword(e.target.value)}
@@ -469,8 +431,8 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
                   </button>
                 </div>
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5 text-left">{t('new_password')}</label>
-                  <input 
+                  <label htmlFor="account-password" className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5 text-left">{t('new_password')}</label>
+                  <input id="account-password" 
                     type="password" 
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
@@ -480,8 +442,8 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5 text-left">{t('confirm_password')}</label>
-                  <input 
+                  <label htmlFor="account-confirm-password" className="block text-xs font-mono uppercase tracking-wider text-text-dim mb-1.5 text-left">{t('confirm_password')}</label>
+                  <input id="account-confirm-password" 
                     type="password" 
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
@@ -548,7 +510,7 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
                         setMfaToggling(false);
                       }
                     }}
-                    disabled={mfaToggling || mfaEnabled === null}
+                    aria-label="Two-factor authentication" role="switch" aria-checked={mfaEnabled===true} disabled={mfaToggling || mfaEnabled === null}
                     className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${mfaEnabled ? 'bg-accent' : 'bg-bg-elevated border border-border-subtle'} ${mfaToggling ? 'opacity-50' : ''}`}
                   >
                     <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-300 ${mfaEnabled ? 'left-[26px]' : 'left-0.5'}`} />
@@ -663,8 +625,12 @@ export default function ProfileSettings({ onClose, onLogout }: ProfileSettingsPr
               <BadgeSystem />
             </motion.div>
           )}
-        </div>
-      </motion.div>
-    </div>
+            </div>
+          </div>
+          <footer className="as-footer"><Shield size={13}/><span>{ar?'مساحتك لإدارة حسابك وتفضيلاتك.':'One place for your identity, security and preferences.'}</span><span>JOESCAN</span></footer>
+        </section>
+      </div>
+      </div>
+    </dialog>
   );
 }

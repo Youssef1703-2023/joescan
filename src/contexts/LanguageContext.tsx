@@ -93,8 +93,8 @@ export const translations = {
   
   // Navigation Tabs
   nav_dashboard: { en: "Command Center", ar: "مركز القيادة", fr: "Centre de commande", de: "Kommandozentrale", es: "Centro de mando", tr: "Komuta merkezi", ru: "Центр управления" },
-  nav_email: { en: "Email Audit", ar: "فحص الإيميل", fr: "Audit e-mail", de: "E-Mail-Audit", es: "Auditoría de correo", tr: "E-posta denetimi", ru: "Аудит email" },
-  nav_password: { en: "Password Vault Check", ar: "فحص كلمات المرور", fr: "Vérification des mots de passe", de: "Passwort-Tresor-Check", es: "Verificación de contraseñas", tr: "Şifre kasası kontrolü", ru: "Проверка паролей" },
+  nav_email: { en: "Email Check", ar: "فحص الإيميل", fr: "Audit e-mail", de: "E-Mail-Audit", es: "Auditoría de correo", tr: "E-posta denetimi", ru: "Аудит email" },
+  nav_password: { en: "Password Check", ar: "فحص كلمات المرور", fr: "Vérification des mots de passe", de: "Passwort-Tresor-Check", es: "Verificación de contraseñas", tr: "Şifre kasası kontrolü", ru: "Проверка паролей" },
   nav_phone: { en: "Phone Number", ar: "فحص أرقام الهواتف", fr: "Numéro de téléphone", de: "Telefonnummer", es: "Número de teléfono", tr: "Telefon numarası", ru: "Номер телефона" },
   nav_url: { en: "Suspicious Link", ar: "فحص الروابط المشبوهة", fr: "Lien suspect", de: "Verdächtiger Link", es: "Enlace sospechoso", tr: "Şüpheli bağlantı", ru: "Подозрительная ссылка" },
   nav_username: { en: "OSINT Username", ar: "تحري الأسماء المستعارة", fr: "Nom d'utilisateur OSINT", de: "OSINT-Benutzername", es: "Usuario OSINT", tr: "OSINT kullanıcı adı", ru: "OSINT имя пользователя" },
@@ -325,10 +325,10 @@ export const translations = {
   dash_time_h_ago: { en: "h ago", ar: "س", fr: "h", de: "Std", es: "h", tr: "sa", ru: "ч" },
   dash_time_d_ago: { en: "d ago", ar: "ي", fr: "j", de: "T", es: "d", tr: "gün", ru: "д" },
 
-  // Password Vault Check 
-  pwd_vault_title: { en: "Password Vault Check", ar: "فحص خزنة كلمات المرور", fr: "Vérification du coffre-fort", de: "Passwort-Tresor-Check", es: "Verificación de bóveda", tr: "Şifre kasası kontrolü", ru: "Проверка хранилища паролей" },
-  pwd_vault_desc: { en: "Evaluate password strength algorithmically in real-time, then run a deep audit against neural-network breach databases to detect compromised footprints.", ar: "قيّم قوة كلمة المرور بشكل خوارزمي في الوقت الحقيقي، ثم قم بفحص عميق ضد قواعد بيانات التسريبات المبنية على الذكاء الاصطناعي لاكتشاف البصمات المخترقة.", fr: "Évaluez la force en temps réel, puis auditez contre les bases de données de fuites.", de: "Bewerten Sie die Stärke in Echtzeit und prüfen Sie gegen Breach-Datenbanken.", es: "Evalúe la fortaleza en tiempo real y audite contra bases de datos de filtraciones.", tr: "Gerçek zamanlı güç değerlendirmesi ve sızıntı veritabanlarına karşı derin denetim.", ru: "Оценка надёжности в реальном времени и глубокий аудит по базам утечек." },
-  pwd_deep_audit: { en: "Deep Audit", ar: "فحص عميق", fr: "Audit profond", de: "Tiefenaudit", es: "Auditoría profunda", tr: "Derin denetim", ru: "Глубокий аудит" },
+  // Password Check
+  pwd_vault_title: { en: "Password Check", ar: "فحص كلمة المرور", fr: "Vérification du coffre-fort", de: "Passwort-Tresor-Check", es: "Verificación de bóveda", tr: "Şifre kasası kontrolü", ru: "Проверка хранилища паролей" },
+  pwd_vault_desc: { en: "Check your password’s strength and known breach exposure.", ar: "افحص قوة كلمة المرور وظهورها في تسريبات معروفة.", fr: "Évaluez la force en temps réel, puis auditez contre les bases de données de fuites.", de: "Bewerten Sie die Stärke in Echtzeit und prüfen Sie gegen Breach-Datenbanken.", es: "Evalúe la fortaleza en tiempo real y audite contra bases de datos de filtraciones.", tr: "Gerçek zamanlı güç değerlendirmesi ve sızıntı veritabanlarına karşı derin denetim.", ru: "Оценка надёжности в реальном времени и глубокий аудит по базам утечек." },
+  pwd_deep_audit: { en: "Check password", ar: "فحص كلمة المرور", fr: "Audit profond", de: "Tiefenaudit", es: "Auditoría profunda", tr: "Derin denetim", ru: "Глубокий аудит" },
   pwd_risk_assessed: { en: "Risk Assessed", ar: "تقييم الخطر", fr: "Risque évalué", de: "Risiko bewertet", es: "Riesgo evaluado", tr: "Risk değerlendirildi", ru: "Риск оценён" },
   pwd_exposure: { en: "EXPOSURE", ar: "تعرّض", fr: "EXPOSITION", de: "EXPOSITION", es: "EXPOSICIÓN", tr: "MARUZİYET", ru: "УТЕЧКА" },
   pwd_download_report: { en: "Download Report", ar: "تحميل التقرير", fr: "Télécharger le rapport", de: "Bericht herunterladen", es: "Descargar informe", tr: "Raporu indir", ru: "Скачать отчёт" },
@@ -626,3 +626,4 @@ export function useLanguage() {
   if (!context) throw new Error('useLanguage must be used within LanguageProvider');
   return context;
 }
+

@@ -127,9 +127,9 @@ describe('Watchlist Component', () => {
     });
 
     // Check status badges & labels
-    expect(screen.getByText(/Clean \/ Monitored/i)).toBeInTheDocument();
-    expect(screen.getByText(/On Demand \(Client\)/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/Unsupported/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/No new findings/i)).toBeInTheDocument();
+    expect(screen.getByText(/^On demand$/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Not supported/i).length).toBeGreaterThanOrEqual(1);
   });
 
   it('triggers sweep all on button click', async () => {
@@ -137,12 +137,36 @@ describe('Watchlist Component', () => {
     render(<Watchlist />);
 
     await waitFor(() => {
-      expect(screen.getByText('SWEEP ALL')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Check now' })).not.toBeDisabled();
     });
 
-    fireEvent.click(screen.getByText('SWEEP ALL'));
+    fireEvent.click(screen.getByText('Check now'));
     await waitFor(() => {
       expect(mocks.sweepWatchlistNow).toHaveBeenCalled();
     });
   });
+  it('shows runtime failure without claiming monitoring is active', async () => {
+    mocks.fetchWatchlistState.mockRejectedValueOnce(new Error('offline'));
+    render(<Watchlist />);
+    expect(await screen.findByText('Status unavailable')).toBeInTheDocument();
+    expect(screen.queryByText('No new findings')).not.toBeInTheDocument();
+  });
+  it('filters saved items by their identifier', async () => {
+    render(<Watchlist />);
+    await screen.findByText('1.2.3.4');
+    fireEvent.change(screen.getByLabelText('Search watchlist'), {target:{value:'admin@'}});
+    expect(screen.queryByText('1.2.3.4')).not.toBeInTheDocument();
+    expect(screen.getByText('admin@joescan.me')).toBeInTheDocument();
+  });
+  it('prevents persistence when the server rejects the new target', async () => {
+    mocks.syncWatchlist.mockRejectedValueOnce(new Error('Target rejected'));
+    render(<Watchlist />);
+    await screen.findByText('1.2.3.4');
+    fireEvent.change(screen.getByLabelText('Address or identifier'), {target:{value:'8.8.8.8'}});
+    fireEvent.click(screen.getByRole('button', {name:'Continue'}));
+    fireEvent.click(screen.getByRole('button', {name:'Save item'}));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Target rejected');
+    expect(mocks.addDoc).not.toHaveBeenCalled();
+  });
+
 });

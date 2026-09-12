@@ -1,3 +1,4 @@
+import '../styles/focus-domain.css';
 import React, { useState } from 'react';
 import { serverTimestamp } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
@@ -303,9 +304,9 @@ export default function DomainLookup() {
   );
 
   return (
-    <div className="w-full max-w-5xl mx-auto space-y-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="focus-domain w-full max-w-6xl mx-auto min-w-0 space-y-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="workspace-heading">
+      <span className="fd-eyebrow">JOESCAN / DOMAIN INTELLIGENCE</span><div className="fd-heading workspace-heading">
         <div className="w-10 h-10 rounded-xl bg-cyan-500/10 flex items-center justify-center">
           <Globe className="w-5 h-5 text-cyan-400" />
         </div>
@@ -328,9 +329,12 @@ export default function DomainLookup() {
             <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-dim" />
             <input
               type="text"
+              aria-label={lang === "ar" ? "اسم النطاق" : "Domain name"}
+              autoCapitalize="none" spellCheck={false}
+              disabled={loading}
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && performLookup()}
+              onKeyDown={(e) => { if (e.key === "Enter" && !loading && domain.trim()) performLookup(); }}
               placeholder={lang === 'ar' ? 'أدخل الدومين... (مثل: google.com)' : 'Enter domain... (e.g. google.com)'}
               className="w-full bg-bg-surface border border-border-subtle rounded-lg pl-10 pr-4 py-3 text-text-main focus:border-accent outline-none font-mono text-sm transition-colors"
               dir="ltr"
@@ -347,6 +351,7 @@ export default function DomainLookup() {
         </div>
       </div>
 
+      {!result && !loading && <div className="fd-ready"><Globe size={25}/><div><h3>{lang === 'ar' ? 'خلف كل نطاق، معلومات تستحق المراجعة.' : 'Look beyond the domain name.'}</h3><p>{lang === 'ar' ? 'راجع التسجيل وسجلات DNS ومعلومات الاستضافة المتاحة. بعض البيانات قد تكون محجوبة أو غير متاحة.' : 'Review available registration, DNS and hosting details. Some records may be redacted or unavailable.'}</p></div><span>WHOIS / DNS / HOSTING</span></div>}
       {/* Error */}
       <AnimatePresence>
         {error && (
@@ -354,7 +359,7 @@ export default function DomainLookup() {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="glass-card border-red-500/30 p-4 flex items-center gap-3"
+            role="alert" className="glass-card border-red-500/30 p-4 flex items-center gap-3"
           >
             <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
             <p className="text-red-400 text-sm">{error}</p>
@@ -368,7 +373,7 @@ export default function DomainLookup() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-5"
+            className="fd-report space-y-5"
           >
             {/* Risk & Domain Summary */}
             <div className="glass-card p-6">

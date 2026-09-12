@@ -31,3 +31,26 @@
  .domain-search > div { flex-direction:column; }
 }
 @media(prefers-reduced-motion:reduce) { .workspace-page *, .workspace-page *::before, .workspace-page *::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+/* Floating navigation reserves space without reducing the width of tool pages. */
+.signal-workspace,.signal-workspace-shell{height:100dvh}
+.signal-workspace-scroll{padding-bottom:calc(116px + env(safe-area-inset-bottom));scroll-padding-bottom:calc(116px + env(safe-area-inset-bottom))}
+.signal-workspace-brand{display:flex;align-items:center;gap:10px;min-height:42px;color:var(--text-main);border:0;background:none;border-radius:8px;font:600 24px Arial,sans-serif;letter-spacing:-.8px;white-space:nowrap;cursor:pointer}
+.signal-workspace-brand img{width:31px;height:31px}
+.signal-workspace-brand:focus-visible{outline:2px solid #b7ff72;outline-offset:5px}
+@media(max-width:680px){
+ .signal-workspace-brand{font-size:21px;gap:8px}.signal-workspace-brand img{width:27px;height:27px}
+ .signal-workspace-scroll{padding-bottom:calc(145px + env(safe-area-inset-bottom));scroll-padding-bottom:calc(145px + env(safe-area-inset-bottom))}
+ .signal-workspace .cyber-assistant-launcher{bottom:calc(92px + env(safe-area-inset-bottom))!important}
+ .signal-workspace .cyber-assistant-panel{bottom:calc(158px + env(safe-area-inset-bottom))!important;height:min(600px,calc(100dvh - 190px - env(safe-area-inset-bottom)))!important}
+}
+
+/* Approved compact account ribbon. */
+.signal-account-header{display:flex;align-items:center;justify-content:space-between;gap:12px;direction:ltr;padding:12px 24px}
+.signal-account-header .signal-workspace-brand{flex-shrink:0}
+.signal-account-header .profile-ribbon{flex-shrink:1;min-width:0;margin-left:auto}
+.account-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 24px;border-bottom:1px solid var(--border-subtle)}
+.account-toolbar>span{font-size:11px;color:var(--text-dim)}
+.account-toolbar-actions{display:flex;align-items:center;gap:8px}
+.account-toolbar-actions [class*="w-80"]{width:min(24rem,calc(100vw - 80px))}
+.account-toolbar-actions [class*="max-h-"]{max-height:40dvh}
+@media(max-width:600px){.signal-account-header{padding:12px 14px;gap:10px}.signal-account-header .signal-workspace-brand{font-size:19px;gap:7px}.signal-account-header .signal-workspace-brand img{width:24px;height:24px}}

@@ -28,20 +28,6 @@
     "appPath": "/password-vault"
   },
   {
-    "slug": "phone-number",
-    "title": "Phone number information",
-    "description": "Review phone-number formatting and available public context.",
-    "overview": "JoeScan helps interpret a phone number and organize available information into a readable assessment.",
-    "steps": [
-      "Check the number format and country context.",
-      "Review available lookup or AI-assisted observations.",
-      "Verify important claims with the relevant service or carrier."
-    ],
-    "limits": "A phone number does not establish identity, ownership or a precise live location. AI-generated observations can be wrong and carrier information can change.",
-    "data": "Only submit numbers you are authorized to assess. Inputs may be processed by the configured analysis provider and saved in your scan history.",
-    "appPath": "/phone-number"
-  },
-  {
     "slug": "suspicious-link",
     "title": "Suspicious link checker",
     "description": "Review warning signs before opening an unfamiliar link.",
@@ -54,20 +40,6 @@
     "limits": "This is not a sandbox or a guarantee that a page is safe. A site can change after a check. Do not open a suspicious link just because no warning appeared.",
     "data": "Remove private access tokens and personal details from URLs before submitting them. Analysis may involve an external provider.",
     "appPath": "/suspicious-link"
-  },
-  {
-    "slug": "osint-username",
-    "title": "Username OSINT search",
-    "description": "Explore possible public profiles associated with a username.",
-    "overview": "JoeScan organizes username-based public-profile candidates and AI-assisted context to help you review your digital footprint.",
-    "steps": [
-      "Enter a username you are authorized to research.",
-      "Review candidate profile links and source context.",
-      "Confirm each match on its original platform."
-    ],
-    "limits": "The same username can belong to different people. Candidate links and AI observations are leads, not verified identity matches or proof that an account exists.",
-    "data": "Use public information responsibly. Do not submit passwords or private account data. Saved reports remain in your account.",
-    "appPath": "/osint-username"
   },
   {
     "slug": "message-phishing",
@@ -84,20 +56,6 @@
     "appPath": "/message-phishing"
   },
   {
-    "slug": "ip-scan",
-    "title": "IP address intelligence",
-    "description": "Understand available network and reputation context for an IP address.",
-    "overview": "JoeScan organizes IP-related information and security observations into a readable report.",
-    "steps": [
-      "Review available location and network information.",
-      "Examine reported exposure or reputation indicators.",
-      "Confirm findings before changing network settings."
-    ],
-    "limits": "IP geolocation is approximate. Shared networks and VPNs complicate attribution. An IP address does not identify a person, and results are not a complete network audit.",
-    "data": "Use only addresses you own or are authorized to assess. The address may be sent to external lookup or analysis services.",
-    "appPath": "/ip-scan"
-  },
-  {
     "slug": "domain-whois",
     "title": "Domain & DNS lookup",
     "description": "Review domain registration and DNS information.",
@@ -110,34 +68,6 @@
     "limits": "Registration details may be redacted, unavailable or outdated. A recent domain is not automatically malicious, and an old domain is not automatically trustworthy.",
     "data": "Domain queries may be sent to public lookup services. Do not include credentials or private tokens in your input.",
     "appPath": "/domain-whois"
-  },
-  {
-    "slug": "browser-fingerprint",
-    "title": "Browser fingerprint review",
-    "description": "See which browser characteristics may contribute to tracking.",
-    "overview": "JoeScan displays browser-exposed characteristics and an assessment of their relevance to online fingerprinting.",
-    "steps": [
-      "Review the characteristics your browser makes available.",
-      "Understand which combinations may aid tracking.",
-      "Consider privacy settings and the tradeoffs of changing them."
-    ],
-    "limits": "The assessment does not measure your uniqueness against every browser on the internet and cannot guarantee anonymity. Different sites use different tracking methods.",
-    "data": "Browser characteristics are collected for the displayed assessment. Review the Privacy & Data page before saving or sharing a report.",
-    "appPath": "/browser-fingerprint"
-  },
-  {
-    "slug": "device-security",
-    "title": "Device & network exposure check",
-    "description": "Review browser signals and available public network exposure.",
-    "overview": "JoeScan combines browser-visible security information with available public exposure data to help you identify areas worth investigating.",
-    "steps": [
-      "Inspect the browser-level security assessment.",
-      "Review any public IP exposure information returned.",
-      "Verify findings with your device settings and a qualified administrator."
-    ],
-    "limits": "A website cannot inspect all files, installed software or local network ports. Public exposure data may be stale. This is not antivirus software or a full vulnerability scan.",
-    "data": "Checks may query public exposure services for an IP address. The tool does not need your device password.",
-    "appPath": "/device-security"
   },
   {
     "slug": "social-osint",
@@ -194,20 +124,6 @@
     "limits": "Visualization does not create additional evidence. Geographic markers may be approximate and feed information can be incomplete. Access depends on your plan.",
     "data": "This view presents general threat information and does not publish your personal scan history.",
     "appPath": "/threat-3d"
-  },
-  {
-    "slug": "siem-webhooks",
-    "title": "SIEM webhook integration",
-    "description": "Send selected security events to an approved destination.",
-    "overview": "JoeScan supports webhook delivery for eligible accounts, with destination restrictions and signed payloads.",
-    "steps": [
-      "Configure an approved HTTPS destination.",
-      "Review the event content and delivery requirements.",
-      "Verify signatures at the receiving service."
-    ],
-    "limits": "Delivery depends on an active eligible subscription, configured destination allowlist and service availability. Failed validation stops delivery; a webhook is not a complete SIEM.",
-    "data": "Events sent to your destination leave JoeScan. Retention at that destination is controlled separately and account deletion cannot recall earlier deliveries.",
-    "appPath": "/siem-webhooks"
   },
   {
     "slug": "team",

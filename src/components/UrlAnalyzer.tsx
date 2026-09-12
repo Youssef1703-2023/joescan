@@ -1,3 +1,4 @@
+import '../styles/focus-link.css';
 import React, { useState } from 'react';
 import { serverTimestamp } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
@@ -95,9 +96,9 @@ const PHISHING_PATH_KEYWORDS = [
   'urgent', 'suspended', 'limited', 'unlock', 'restore',
 ];
 
-export default function UrlAnalyzer() {
+export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={}) {
   const { lang, t } = useLanguage();
-  const [url, setUrl] = useState('');
+  const [url, setUrl] = useState(initialValue);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -562,30 +563,32 @@ export default function UrlAnalyzer() {
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+    <div className="focus-link w-full max-w-6xl mx-auto min-w-0 flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="scan-hero bg-bg-base border border-border-subtle p-6 rounded-xl shadow-lg relative overflow-hidden"
+        className="fl-hero scan-hero bg-bg-base border border-border-subtle p-6 rounded-xl shadow-lg relative overflow-hidden"
       >
         <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
           <Link className="w-32 h-32" />
         </div>
 
-        <h2 className="scan-title text-xl font-bold font-mono tracking-tight uppercase mb-2 text-text-main flex items-center gap-2">
+        <span className="fl-eyebrow">JOESCAN / LINK CHECK</span><h2 className="scan-title text-xl font-bold font-mono tracking-tight uppercase mb-2 text-text-main flex items-center gap-2">
           <Link className="w-5 h-5 text-accent" /> {t('url_title')}
         </h2>
         <p className="text-text-dim mb-6 text-sm">
           {lang === 'ar'
-            ? 'فحص شامل للرابط — تحليل الهيكل، كشف التصيد، مطابقة قواعد بيانات التهديدات العالمية، وتقييم الأمان.'
-            : 'Deep URL threat analysis — structure analysis, phishing detection, global threat database matching, and security assessment.'}
+            ? 'افحص مؤشرات الرابط المشبوهة، وافهم النتائج قبل أن تقرر فتحه.'
+            : 'Look closer before you click. Review suspicious URL patterns and available domain signals.'}
         </p>
 
         <form onSubmit={handleScan} className="flex gap-2 relative z-10 w-full max-w-2xl">
           <div className="relative flex-1">
             <input
               type="text"
+              aria-label={lang === "ar" ? "الرابط المراد فحصه" : "Link to check"}
+              autoCapitalize="none" spellCheck={false}
               value={url}
               onChange={(e) => setUrl(e.target.value)}
               placeholder={t('url_placeholder')}
@@ -598,10 +601,11 @@ export default function UrlAnalyzer() {
             disabled={loading || !url.trim()}
             className="bg-accent text-accent-fg px-6 py-3 rounded-lg font-bold tracking-wider uppercase hover:bg-opacity-90 disabled:opacity-50 transition-all flex items-center justify-center min-w-[120px]"
           >
-            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t('audit')}
+            {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (lang === 'ar' ? 'فحص الرابط' : 'Check link')}
           </button>
         </form>
 
+        <p className="fl-caption">{lang === "ar" ? "تقييم أولي بناءً على المؤشرات المتاحة، وليس ضمانًا لأمان الموقع." : "An initial assessment of available signals, not a guarantee that a website is safe."}</p>
         {/* Scan progress */}
         {loading && scanStage && (
           <motion.div
@@ -614,23 +618,24 @@ export default function UrlAnalyzer() {
           </motion.div>
         )}
 
-        {error && <p className="text-error text-sm mt-3">{error}</p>}
+        {error && <p role="alert" className="text-error text-sm mt-3">{error}</p>}
       </motion.div>
 
+      {!result && !loading && <div className="fl-ready"><Search size={24}/><div><span>YOUR LINK REPORT</span><h3>{lang === 'ar' ? 'افهم الرابط قبل فتحه.' : 'Understand the link before the visit.'}</h3><p>{lang === 'ar' ? 'ستظهر النتيجة وأسبابها هنا بعد الفحص.' : 'Your assessment and the signals behind it will appear here after the check.'}</p></div><div className="fl-ready-steps"><span>01 / URL structure</span><span>02 / Domain signals</span><span>03 / Review findings</span></div></div>}
       {/* ━━━ Results ━━━ */}
       <AnimatePresence mode="wait">
         {result && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-5"
+            className="fl-report space-y-5"
           >
             {/* ── Verdict Banner ── */}
             {(() => {
               const vc = verdictConfig[result.verdict];
               const VerdictIcon = vc.icon;
               return (
-                <div className={cn("rounded-xl border p-6 relative overflow-hidden", vc.border, vc.bg)}>
+                <div className={cn("fl-verdict rounded-xl border p-6 relative overflow-hidden", vc.border, vc.bg)}>
                   <div className="absolute top-0 right-0 opacity-5 pointer-events-none">
                     <VerdictIcon className="w-40 h-40" />
                   </div>
@@ -731,7 +736,7 @@ export default function UrlAnalyzer() {
             })()}
 
             {/* ── Security Checks Detail ── */}
-            <div className="bg-bg-base border border-border-subtle rounded-xl overflow-hidden">
+            <div className="fl-checks bg-bg-base border border-border-subtle rounded-xl overflow-hidden">
               <div className="p-4 border-b border-border-subtle flex items-center justify-between">
                 <h3 className="text-xs font-mono uppercase tracking-widest text-text-dim flex items-center gap-2">
                   <Search className="w-3.5 h-3.5" />
@@ -780,7 +785,7 @@ export default function UrlAnalyzer() {
             </div>
 
             {/* ── OSINT Investigation Links ── */}
-            <div className="bg-bg-base border border-border-subtle rounded-xl p-5">
+            <div className="fl-external bg-bg-base border border-border-subtle rounded-xl p-5">
               <h4 className="font-bold uppercase tracking-widest opacity-80 mb-4 flex items-center gap-2 text-accent text-xs">
                 <Search className="w-4 h-4" /> {lang === 'ar' ? 'أدوات التحقيق العميق' : 'Deep Investigation Tools'}
               </h4>

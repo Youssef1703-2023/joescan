@@ -1,0 +1,12 @@
+import {render,screen,fireEvent,cleanup,waitFor} from '@testing-library/react';
+import {it,expect,vi,afterEach} from 'vitest';
+const state=vi.hoisted(()=>({save:vi.fn(),discount:100}));
+vi.mock('../contexts/LanguageContext',()=>({useLanguage:()=>({lang:'en',dir:'ltr'})}));
+vi.mock('../lib/firebase',()=>({db:{},auth:{currentUser:{uid:'test'}}}));
+vi.mock('firebase/firestore',()=>({doc:(_db:any,col:string,id:string)=>id,collection:vi.fn(),query:vi.fn(),where:vi.fn(),getDocs:async()=>({docs:[]}),getDoc:async()=>({exists:()=>true,data:()=>({active:true,discount:state.discount,targetTier:'all'})}),setDoc:(...args:any[])=>state.save(...args)}));
+import CheckoutModal from './CheckoutModal';
+const props={isOpen:true,onClose:vi.fn(),planName:'JoeScan Pro',price:'$6',tier:'pro' as const};
+afterEach(()=>{cleanup();vi.clearAllMocks()});
+it('does not submit a full-discount code without confirmation',async()=>{state.save.mockResolvedValue(undefined);render(<CheckoutModal {...props}/>);fireEvent.change(screen.getByLabelText('Have a promo code?'),{target:{value:'FREE'}});fireEvent.click(screen.getByRole('button',{name:'Apply'}));await screen.findByText('FREE · 100%');expect(state.save).not.toHaveBeenCalled();fireEvent.click(screen.getByRole('button',{name:'Request subscription'}));await screen.findByText('REQUEST SAVED');expect(state.save).toHaveBeenCalledWith('test_subscription',expect.objectContaining({tier:'pro',promoCode:'FREE',status:'pending'}))});
+it('keeps failures visible and does not offer payment as if saved',async()=>{state.save.mockRejectedValue(Error('offline'));render(<CheckoutModal {...props}/>);fireEvent.click(screen.getByRole('button',{name:'Request subscription'}));await screen.findByRole('alert');expect(screen.queryByText('REQUEST SAVED')).toBeNull();expect(screen.queryByRole('link',{name:'Continue on WhatsApp'})).toBeNull()});
+it('resets the checkout when changing the selected plan',async()=>{state.save.mockResolvedValue(undefined);const {rerender}=render(<CheckoutModal {...props}/>);fireEvent.click(screen.getByRole('button',{name:'Request subscription'}));await screen.findByText('REQUEST SAVED');rerender(<CheckoutModal {...props} tier="enterprise" planName="SOC Enterprise" price="$30"/>);expect(screen.queryByText('REQUEST SAVED')).toBeNull();expect(screen.getAllByText('$30').length).toBeGreaterThan(0)});

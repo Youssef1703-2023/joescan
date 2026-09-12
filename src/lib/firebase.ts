@@ -214,13 +214,15 @@ export type ActivityType = 'login' | 'scan' | 'upgrade' | 'ban' | 'unban' | 'pro
 export async function logActivity(action: ActivityType, details: string = '', targetUser?: string) {
   try {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) return false;
     const base=import.meta.env.VITE_AI_PROXY_URL;
-    if(!base)return;
-    const response=await fetch(base.replace(/\/+$/,'')+'/activity', {method:'POST',headers:{'Content-Type':'application/json',...(await appAttestationHeaders()), Authorization:'Bearer '+await user.getIdToken()},body:JSON.stringify({action,details,targetUser:targetUser||null})});
-    if(!response.ok)throw new Error('Activity logging unavailable');;
+    if(!base)return false;
+    const response=await fetch(base.replace(/\/+$/,'')+'/activity', {method:'POST',signal:AbortSignal.timeout(10000),headers:{'Content-Type':'application/json',...(await appAttestationHeaders()), Authorization:'Bearer '+await user.getIdToken()},body:JSON.stringify({action,details,targetUser:targetUser||null})});
+    if(!response.ok)throw new Error('Activity logging unavailable');
+    return true;
   } catch (err) {
     console.error("Failed to log activity", err);
+    return false;
   }
 }
 

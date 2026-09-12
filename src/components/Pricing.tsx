@@ -1,242 +1,82 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Shield, Zap, Lock, CreditCard, Gift, Check, X, ShieldCheck, ExternalLink, Sparkles } from 'lucide-react';
-import { auth, db, getUserTier, SubscriptionTier } from '../lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import React, { useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
+import { ArrowUpRight, Check, ChevronDown, CircleHelp, Layers3, Loader2, Network, Shield, ShieldCheck, Sparkles } from 'lucide-react';
+import { auth, getUserTier, type SubscriptionTier } from '../lib/firebase';
 import { useLanguage } from '../contexts/LanguageContext';
 import CheckoutModal from './CheckoutModal';
+import '../styles/focus-membership.css';
 
-// External Checkout Modal handled payment
+type PaidTier = 'pro' | 'enterprise';
+// Existing monthly prices. EGP amounts are product prices, not a live FX quote.
+const planPrices = { free: { USD: 0, EGP: 0 }, pro: { USD: 6, EGP: 300 }, enterprise: { USD: 30, EGP: 1500 } };
+const previousPrices = { pro: { USD: 12, EGP: 600 }, enterprise: { USD: 60, EGP: 3000 } };
 
 export default function Pricing() {
-  const { language, t } = useLanguage();
-  const [currentTier, setCurrentTier] = useState<SubscriptionTier>('free');
-  const [loading, setLoading] = useState(true);
+  const { lang, dir, t } = useLanguage();
+  const copy = (en: string, ar: string) => lang === 'ar' ? ar : en;
+  const reduced = useReducedMotion();
+  const [currentTier, setCurrentTier] = useState<SubscriptionTier | null>(null);
+  const [tierError, setTierError] = useState(false);
   const [currency, setCurrency] = useState<'USD' | 'EGP'>('USD');
-  
-  // Checkout Modal State
-  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [selectedTier, setSelectedTier] = useState<SubscriptionTier>('free');
-  const [checkoutError, setCheckoutError] = useState('');
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<PaidTier | null>(null);
+  const [requestReceived, setRequestReceived] = useState(false);
 
   useEffect(() => {
-    if (auth.currentUser) {
-      getUserTier(auth.currentUser.uid).then(t => {
-        setCurrentTier(t);
-        setLoading(false);
-      });
-    } else {
-      setLoading(false);
-    }
-    
-    // Check user location for currency
-    fetch('https://ipapi.co/json/')
-      .then(res => res.json())
-      .then(data => {
-        if (data.country_code === 'EG') {
-          setCurrency('EGP');
-        }
-      })
-      .catch(() => {});
-    
-    // Check for Stripe redirect success
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('payment') === 'success') {
-      setPaymentSuccess(true);
-      // Clean URL
-      window.history.replaceState({}, '', window.location.pathname);
-      // Refresh tier
-      if (auth.currentUser) {
-        getUserTier(auth.currentUser.uid).then(t => setCurrentTier(t));
-      }
-    }
+    let active = true;
+    const user = auth.currentUser;
+    if (!user) { setTierError(true); return; }
+    getUserTier(user.uid).then(tier => {
+      if (active) setCurrentTier(tier);
+    }).catch(() => { if (active) setTierError(true); });
+    return () => { active = false; };
   }, []);
 
-  const handleSelectTier = (tier: SubscriptionTier) => {
-    if (tier === currentTier) return;
-    if (tier === 'free') return;
-    setSelectedTier(tier);
-    setPaymentSuccess(false);
-    setCheckoutError('');
-    setIsCheckoutOpen(true);
-  };
-
-  const handlePaymentSuccess = async (_tier: 'pro' | 'enterprise') => {
-    if (!auth.currentUser) throw new Error("Not logged in");
-    setPaymentSuccess(true);
-  };
-
-  if (loading) {
-     return <div className="flex justify-center items-center h-full"><Zap className="w-8 h-8 animate-pulse text-accent" /></div>;
-  }
-
-  const formatPrice = (usdPrice: number) => {
-    if (usdPrice === 0) {
-      if (currency === 'EGP') return language === 'en' ? '0 EGP' : '٠ ج.م';
-      return '$0';
-    }
-    if (currency === 'EGP') {
-      return language === 'en' ? `${usdPrice * 50} EGP` : `${usdPrice * 50} ج.م`;
-    }
-    return `$${usdPrice}`;
-  };
-
-  const tiers = [
-    {
-      id: 'free',
-      name: t('pricing_stealth'),
-      price: formatPrice(0),
-      description: t('pricing_stealth_desc'),
-      features: [
-        t('pricing_f_watchlist_1'),
-        t('pricing_f_weekly'),
-        t('pricing_f_scans_10'),
-        t('pricing_f_device_unlimited'),
-        t('pricing_f_pdf_watermark'),
-      ]
-    },
-    {
-      id: 'pro',
-      name: t('pricing_pro'),
-      price: formatPrice(6),
-      originalPrice: formatPrice(12),
-      discountLabel: `50% ${t('pricing_off')}`,
-      description: t('pricing_pro_desc'),
-      features: [
-        '15 Targets on Live Activities',
-        '150 Scans/Day',
-        t('pricing_f_whitelabel'),
-        t('pricing_f_darkweb'),
-        t('pricing_f_watchlist_50'),
-      ]
-    },
-    {
-      id: 'enterprise',
-      name: t('pricing_enterprise'),
-      price: formatPrice(30),
-      originalPrice: formatPrice(60),
-      discountLabel: `50% ${t('pricing_off')}`,
-      description: t('pricing_enterprise_desc'),
-      features: [
-        t('pricing_f_unlimited_watchlist'),
-        t('pricing_f_realtime'),
-        t('pricing_f_siem'),
-        t('pricing_f_team'),
-        t('pricing_f_threatmap'),
-      ]
-    }
+  const formatPrice = (amount: number) => currency === 'USD' ? `$${amount}` : `${amount.toLocaleString('en-US')} ${lang === 'ar' ? 'ج.م' : 'EGP'}`;
+  const planName = (id: SubscriptionTier) => t(id === 'free' ? 'pricing_stealth' : id === 'pro' ? 'pricing_pro' : 'pricing_enterprise');
+  const plans = [
+    { id: 'free' as const, icon: Shield, note: copy('THE ESSENTIALS', 'الأساسيات'), description: copy('A starting point for your everyday security checks.', 'بداية لفحوصات الأمان اليومية.'), features: [copy('10 AI analyses per day', '10 تحليلات بالذكاء الاصطناعي يوميًا'), copy('1 watchlist target', 'هدف واحد في قائمة المراقبة'), copy('Core security checks', 'فحوصات الأمان الأساسية'), copy('Standard PDF reports', 'تقارير PDF قياسية')] },
+    { id: 'pro' as const, icon: Layers3, note: copy('ROOM TO EXPLORE', 'مساحة أكبر للفحص'), description: copy('More capacity for a closer look at your digital exposure.', 'سعة أكبر لفهم مدى تعرض بياناتك للمخاطر.'), features: [copy('150 AI analyses per day', '150 تحليلًا بالذكاء الاصطناعي يوميًا'), copy('50 watchlist targets', '50 هدفًا في قائمة المراقبة'), copy('Core security checks', 'فحوصات الأمان الأساسية'), copy('PDF report exports', 'تصدير التقارير بصيغة PDF')] },
+    { id: 'enterprise' as const, icon: Network, note: copy('A SHARED WORKSPACE', 'مساحة عمل مشتركة'), description: copy('Higher limits and a workspace for your security team.', 'حدود استخدام أعلى ومساحة عمل لفريقك.'), features: [copy('2,000 AI analyses per day', '2,000 تحليل بالذكاء الاصطناعي يوميًا'), copy('200 watchlist targets', '200 هدف في قائمة المراقبة'), copy('Team management · 5 members', 'إدارة الفريق · 5 أعضاء'), copy('PDF report exports', 'تصدير التقارير بصيغة PDF')] },
+  ];
+  const choose = (tier: PaidTier) => { setRequestReceived(false); setSelectedTier(tier); };
+  const faq = [
+    [copy('How does activation work?', 'إزاي الاشتراك بيتفعل؟'), copy('Choose a plan and submit a subscription request. Continue on WhatsApp to confirm payment instructions with the team. Your plan changes after verification.', 'اختار الباقة وقدّم طلب اشتراك، ثم تابع عبر WhatsApp لتأكيد تفاصيل الدفع مع الفريق. الباقة بتتغير بعد التحقق.')],
+    [copy('Where do I use a promo code?', 'أستخدم كود الخصم فين؟'), copy('Add your code in the checkout window before submitting. You can review the adjusted amount first. Applying a code alone does not submit a request.', 'أضف الكود في نافذة الاشتراك قبل تقديم الطلب. هتشوف المبلغ بعد الخصم أولًا، وتطبيق الكود وحده مش بيقدم الطلب.')],
+    [copy('What do the usage limits mean?', 'حدود الاستخدام معناها إيه؟'), copy('The daily allowance covers AI analyses provided by JoeScan. Watchlist limits count saved targets. Scheduled checks depend on the target type and available sources.', 'الحد اليومي يشمل تحليلات الذكاء الاصطناعي المقدمة من JoeScan. حد قائمة المراقبة هو عدد الأهداف المحفوظة، والفحص المجدول يعتمد على نوع الهدف والمصادر المتاحة.')],
   ];
 
-  return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-12 w-full">
-      {/* Payment Success Banner */}
-      {paymentSuccess && !isCheckoutOpen && (
-        <motion.div 
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-accent/10 border border-accent/30 rounded-2xl p-6 text-center relative overflow-hidden"
-        >
-          <div className="absolute inset-0 bg-gradient-to-r from-accent/5 via-transparent to-accent/5 animate-pulse" />
-          <div className="relative z-10 flex flex-col items-center gap-3">
-            <ShieldCheck className="w-10 h-10 text-accent" />
-            <h2 className="text-xl font-black uppercase tracking-widest">Subscription Request Received</h2>
-            <p className="text-text-dim text-sm">Your subscription request is being processed. Your clearance will update upon verification.</p>
-          </div>
-        </motion.div>
-      )}
+  return <div className="focus-membership" dir={dir}>
+    <header className="mp-header">
+      <div><span className="mp-eyebrow"><span /> JOESCAN / MEMBERSHIP</span><h1>{copy('A plan for your', 'باقة تناسب')}<br /><em>{copy('next move.', 'خطوتك الجاية.')}</em></h1><p>{copy('Start with the essentials. Make room for more as your needs grow.', 'ابدأ بالأساسيات، وزوّد إمكانياتك مع احتياجاتك.')}</p></div>
+      <div className="mp-current"><ShieldCheck size={18} /><div><span>{copy('YOUR WORKSPACE', 'مساحة عملك')}</span><strong>{currentTier ? planName(currentTier) : tierError ? copy('Plan unavailable', 'تعذر عرض الباقة') : copy('Checking your plan…', 'جاري مراجعة الباقة…')}</strong></div>{!currentTier && !tierError && <Loader2 size={15} className="mp-spinner" />}</div>
+    </header>
 
-      <div className="workspace-heading">
-        <h1 className="text-4xl md:text-5xl font-black uppercase tracking-tight">{t('pricing_title')}</h1>
-        <p className="text-text-dim max-w-2xl mx-auto text-lg">
-          {t('pricing_subtitle')}
-        </p>
-      </div>
+    {requestReceived && !selectedTier && <div className="mp-notice" role="status"><ShieldCheck size={23} /><div><strong>{copy('Subscription request received', 'تم استلام طلب الاشتراك')}</strong><p>{copy('Your request is pending review. Your current plan stays active until verification.', 'طلبك قيد المراجعة. باقتك الحالية مستمرة حتى التحقق من الطلب.')}</p></div></div>}
+    {tierError && <p className="mp-load-error" role="alert">{copy('Your current plan could not be confirmed. Refresh your session before requesting a change.', 'تعذر التأكد من باقتك الحالية. حدّث جلستك قبل طلب تغيير الباقة.')}</p>}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
-        {tiers.map((tier, idx) => {
-          const isActive = currentTier === tier.id;
-          const isPro = tier.id === 'pro';
-          const isEnterprise = tier.id === 'enterprise';
-          
-          return (
-            <motion.div 
-              key={tier.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className={`glass-card p-8 rounded-2xl border-2 flex flex-col relative overflow-hidden transition-all duration-300 ${
-                isActive 
-                  ? 'border-accent/80 shadow-[0_0_30px_rgba(var(--color-accent),0.2)]' 
-                  : isEnterprise 
-                  ? 'border-error/30 hover:border-error/50' 
-                  : 'border-border-subtle hover:border-border-main'
-              }`}
-            >
-              {isPro && !isActive && (
-                <div className="absolute top-0 right-0 bg-accent text-accent-fg text-[10px] font-bold uppercase tracking-widest py-1 px-3 rounded-bl-lg">
-                  {t('pricing_most_popular')}
-                </div>
-              )}
-              {isEnterprise && (
-                <div className="absolute inset-0 bg-error/5 animate-pulse-glow" style={{ animationDuration: '4s' }} />
-              )}
-              
-              <div className="relative z-10 flex-1">
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="font-mono text-xs uppercase tracking-widest text-text-dim">{tier.name}</h3>
-                  {tier.discountLabel && (
-                    <span className={`text-[10px] font-bold uppercase tracking-widest px-2 py-0.5 rounded ${isEnterprise ? 'bg-error/20 text-error' : 'bg-accent/20 text-accent'}`}>
-                      {tier.discountLabel}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-baseline gap-2 mb-4">
-                  <span className={`text-4xl font-black ${isEnterprise ? 'text-error' : ''}`}>{tier.price}</span>
-                  {tier.originalPrice && (
-                    <span className="text-xl font-bold line-through text-text-dim/50 decoration-2 decoration-bg-elevated">{tier.originalPrice}</span>
-                  )}
-                  <span className="text-text-dim text-sm">{t('pricing_mo')}</span>
-                </div>
-                <p className="text-sm text-text-dim min-h-[3.5rem] mb-6 leading-relaxed bg-bg-surface p-3 rounded-xl border border-border-subtle/50">{tier.description}</p>
-                
-                <ul className="space-y-4 mb-8">
-                  {tier.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm">
-                      <Check className={`w-5 h-5 shrink-0 ${isEnterprise ? 'text-error' : 'text-accent'}`} />
-                      <span className="text-text-main">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+    <div className="mp-plan-bar"><span>{copy('MONTHLY PLANS', 'باقات شهرية')}<small>{copy('Choose what fits.', 'اختار المناسب ليك.')}</small></span><div className="mp-currency" role="group" aria-label={copy('Price currency', 'عملة الأسعار')}>{(['USD', 'EGP'] as const).map(c => <button key={c} aria-pressed={currency === c} onClick={() => setCurrency(c)}>{c === 'USD' ? '$ USD' : 'EGP'}</button>)}</div></div>
+    <div className="mp-grid">{plans.map((plan, index) => {
+      const active = currentTier === plan.id;
+      const Icon = plan.icon;
+      return <motion.article key={plan.id} className="mp-card" data-plan={plan.id} data-active={active} initial={{ opacity: 0, y: reduced ? 0 : 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: reduced ? 0 : .4, delay: reduced ? 0 : index * .08 }}>
+        <div className="mp-card-top"><div className="mp-symbol" aria-hidden="true"><Icon size={25} /><i /></div><span className="mp-card-tag">{active ? copy('CURRENT PLAN', 'باقتك الحالية') : plan.id === 'pro' ? <><Sparkles size={11} />{copy('FOR INDIVIDUALS', 'للأفراد')}</> : plan.note}</span></div>
+        <h2>{planName(plan.id)}</h2><p className="mp-description">{plan.description}</p>
+        <div className="mp-price"><strong>{formatPrice(planPrices[plan.id][currency])}</strong><span>{copy('/ month', '/ شهر')}</span></div>
+        <div className="mp-offer">{plan.id === 'free' ? <span>{copy('Your starting point. No payment needed.', 'ابدأ مجانًا بدون دفع.')}</span> : <><s>{formatPrice(previousPrices[plan.id][currency])}</s><span>{copy('50% off the standard price', 'خصم 50% من السعر الأساسي')}</span></>}</div>
+        <button className="mp-select" disabled={!currentTier || active || plan.id === 'free'} onClick={() => plan.id !== 'free' && choose(plan.id)}>{active ? <><Check size={16} />{copy('Current plan', 'الباقة الحالية')}</> : plan.id === 'free' ? copy('Included with JoeScan', 'متاحة مع JoeScan') : <>{copy('Choose ', 'اختار ')}{planName(plan.id)}<ArrowUpRight size={17} /></>}</button>
+        <div className="mp-features"><span>{copy('WHAT’S INCLUDED', 'المميزات المتاحة')}</span><ul>{plan.features.map(feature => <li key={feature}><Check size={15} /><span>{feature}</span></li>)}</ul></div>
+        <div className="mp-card-foot"><span>0{index + 1}</span><span>{plan.note}</span></div>
+      </motion.article>;
+    })}</div>
 
-              <button 
-                onClick={() => handleSelectTier(tier.id as SubscriptionTier)}
-                disabled={isActive || (tier.id === 'free' && currentTier !== 'free')}
-                className={`w-full py-4 rounded-xl font-bold uppercase tracking-widest text-sm transition-all duration-300 relative z-10 ${
-                  isActive 
-                    ? 'bg-bg-elevated text-text-dim cursor-not-allowed border border-border-subtle' 
-                    : isEnterprise
-                    ? 'bg-error/10 text-error hover:bg-error/20 border border-error/50 glow-low-error'
-                    : 'btn-glow'
-                }`}
-              >
-                {isActive ? t('pricing_current') : t('pricing_deploy')}
-              </button>
-            </motion.div>
-          )
-        })}
-      </div>
+    <div className="mp-process">{[
+      [copy('Find your fit', 'اختار المناسب'), copy('Compare the limits and choose a plan.', 'قارن حدود الاستخدام واختار الباقة.')],
+      [copy('Review your request', 'راجع طلبك'), copy('Check the amount and add a promo code.', 'راجع المبلغ وأضف كود الخصم.')],
+      [copy('Continue with the team', 'تابع مع الفريق'), copy('Confirm payment and wait for activation.', 'أكد الدفع وانتظر تفعيل الاشتراك.')],
+    ].map(([title, description], i) => <div key={title}><span className="mp-step">0{i + 1}</span><div><h3>{title}</h3><p>{description}</p></div></div>)}</div>
 
-      {/* Payment Gateway Modal */}
-      <CheckoutModal 
-        isOpen={isCheckoutOpen} 
-        onClose={() => setIsCheckoutOpen(false)}
-        tier={selectedTier as 'pro' | 'enterprise'}
-        planName={selectedTier === 'enterprise' ? t('pricing_enterprise') : t('pricing_pro')}
-        price={selectedTier === 'enterprise' ? formatPrice(30) : formatPrice(6)}
-        onPaymentSuccess={handlePaymentSuccess}
-      />
-    </div>
-  );
+    <section className="mp-questions"><div><span className="mp-eyebrow"><CircleHelp size={14} />{copy('A LITTLE CLARITY', 'تفاصيل تفيدك')}</span><h2>{copy('Before you choose.', 'قبل ما تختار.')}</h2><p>{copy('The details, without the guesswork.', 'إجابات واضحة على أسئلتك.')}</p></div><div className="mp-faq">{faq.map(([question, answer]) => <details key={question}><summary>{question}<ChevronDown size={16} /></summary><p>{answer}</p></details>)}</div></section>
+    <footer className="mp-footer"><span><Shield size={14} />{copy('Payment is arranged with the JoeScan team.', 'الدفع بيتم بالتنسيق مع فريق JoeScan.')}</span><a href="/terms.en">{copy('Terms of service', 'شروط الاستخدام')}<ArrowUpRight size={13} /></a></footer>
+    <CheckoutModal isOpen={selectedTier !== null} onClose={() => setSelectedTier(null)} tier={selectedTier || 'pro'} planName={planName(selectedTier || 'pro')} price={formatPrice(planPrices[selectedTier || 'pro'][currency])} onRequestSubmitted={() => setRequestReceived(true)} />
+  </div>;
 }
