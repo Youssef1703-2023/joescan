@@ -1,4 +1,4 @@
-export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'url' | 'message' | 'social' | 'domain' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'team' | 'threat_3d' | 'referral' | 'blog';
+export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'url' | 'message' | 'domain' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'team' | 'threat_3d' | 'referral' | 'blog';
 
 // URL path <-> TabId mapping
 export const TAB_TO_PATH: Record<TabId, string> = {
@@ -9,7 +9,6 @@ export const TAB_TO_PATH: Record<TabId, string> = {
   password: '/password-vault',
   url: '/suspicious-link',
   message: '/message-phishing',
-  social: '/social-osint',
   domain: '/domain-whois',
   pricing: '/pricing',
   admin: '/admin',

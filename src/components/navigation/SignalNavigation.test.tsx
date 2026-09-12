@@ -13,7 +13,7 @@ const open=()=>fireEvent.click(screen.getByRole('button',{name:/^Navigate/}));
 it('only exposes the host-permitted destinations through both groups and search',()=>{
  render(<SignalNavigation activeTab="dashboard" allowedTabs={getSignalTabs('free',false)} onNavigate={vi.fn()}/>);open();
  const dialog=within(screen.getByRole('dialog'));expect(dialog.queryByRole('button',{name:/System control/})).toBeNull();
- const search=dialog.getByRole('searchbox');for(const text of ['admin','team','3d']){fireEvent.change(search,{target:{value:text}});expect(dialog.getByText('No paths found.')).toBeTruthy()}
+ const search=dialog.getByRole('searchbox');for(const text of ['admin','team','3d','social','osint']){fireEvent.change(search,{target:{value:text}});expect(dialog.getByText('No paths found.')).toBeTruthy()}
  fireEvent.change(search,{target:{value:'whois'}});expect(dialog.getByRole('button',{name:/Domain lookup/})).toBeTruthy();
 });
 it('navigates from Arabic search, closes the dialog and restores launcher focus',()=>{

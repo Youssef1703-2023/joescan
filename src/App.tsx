@@ -21,7 +21,6 @@ const EmailAnalyzer = lazy(() => import('./components/EmailAnalyzer'));
 const PasswordAnalyzer = lazy(() => import('./components/PasswordAnalyzer'));
 const UrlAnalyzer = lazy(() => import('./components/UrlAnalyzer'));
 const MessageAnalyzer = lazy(() => import('./components/MessageAnalyzer'));
-const SocialOsintScanner = lazy(() => import('./components/SocialOsintScanner'));
 const DomainLookup = lazy(() => import('./components/DomainLookup'));
 const Watchlist = lazy(() => import('./components/Watchlist'));
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -125,7 +124,10 @@ function AppContent() {
 
   // Handle browser back/forward buttons
   useEffect(() => {
+    const redirectRetiredSocial = () => {if(window.location.pathname.replace(/\/+$/,'')==='/social-osint')window.history.replaceState({tab:'dashboard'},'','/?start=1')};
+    redirectRetiredSocial();
     const handlePopState = (e: PopStateEvent) => {
+      redirectRetiredSocial();
       const tab = getTabFromUrl();
       setCheckDraft('');
       setActiveTabState(tab);
@@ -344,7 +346,6 @@ function AppContent() {
             {activeTab === 'password' && <PasswordAnalyzer initialValue={checkDraft} />}
             {activeTab === 'url' && <UrlAnalyzer initialValue={checkDraft} />}
             { activeTab === 'message' && <MessageAnalyzer /> }
-            { activeTab === 'social' && <SocialOsintScanner /> }
             { activeTab === 'domain' && <DomainLookup /> }
             { activeTab === 'pricing' && <Pricing /> }
             { activeTab === 'threat_map' && <ThreatMap /> }

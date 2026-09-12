@@ -18,7 +18,6 @@ export const SIGNAL_PAGES = [
  {id:'url',group:'investigate',label:'Suspicious link',ar:'فحص رابط',description:'Take a closer look before you click.',descriptionAr:'افحص الرابط قبل ما تضغط عليه.',icon:Link,keywords:'url phishing رابط'},
  {id:'message',group:'investigate',label:'Message phishing',ar:'فحص الرسائل',description:'Spot the warning signs in a message.',descriptionAr:'اكتشف علامات الخطر في الرسالة.',icon:MessageSquareWarning,keywords:'sms text scam تصيد'},
  {id:'domain',group:'investigate',label:'Domain lookup',ar:'فحص النطاق',description:'Explore registration and DNS records.',descriptionAr:'راجع بيانات التسجيل وسجلات DNS.',icon:Globe,keywords:'whois dns website نطاق موقع'},
- {id:'social',group:'investigate',label:'Social OSINT',ar:'فحص الحسابات العامة',description:'Review available public profile information.',descriptionAr:'راجع معلومات الحسابات المتاحة للعامة.',icon:Users,keywords:'social osint public profiles حسابات'},
  {id:'threat_map',group:'workspace',label:'Threat map',ar:'خريطة التهديدات',description:'Explore available threat intelligence.',descriptionAr:'استكشف معلومات التهديدات المتاحة.',icon:Globe,keywords:'threat intelligence map خريطة'},
  {id:'blog',group:'discover',label:'The journal',ar:'المدوّنة',description:'Fresh perspectives on digital security.',descriptionAr:'معرفة عملية عن الأمان الرقمي.',icon:BookOpen,keywords:'blog articles news learn مدونة'},
  {id:'referral',group:'discover',label:'Refer friends',ar:'ادعِ أصحابك',description:'Invite your circle to look closer.',descriptionAr:'شارك JoeScan مع أصحابك.',icon:Gift,keywords:'invite rewards referral دعوة'},
@@ -29,7 +28,7 @@ export const SIGNAL_PAGES = [
 ] satisfies {id:TabId;group:SignalGroup;label:string;ar:string;description:string;descriptionAr:string;icon:typeof Mail;keywords:string}[];
 
 // Visibility is supplied by the authenticated host. This is not an authorization layer.
-export const STANDARD_SIGNAL_TABS: TabId[] = ['dashboard','history','watchlist','email','password','url','message','domain','social','threat_map','blog','referral','pricing'];
+export const STANDARD_SIGNAL_TABS: TabId[] = ['dashboard','history','watchlist','email','password','url','message','domain','threat_map','blog','referral','pricing'];
 
 export function getSignalTabs(tier:string,isAdmin:boolean):TabId[]{
  return [...STANDARD_SIGNAL_TABS,...(tier==='enterprise'||isAdmin?['team','threat_3d'] as TabId[]:[]),...(isAdmin?['admin'] as TabId[]:[])];

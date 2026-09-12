@@ -70,20 +70,6 @@
     "appPath": "/domain-whois"
   },
   {
-    "slug": "social-osint",
-    "title": "Social profile research",
-    "description": "Organize public social-profile leads for careful review.",
-    "overview": "JoeScan supports public-profile research with search candidates and AI-assisted summaries. It helps you decide where to investigate further.",
-    "steps": [
-      "Search a public identifier you are authorized to research.",
-      "Follow source links and compare the available context.",
-      "Treat uncertain associations as unconfirmed."
-    ],
-    "limits": "Similar names and usernames can produce false matches. AI summaries are not independent evidence of identity, ownership or wrongdoing.",
-    "data": "Research only publicly available information for legitimate purposes. Do not submit private conversations or credentials.",
-    "appPath": "/social-osint"
-  },
-  {
     "slug": "watchlist",
     "title": "Exposure watchlist",
     "description": "Keep selected targets together for follow-up checks.",
