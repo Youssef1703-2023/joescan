@@ -1,105 +1,28 @@
-import { motion } from 'motion/react';
-import { Shield } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import '../styles/signal-splash.css';
 
-const MODULES = [
-  'Initializing Security Modules...',
-  'Loading Threat Intelligence...',
-  'Connecting to OSINT Engines...',
-  'Configuring Firewall Rules...',
-  'Establishing Secure Connection...',
-];
-
-export default function LoadingSkeleton() {
-  const [moduleIndex, setModuleIndex] = useState(0);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setModuleIndex(prev => (prev + 1) % MODULES.length);
-    }, 800);
-    return () => clearInterval(interval);
-  }, []);
-
-  return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-bg-base relative overflow-hidden">
-      {/* Background effects */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_30%,rgba(0,255,136,0.03),transparent_60%)]" />
-      
-      {/* Grid overlay */}
-      <div className="absolute inset-0 opacity-[0.02]" style={{
-        backgroundImage: 'linear-gradient(rgba(0,255,136,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,136,0.3) 1px, transparent 1px)',
-        backgroundSize: '40px 40px'
-      }} />
-
-      {/* Scanning line */}
-      <motion.div
-        className="absolute left-0 right-0 h-px"
-        style={{ background: 'linear-gradient(90deg, transparent, rgba(0,255,136,0.3), transparent)' }}
-        animate={{ top: ['0%', '100%'] }}
-        transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-      />
-
-      <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4 }}
-        className="relative z-10 flex flex-col items-center gap-6"
-      >
-        {/* Logo pulse with glow ring */}
-        <motion.div
-          animate={{ scale: [1, 1.05, 1], opacity: [0.8, 1, 0.8] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-          className="relative"
-        >
-          <div className="w-20 h-20 rounded-2xl bg-accent/5 border border-accent/20 flex items-center justify-center">
-            <Shield className="w-10 h-10 text-accent" />
-          </div>
-          <div className="absolute inset-0 blur-2xl bg-accent/15 rounded-full" />
-          {/* Orbiting dot */}
-          <motion.div
-            className="absolute w-2 h-2 bg-accent rounded-full"
-            animate={{ 
-              rotate: 360,
-            }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
-            style={{ 
-              top: -4, left: '50%', marginLeft: -4,
-              transformOrigin: '4px 46px',
-            }}
-          />
-        </motion.div>
-
-        {/* Brand */}
-        <div className="text-center">
-          <h1 className="text-2xl font-black tracking-tight">
-            <span className="text-accent">JOE</span>
-            <span className="text-text-main">SCAN</span>
-            <span className="text-accent text-lg">•</span>
-          </h1>
-        </div>
-
-        {/* Progress bar */}
-        <div className="w-56 h-1 bg-bg-elevated rounded-full overflow-hidden">
-          <motion.div
-            className="h-full rounded-full"
-            style={{ background: 'linear-gradient(90deg, #00ff88, #00d4ff, #00ff88)' }}
-            initial={{ width: '0%', x: '-100%' }}
-            animate={{ width: '100%', x: '0%' }}
-            transition={{ duration: 2.5, ease: 'easeInOut', repeat: Infinity }}
-          />
-        </div>
-
-        {/* Rotating status text */}
-        <motion.p
-          key={moduleIndex}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 0.6, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          className="text-[9px] font-mono uppercase tracking-[0.2em] text-text-dim h-4"
-        >
-          {MODULES[moduleIndex]}
-        </motion.p>
-      </motion.div>
-    </div>
-  );
+export default function LoadingSkeleton({lang='en'}:{lang?:string}) {
+ const ar=lang==='ar';
+ return <section className="signal-splash" dir={ar?'rtl':'ltr'} aria-label={ar?'جاري تحميل JoeScan':'Loading JoeScan'} aria-busy="true">
+  <div className="ss-atmosphere" aria-hidden="true"/>
+  <header className="ss-header"><span>JOETECH / JOESCAN</span><span className="ss-edition">{ar?'مساحتك الرقمية':'YOUR DIGITAL SPACE'}</span></header>
+  <div className="ss-experience">
+   <div className="ss-optics" aria-hidden="true">
+    <svg className="ss-paths" viewBox="0 0 600 350" fill="none">
+     <defs><linearGradient id="splash-line" x1="0" y1="0" x2="600" y2="350" gradientUnits="userSpaceOnUse"><stop stopColor="#b7ff72" stopOpacity="0"/><stop offset=".5" stopColor="#b7ff72"/><stop offset="1" stopColor="#b7ff72" stopOpacity="0"/></linearGradient></defs>
+     <g stroke="url(#splash-line)" strokeWidth=".8"><path d="M0 110H170L235 175H300"/><path d="M600 240H430L365 175H300"/><path d="M65 300H155L280 175H300"/><path d="M535 50H445L320 175H300"/></g>
+     <g className="ss-currents" stroke="#c4ff8c" strokeWidth="1.5"><path pathLength="100" d="M0 110H170L235 175H300"/><path pathLength="100" d="M600 240H430L365 175H300"/><path pathLength="100" d="M65 300H155L280 175H300"/><path pathLength="100" d="M535 50H445L320 175H300"/></g>
+     <g fill="#9bb67f"><circle cx="170" cy="110" r="2"/><circle cx="430" cy="240" r="2"/><circle cx="155" cy="300" r="2"/><circle cx="445" cy="50" r="2"/></g>
+     <g stroke="#91b564" strokeOpacity=".35"><path d="M190 76h-12v12M410 76h12v12M190 274h-12v-12M410 274h12v-12"/></g>
+    </svg>
+    <div className="ss-orbit ss-orbit-outer"/><div className="ss-orbit ss-orbit-inner"/>
+    <div className="ss-glass ss-glass-back"/><div className="ss-glass ss-glass-front"/>
+    <div className="ss-core"><img src="/icon-192.png" alt=""/><span className="ss-core-shine"/></div>
+    <span className="ss-coordinate ss-coordinate-left">01 / SIGNAL</span><span className="ss-coordinate ss-coordinate-right">JS / IDENTITY</span>
+   </div>
+   <div className="ss-wordmark" aria-hidden="true"><span>Joe</span><span>Scan</span><i/></div>
+   <p className="ss-tagline">{ar?'وضوح أكتر. كل خطوة.':'Clarity, at every step.'}</p>
+   <div className="ss-loading" role="status" aria-live="polite"><span className="ss-loader" aria-hidden="true"><i/><i/><i/></span><span>{ar?'جاري فتح مساحتك':'Opening your workspace'}</span></div>
+  </div>
+  <footer className="ss-footer"><span>JOESCAN <i/> {ar?'من JOETECH':'BY JOETECH'}</span><span>{ar?'اعرف أكتر. تحرّك بوعي.':'LOOK CLOSER. MOVE FORWARD.'}</span></footer>
+ </section>;
 }

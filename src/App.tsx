@@ -257,7 +257,7 @@ function AppContent() {
   }
 
   if (loading) {
-    return <LoadingSkeleton />;
+    return <LoadingSkeleton lang={lang} />;
   }
 
   if (!user) {
@@ -482,4 +482,5 @@ export default function App() {
     </HelmetProvider>
   );
 }
+
 
