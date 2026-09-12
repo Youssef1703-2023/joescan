@@ -22,5 +22,5 @@ const sitemap='<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www
 writeFileSync('dist/sitemap.xml',sitemap);
 console.log('Public SEO: '+tools.length+' tool guides; '+urls.length+' sitemap URLs; '+privatePaths.length+' noindex workspace routes.');
 
-// Retired social research routes preserve bookmarked links without exposing the tool.
-for(const [path,destination] of [['social-osint','/?start=1'],['tools/social-osint','/tools/']])write(path,'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><meta http-equiv="refresh" content="0;url='+destination+'"><title>Continue to JoeScan</title></head><body><a href="'+destination+'">Continue to JoeScan</a></body></html>');
+// Retired workspace routes preserve bookmarked links without exposing the tool.
+for(const [path,destination] of [['social-osint','/?start=1'],['tools/social-osint','/tools/'],['threat-map','/?start=1'],['tools/threat-map','/tools/']])write(path,'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><meta http-equiv="refresh" content="0;url='+destination+'"><title>Continue to JoeScan</title></head><body><a href="'+destination+'">Continue to JoeScan</a></body></html>');

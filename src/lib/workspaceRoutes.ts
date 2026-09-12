@@ -1,4 +1,4 @@
-export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'url' | 'message' | 'domain' | 'pricing' | 'admin' | 'threat_map' | 'support' | 'api_keys' | 'team' | 'threat_3d' | 'referral' | 'blog';
+export type TabId = 'dashboard' | 'history' | 'watchlist' | 'email' | 'password' | 'url' | 'message' | 'domain' | 'pricing' | 'admin' | 'support' | 'api_keys' | 'team' | 'threat_3d' | 'referral' | 'blog';
 
 // URL path <-> TabId mapping
 export const TAB_TO_PATH: Record<TabId, string> = {
@@ -12,7 +12,6 @@ export const TAB_TO_PATH: Record<TabId, string> = {
   domain: '/domain-whois',
   pricing: '/pricing',
   admin: '/admin',
-  threat_map: '/threat-map',
   support: '/support',
   api_keys: '/api-keys',
   team: '/team',

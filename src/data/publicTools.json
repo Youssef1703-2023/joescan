@@ -84,20 +84,6 @@
     "appPath": "/watchlist"
   },
   {
-    "slug": "threat-map",
-    "title": "Threat intelligence map",
-    "description": "Explore available threat-feed information geographically.",
-    "overview": "JoeScan visualizes available threat intelligence to help you understand reported network activity in context.",
-    "steps": [
-      "Explore the supplied feed and geographic context.",
-      "Review source details and timestamps where available.",
-      "Use the map as background context for further investigation."
-    ],
-    "limits": "A marker is not proof of an ongoing attack against you. Feed coverage, location estimates and refresh times vary. The map is not a live view of all global attacks.",
-    "data": "The map provides general intelligence. Do not interpret its public indicators as private information about individual people.",
-    "appPath": "/threat-map"
-  },
-  {
     "slug": "threat-3d",
     "title": "3D threat visualization",
     "description": "Explore threat information in an interactive globe.",

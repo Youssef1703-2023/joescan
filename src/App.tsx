@@ -30,7 +30,6 @@ const ApiSettingsModal = lazy(() => import('./components/ApiSettingsModal'));
 const Pricing = lazy(() => import('./components/Pricing'));
 const MfaGate = lazy(() => import('./components/MfaGate'));
 const AdminDashboard = lazy(() => import('./components/AdminDashboard'));
-const ThreatMap = lazy(() => import('./components/ThreatMap'));
 const TeamManagement = lazy(() => import('./components/TeamManagement'));
 const ThreatMap3D = lazy(() => import('./components/ThreatMap3D'));
 const ReferralSystem = lazy(() => import('./components/ReferralSystem'));
@@ -124,10 +123,10 @@ function AppContent() {
 
   // Handle browser back/forward buttons
   useEffect(() => {
-    const redirectRetiredSocial = () => {if(window.location.pathname.replace(/\/+$/,'')==='/social-osint')window.history.replaceState({tab:'dashboard'},'','/?start=1')};
-    redirectRetiredSocial();
+    const redirectRetiredPage = () => {if(['/social-osint','/threat-map'].includes(window.location.pathname.replace(/\/+$/,'')))window.history.replaceState({tab:'dashboard'},'','/?start=1')};
+    redirectRetiredPage();
     const handlePopState = (e: PopStateEvent) => {
-      redirectRetiredSocial();
+      redirectRetiredPage();
       const tab = getTabFromUrl();
       setCheckDraft('');
       setActiveTabState(tab);
@@ -348,7 +347,6 @@ function AppContent() {
             { activeTab === 'message' && <MessageAnalyzer /> }
             { activeTab === 'domain' && <DomainLookup /> }
             { activeTab === 'pricing' && <Pricing /> }
-            { activeTab === 'threat_map' && <ThreatMap /> }
             { activeTab === 'team' && (userTier === 'enterprise' || auth.currentUser?.email === ADMIN_EMAIL) && <TeamManagement /> }
             { activeTab === 'threat_3d' && (userTier === 'enterprise' || auth.currentUser?.email === ADMIN_EMAIL) && <ThreatMap3D /> }
             { activeTab === 'admin' && auth.currentUser?.email === ADMIN_EMAIL && <AdminDashboard /> }
