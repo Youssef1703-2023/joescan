@@ -33,6 +33,19 @@ describe('production deployment workflows', () => {
     expect(cloudflare).toContain('VITE_AI_PROXY_URL');
     expect(cloudflare).toContain('secrets.CLOUDFLARE_API_TOKEN');
     expect(cloudflare).toContain('secrets.CLOUDFLARE_ACCOUNT_ID');
+    expect(cloudflare).not.toContain('cloudflare/wrangler-action');
+    expect(cloudflare).toContain(
+      'npx --yes wrangler@4.136.2 pages deploy dist --project-name=joescan --branch=main --commit-dirty=true',
+    );
+    const beforeInstall = cloudflare.slice(0, cloudflare.indexOf('Install dependencies'));
+    expect(beforeInstall).toContain('test -n "$VITE_AI_PROXY_URL"');
+    expect(beforeInstall).toContain('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
+    expect(beforeInstall).toContain('CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}');
+    expect(beforeInstall).toContain('-z "$CLOUDFLARE_API_TOKEN"');
+    expect(beforeInstall).toContain('-z "$CLOUDFLARE_ACCOUNT_ID"');
+    const deployStep = cloudflare.slice(cloudflare.indexOf('Deploy to Cloudflare Pages'));
+    expect(deployStep).toContain('CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}');
+    expect(deployStep).toContain('CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}');
     expect(cloudflare).not.toMatch(/run:\s*node scripts\/prerender-seo\.mjs/);
     expect(cloudflare).not.toMatch(/cp\s+dist\/index\.html/);
     expect(cloudflare).not.toContain('npm install');

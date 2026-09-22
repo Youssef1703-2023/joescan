@@ -37,6 +37,16 @@ jobs:
       - name: Require proxy URL
         run: test -n "$VITE_AI_PROXY_URL"
 
+      - name: Require Cloudflare credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "Missing Cloudflare credentials. Set repository secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
+          fi
+
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
@@ -60,9 +70,10 @@ jobs:
       - name: Verify public SEO and production bundle
         run: node scripts/verify-public-seo.mjs
 
+      # Run a pinned Wrangler binary without adding it to project dependencies.
+      # Installing it in the project root fails ERESOLVE on the Vite 6 peer of vite-plugin-pwa.
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=joescan --branch=main --commit-dirty=true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx --yes wrangler@4.136.2 pages deploy dist --project-name=joescan --branch=main --commit-dirty=true
