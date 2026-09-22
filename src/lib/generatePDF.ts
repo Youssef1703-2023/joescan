@@ -93,11 +93,12 @@ const COLORS = {
   green: [0, 255, 100] as [number, number, number],
 };
 
-function getRiskColor(risk: string): [number, number, number] {
+export function getRiskColor(risk: string): [number, number, number] {
   const r = (risk || '').toUpperCase();
   if (r === 'HIGH') return COLORS.red;
   if (r === 'MEDIUM') return COLORS.amber;
-  return COLORS.green;
+  if (r === 'LOW') return COLORS.green;
+  return COLORS.midGray;
 }
 
 function drawHeader(doc: jsPDF, scanType: string, lang: string) {

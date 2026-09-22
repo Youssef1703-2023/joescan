@@ -5,6 +5,7 @@ import { auth } from '../lib/firebase';
 import { saveScan } from '../lib/webhooks';
 import { PASSWORD_SCAN_TARGET } from '../lib/scanLabels';
 import { generateSecurePassword } from '../lib/securePassword';
+import { assessPasswordStrength, PATTERN_ANALYSIS_LIMIT } from '../lib/passwordStrength';
 import { useLanguage } from '../contexts/LanguageContext';
 import { KeyRound, Loader2, ShieldCheck, AlertTriangle, ArrowRight, RefreshCw, X, ShieldAlert, Settings2, Check, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -24,7 +25,7 @@ interface ScanResult {
 export default function PasswordAnalyzer({initialValue=""}:{initialValue?:string}={}) {
   const { lang, t } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
-  const [password, setPassword] = useState(initialValue);
+  const [password, setPassword] = useState(() => initialValue.slice(0, PATTERN_ANALYSIS_LIMIT));
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -46,18 +47,9 @@ export default function PasswordAnalyzer({initialValue=""}:{initialValue?:string
     }
   }, [password]);
 
-  const reqLength = password.length >= 8;
-  const reqUpper = /[A-Z]/.test(password);
-  const reqLower = /[a-z]/.test(password);
-  const reqNumber = /[0-9]/.test(password);
-  const reqSpecial = /[^A-Za-z0-9]/.test(password);
-
-  const seqPattern = /(123|234|345|456|567|678|789|012|abc|bcd|cde|def|efg|fgh|ghi|hij|ijk|jkl|klm|lmn|mno|nop|opq|pqr|qrs|rst|stu|tuv|uvw|vwx|wxy|xyz)/i.test(password);
-  const repeatPattern = /(.)\1{2,}/.test(password);
-  const commonWords = /(password|qwerty|admin|login|123456)/i.test(password);
-  
-  const hasPatterns = seqPattern || repeatPattern || commonWords;
-  const passedPatterns = password.length > 0 && !hasPatterns;
+  const strength = assessPasswordStrength(password);
+  const { reqLength, reqUpper, reqLower, reqNumber, reqSpecial, passedPatterns } = strength;
+  const score = strength.band;
 
   const generatePassword = () => {
     try {
@@ -68,18 +60,6 @@ export default function PasswordAnalyzer({initialValue=""}:{initialValue?:string
       setError('Secure password generation is unavailable. Please use an updated browser over HTTPS.');
     }
   };
-
-  let score = 0;
-  if (password.length > 0) {
-    if (reqLength) score++;
-    if (reqUpper && reqLower) score++;
-    if (reqNumber || reqSpecial) score++;
-    if (reqNumber && reqSpecial) score++;
-    
-    if (hasPatterns) {
-      score = Math.max(0, score - 2);
-    }
-  }
 
   const criteria = [
     { met: reqLength, label: t('pwd_req_length') || "At least 8 characters" },
@@ -149,8 +129,8 @@ export default function PasswordAnalyzer({initialValue=""}:{initialValue?:string
         riskLevel,
         reportText,
         actionPlan,
-        securityScore: score * 17,
-        scoreFactors: isArabic ? [`درجة التسريب: ${pwnCount > 0 ? 'خطير' : 'آمن'}`, `نمط التخمين: ${passedPatterns ? 'غير محتمل' : 'شائع الأنماط'}`] : [`Breach Index: ${pwnCount > 0 ? 'CRITICAL EXPOSURE' : 'CLEAN'}`, `Pattern Safety: ${passedPatterns ? 'PASSED' : 'VULNERABLE'}`],
+        securityScore: strength.securityScore,
+        scoreFactors: isArabic ? [`المعايير المستوفاة: ${strength.met} من 6`, `درجة التسريب: ${pwnCount > 0 ? 'موجود في HIBP' : 'لا تطابق في HIBP'}`, `الأنماط الشائعة: ${passedPatterns ? 'غير موجودة' : 'موجودة'}`] : [`Criteria met: ${strength.met} of 6`, `Breach index: ${pwnCount > 0 ? 'Found in HIBP' : 'No HIBP match'}`, `Common patterns: ${passedPatterns ? 'None detected' : 'Detected'}`],
         scoreImprovement: []
       };
 
@@ -291,12 +271,14 @@ export default function PasswordAnalyzer({initialValue=""}:{initialValue?:string
          )}
        </AnimatePresence>
 
-        <div className="fp-input flex flex-col gap-4 relative z-10 w-full"><label className="fp-input-label">{lang === "ar" ? "كلمة المرور" : "Password"}<button type="button" aria-pressed={showPassword} onClick={()=>setShowPassword(value=>!value)}>{showPassword ? (lang === "ar" ? "إخفاء" : "Hide password") : (lang === "ar" ? "إظهار" : "Show password")}</button></label>
+        <div className="fp-input flex flex-col gap-4 relative z-10 w-full"><div className="fp-input-label"><label htmlFor="password-check-input">{lang === "ar" ? "كلمة المرور" : "Password"}</label><button type="button" aria-pressed={showPassword} onClick={()=>setShowPassword(value=>!value)}>{showPassword ? (lang === "ar" ? "إخفاء" : "Hide password") : (lang === "ar" ? "إظهار" : "Show password")}</button></div>
            <div className="relative">
              <input
-               type="text"
+               id="password-check-input"
+               type={showPassword ? 'text' : 'password'}
                value={password}
-               onChange={(e) => setPassword(e.target.value)}
+               maxLength={PATTERN_ANALYSIS_LIMIT}
+               onChange={(e) => setPassword(e.target.value.slice(0, PATTERN_ANALYSIS_LIMIT))}
                placeholder={t('pwd_placeholder') || "e.g. MySuperSecret123!"}
                className={cn(
                  "w-full bg-bg-surface border-2 rounded-xl pl-5 pr-12 py-4 text-lg text-text-main outline-none transition-all font-mono shadow-inner",

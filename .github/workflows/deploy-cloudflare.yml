@@ -1,0 +1,68 @@
+name: Deploy to Cloudflare Pages
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit or branch to build. Empty uses the calling workflow SHA.
+        required: false
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cf-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VITE_AI_PROXY_URL: ${{ vars.VITE_AI_PROXY_URL || 'https://joescan-ai-proxy.goet900.workers.dev' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Daily news passes the commit it just pushed. That SHA is not the
+          # workflow trigger, so fetch the full ref instead of the shallow default.
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Require proxy URL
+        run: test -n "$VITE_AI_PROXY_URL"
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Type check
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=low
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      # npm run build already writes public pages, the noindex 404, and legal pages.
+      # Do not run scripts/prerender-seo.mjs here: it marks private blog and academy
+      # routes as indexable and extends the public sitemap.
+      - name: Verify public SEO and production bundle
+        run: node scripts/verify-public-seo.mjs
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=joescan --branch=main --commit-dirty=true

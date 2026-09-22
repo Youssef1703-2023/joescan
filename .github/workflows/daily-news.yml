@@ -4,20 +4,23 @@ on:
   schedule:
     # Run daily at 5:00 AM UTC (8:00 AM Egypt time, accounting for summer time)
     - cron: '0 5 * * *'
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
 
 permissions:
-  contents: write
-  pages: write
-  id-token: write
+  contents: read
 
 concurrency:
-  group: "pages"
+  group: daily-news
   cancel-in-progress: true
 
 jobs:
-  fetch-and-deploy:
+  update:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      changed: ${{ steps.changes.outputs.changed }}
+      sha: ${{ steps.commit.outputs.sha }}
     steps:
       - uses: actions/checkout@v4
 
@@ -35,9 +38,14 @@ jobs:
       - name: Check for changes
         id: changes
         run: |
-          git diff --quiet public/data/dailyNews.json || echo "changed=true" >> $GITHUB_OUTPUT
+          if git diff --quiet public/data/dailyNews.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Commit new articles
+        id: commit
         if: steps.changes.outputs.changed == 'true'
         run: |
           git config user.name "JoeScan Bot"
@@ -45,31 +53,13 @@ jobs:
           git add public/data/dailyNews.json
           git commit -m "🤖 auto: daily cybersecurity news + 6-lang translation"
           git push
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Install dependencies
-        if: steps.changes.outputs.changed == 'true'
-        run: npm install --legacy-peer-deps
-
-      - name: Build
-        if: steps.changes.outputs.changed == 'true'
-        run: npm run build
-        env:
-          NODE_ENV: production
-
-      - name: Copy index.html to 404.html (SPA routing)
-        if: steps.changes.outputs.changed == 'true'
-        run: cp dist/index.html dist/404.html
-
-      - name: Setup Pages
-        if: steps.changes.outputs.changed == 'true'
-        uses: actions/configure-pages@v5
-
-      - name: Upload artifact
-        if: steps.changes.outputs.changed == 'true'
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-
-      - name: Deploy to GitHub Pages
-        if: steps.changes.outputs.changed == 'true'
-        uses: actions/deploy-pages@v4
+  # Called in this run. A push made with GITHUB_TOKEN does not start the push workflow.
+  deploy:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    uses: ./.github/workflows/deploy-cloudflare.yml
+    with:
+      ref: ${{ needs.update.outputs.sha }}
+    secrets: inherit

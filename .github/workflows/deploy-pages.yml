@@ -8,52 +8,7 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: "cf-pages"
-  cancel-in-progress: true
-
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install dependencies
-        run: npm install --legacy-peer-deps
-
-      # CI gate: block deploy on type errors or failing tests
-      - name: Type check
-        run: npm run lint
-
-      - name: Test
-        run: npm test
-
-      - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=low
-
-      - name: Build
-        run: npm run build
-        env:
-          NODE_ENV: production
-          VITE_AI_PROXY_URL: ${{ vars.VITE_AI_PROXY_URL || 'https://joescan-ai-proxy.goet900.workers.dev' }}
-
-      # Pre-render blog/academy SEO pages + extend sitemap (42 static pages)
-      - name: Pre-render SEO pages
-        run: node scripts/prerender-seo.mjs
-
-      # Copy legal/trust pages (privacy, terms, security.txt)
-      - name: Copy legal pages
-        run: node scripts/copy-legal.mjs
-
-      # Deploy dist as-is (no 404.html — Pages auto-SPA handles routes)
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=joescan --branch=main --commit-dirty=true
+  deploy:
+    uses: ./.github/workflows/deploy-cloudflare.yml
+    secrets: inherit

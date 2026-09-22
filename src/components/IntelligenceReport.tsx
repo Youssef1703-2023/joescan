@@ -7,8 +7,8 @@ interface ScanHistory {
   id: string;
   type: string;
   target: string;
-  riskLevel: 'Low' | 'Medium' | 'High';
-  securityScore?: number;
+  riskLevel: 'Low' | 'Medium' | 'High' | 'Unknown';
+  securityScore?: number | null;
   createdAt: Date;
   result?: any;
 }
@@ -22,6 +22,13 @@ export default function IntelligenceReport({ scan, onClose }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [userTier, setUserTier] = useState<SubscriptionTier>('free');
   const isPasswordScan = scan.type === 'password';
+  const riskLevel = scan.riskLevel || 'Low';
+  const isHigh = riskLevel === 'High';
+  const isMedium = riskLevel === 'Medium';
+  const isLow = riskLevel === 'Low';
+  const isIncomplete = !isHigh && !isMedium && !isLow;
+  const score = typeof scan.securityScore === 'number' && Number.isFinite(scan.securityScore) ? scan.securityScore : null;
+  const scoreColor = score === null ? '#9aa0a6' : score >= 80 ? '#00ff00' : score >= 50 ? '#ffa500' : '#ff0033';
 
   useEffect(() => {
     if (auth.currentUser) {
@@ -133,14 +140,14 @@ export default function IntelligenceReport({ scan, onClose }: Props) {
             </div>
             <div className="bg-[#111] border border-[#222] p-4 rounded-lg">
               <div className="text-[10px] text-[#888] uppercase tracking-[0.2em] font-mono mb-1 flex items-center gap-1"><ShieldAlert /> Risk Level</div>
-              <div className={`font-bold text-lg uppercase ${(scan.riskLevel || 'Low') === 'High' ? 'text-[#ff0033]' : (scan.riskLevel || 'Low') === 'Medium' ? 'text-[#ffa500]' : 'text-[#00ff00]'}`}>
-                {scan.riskLevel || 'Low'}
+              <div className={`font-bold text-lg uppercase ${isHigh ? 'text-[#ff0033]' : isMedium || isIncomplete ? 'text-[#ffa500]' : 'text-[#00ff00]'}`}>
+                {riskLevel}
               </div>
             </div>
             <div className="bg-[#111] border border-[#222] p-4 rounded-lg">
               <div className="text-[10px] text-[#888] uppercase tracking-[0.2em] font-mono mb-1 flex items-center gap-1"><Eye /> Posture Score</div>
-              <div className="font-black text-2xl" style={{ color: scan.securityScore && scan.securityScore >= 80 ? '#00ff00' : scan.securityScore && scan.securityScore >= 50 ? '#ffa500' : '#ff0033' }}>
-                {scan.securityScore !== undefined ? `${scan.securityScore} / 100` : 'N/A'}
+              <div className="font-black text-2xl" style={{ color: scoreColor }}>
+                {score === null ? 'Not assessed' : `${score} / 100`}
               </div>
             </div>
           </div>
@@ -149,19 +156,25 @@ export default function IntelligenceReport({ scan, onClose }: Props) {
           <div className="flex-1 relative z-10">
              <h2 className="text-xl font-bold uppercase border-b border-[#333] pb-2 mb-4 tracking-widest text-white">Executive Assessment</h2>
              
-             {(scan.riskLevel || 'Low') === 'High' && (
+             {isHigh && (
                 <div className="bg-[rgba(255,0,0,0.1)] border-l-4 border-[#ff0033] p-4 mb-6 rounded-r font-mono text-sm leading-relaxed text-[#ffaaab]">
                   CRITICAL INCIDENT: The target asset has been flagged with severe vulnerabilities or active compromises. Immediate remediation protocols are advised. Associated data may be accessible to threat actors on deep/dark networks or public vulnerability catalogs.
                 </div>
              )}
 
-             {(scan.riskLevel || 'Low') === 'Medium' && (
+             {isMedium && (
                 <div className="bg-[rgba(255,165,0,0.1)] border-l-4 border-[#ffa500] p-4 mb-6 rounded-r font-mono text-sm leading-relaxed text-[#ffd48a]">
                   ELEVATED RISK: Anomalies or moderate risks detected. The asset presents potential attack vectors that could be exploited. Recommend proactive security hardening and continuous monitoring.
                 </div>
              )}
 
-             {(scan.riskLevel || 'Low') === 'Low' && (
+             {isIncomplete && (
+                <div className="bg-[rgba(255,165,0,0.1)] border-l-4 border-[#ffa500] p-4 mb-6 rounded-r font-mono text-sm leading-relaxed text-[#ffd48a]">
+                  CHECK INCOMPLETE: This result was not assessed. A source did not finish, so this is not a clean result.
+                </div>
+             )}
+
+             {isLow && (
                 <div className="bg-[rgba(0,255,0,0.1)] border-l-4 border-[#00ff00] p-4 mb-6 rounded-r font-mono text-sm leading-relaxed text-[#aaffaa]">
                   CLEAR POSTURE: The target asset demonstrates strong integrity boundaries. No immediate critical threats or public compromises observed during the intelligence sweep.
                 </div>
@@ -174,7 +187,7 @@ export default function IntelligenceReport({ scan, onClose }: Props) {
                   <span>CONFIDENTIAL</span>
                 </div>
                 <div className="p-4 font-mono text-xs text-[#aaa] leading-relaxed relative min-h-[150px]">
-                   <div className="absolute top-4 left-4 border-l-2 border-[#00ff00] pl-4 space-y-3">
+                   <div className={`absolute top-4 left-4 border-l-2 pl-4 space-y-3 ${isIncomplete ? 'border-[#ffa500]' : 'border-[#00ff00]'}`}>
                      <div><span className="text-white">Timestamp:</span> {scan.createdAt.toISOString()}</div>
                      <div><span className="text-white">Query Vector:</span> OSINT_DEEP_SEARCH_{scan.type.toUpperCase()}</div>
                      {!isPasswordScan && (
@@ -186,7 +199,7 @@ export default function IntelligenceReport({ scan, onClose }: Props) {
                         <br/>
                         &gt; Connecting to global intelligence hives...<br/>
                         &gt; Compiling cross-registry threat indicators...<br/>
-                        &gt; {(scan.riskLevel || 'Low') === 'High' ? 'MATCH FOUND IN THREAT MATRICES.' : 'NO ACTIVE MATCH IN CORE MATRICES.'}<br/>
+                        &gt; {isHigh ? 'MATCH FOUND IN THREAT MATRICES.' : isIncomplete ? 'CHECK INCOMPLETE. NOT ASSESSED.' : 'NO ACTIVE MATCH IN CORE MATRICES.'}<br/>
                         &gt; Operation Terminated.<br/>
                      </div>
                    </div>

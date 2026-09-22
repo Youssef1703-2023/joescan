@@ -1,9 +1,10 @@
 import React from 'react';
 // @ts-ignore - types resolved at test runtime by vitest
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import PasswordAnalyzer from './PasswordAnalyzer';
+import { PATTERN_ANALYSIS_LIMIT } from '../lib/passwordStrength';
 
 const mocks = vi.hoisted(() => ({
   saveScan: vi.fn(),
@@ -128,5 +129,73 @@ describe('PasswordAnalyzer (S01 leak guard)', () => {
     expect(String(url)).not.toContain(FAKE_PASSWORD);
     expect(String(url)).not.toContain(FAKE_PASSWORD_PREFIX);
     expect(String(url)).toContain(FAKE_HASH_HEX.substring(0, 5));
+  });
+
+  it('hides the password by default and reveals it only while show is on', () => {
+    render(<PasswordAnalyzer />);
+    const field = () => screen.getByLabelText('Password') as HTMLInputElement;
+    expect(field().type).toBe('password');
+    fireEvent.click(screen.getByRole('button', { name: 'Show password' }));
+    expect(field().type).toBe('text');
+    expect(screen.getByRole('button', { name: 'Hide password' })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+    expect(field().type).toBe('password');
+    expect(screen.getByRole('button', { name: 'Show password' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('scores a fully met password at 100 and a weak password much lower', async () => {
+    const user = userEvent.setup();
+    render(<PasswordAnalyzer />);
+    const input = screen.getByPlaceholderText('e.g. MySuperSecret123!');
+    fireEvent.change(input, { target: { value: 'Nimbus-Quartz-47!' } });
+    expect(screen.getByText('Strong')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /deep audit/i }));
+    await waitFor(() => expect(mocks.saveScan).toHaveBeenCalledTimes(1));
+    const strong = mocks.saveScan.mock.calls[0][0];
+    expect(strong.securityScore).toBe(100);
+    expect(strong.securityScore).toBeGreaterThanOrEqual(0);
+    expect(strong.securityScore).toBeLessThanOrEqual(100);
+    expect(JSON.stringify(strong)).not.toMatch(/entropy|crack time|years to crack/i);
+    expect(screen.getByText('100')).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. MySuperSecret123!'), { target: { value: 'password' } });
+    expect(screen.getByText('Weak')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /deep audit/i }));
+    await waitFor(() => expect(mocks.saveScan).toHaveBeenCalledTimes(2));
+    const weak = mocks.saveScan.mock.calls[1][0];
+    expect(weak.securityScore).toBe(33);
+    expect(weak.securityScore).toBeLessThan(50);
+    expect(weak.target).toBe('Password check');
+  });
+
+  it('does not present a short or repeated-block password as strong', async () => {
+    const user = userEvent.setup();
+    render(<PasswordAnalyzer />);
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Aa1!' } });
+    expect(screen.queryByText('Strong')).toBeNull();
+    expect(screen.queryByText('Good')).toBeNull();
+    expect(screen.getByText('Weak')).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Aa1!Aa1!' } });
+    expect(screen.queryByText('Strong')).toBeNull();
+    expect(screen.queryByText('Good')).toBeNull();
+    await user.click(screen.getByRole('button', { name: /deep audit/i }));
+    await waitFor(() => expect(mocks.saveScan).toHaveBeenCalledTimes(1));
+    expect(mocks.saveScan.mock.calls[0][0].securityScore).toBeLessThanOrEqual(66);
+
+    mocks.saveScan.mockClear();
+
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'Qz7!Qz7!Qz7!Qz7!' } });
+    expect(screen.queryByText('Strong')).toBeNull();
+    expect(screen.queryByText('Good')).toBeNull();
+    await user.click(screen.getByRole('button', { name: /deep audit/i }));
+    await waitFor(() => expect(mocks.saveScan).toHaveBeenCalledTimes(1));
+    expect(mocks.saveScan.mock.calls[0][0].securityScore).toBeLessThanOrEqual(66);
+
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: `Aa1!${'x'.repeat(PATTERN_ANALYSIS_LIMIT * 40)}` } });
+    const pasted = screen.getByLabelText('Password') as HTMLInputElement;
+    expect(pasted.maxLength).toBe(PATTERN_ANALYSIS_LIMIT);
+    expect(pasted.value.length).toBeLessThanOrEqual(PATTERN_ANALYSIS_LIMIT);
+    expect(pasted.type).toBe('password');
   });
 });

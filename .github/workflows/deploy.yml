@@ -1,10 +1,9 @@
 ﻿name: Deploy to GitHub Pages
 
 on:
-  # AUTO-RUN DISABLED: migrating to Cloudflare Pages (deploy-pages.yml).
-  # To re-enable GH Pages auto-deploy, uncomment the push trigger below.
-  # push:
-  #   branches: [ main ]
+  # Manual only. Automatic production deploys use deploy-pages.yml, which calls
+  # deploy-cloudflare.yml. Live DNS still points at GitHub Pages until that
+  # cutover is done outside this repository. Do not copy index.html over dist/404.html.
   workflow_dispatch:
 
 permissions:
@@ -19,6 +18,8 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      VITE_AI_PROXY_URL: ${{ vars.VITE_AI_PROXY_URL || 'https://joescan-ai-proxy.goet900.workers.dev' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -28,7 +29,7 @@ jobs:
           node-version: '22'
 
       - name: Install dependencies
-        run: npm install --legacy-peer-deps
+        run: npm ci --legacy-peer-deps
 
       # CI gate: block deploy on type errors or failing tests
       - name: Type check
@@ -44,10 +45,6 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
-          VITE_AI_PROXY_URL: ${{ vars.VITE_AI_PROXY_URL || 'https://joescan-ai-proxy.goet900.workers.dev' }}
-
-      - name: Copy legal and About pages
-        run: node scripts/copy-legal.mjs
 
       - name: Verify public SEO and private route boundaries
         run: node scripts/verify-public-seo.mjs

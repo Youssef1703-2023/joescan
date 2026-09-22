@@ -10,6 +10,7 @@ import { cn } from '../lib/utils';
 import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
 import { generateReportPDF } from '../lib/generatePDF';
 import { fetchGeoIp } from '../lib/geoip';
+import { presentUrlhaus, queryUrlhaus, urlRiskLevel, urlScanVerdict, urlSecurityScore, urlVerdictCopy, type UrlhausResult, type UrlVerdict } from '../lib/urlhausCheck';
 import MiniHistory from './MiniHistory';
 
 // ─── Types ───
@@ -17,18 +18,13 @@ interface CheckResult {
   id: string;
   name: string;
   nameAr: string;
-  status: 'pass' | 'warn' | 'fail' | 'info';
+  status: 'pass' | 'warn' | 'fail' | 'info' | 'unknown';
   detail: string;
   detailAr: string;
   severity: number; // 0-30 per check
 }
 
-interface ThreatIntel {
-  urlhausMatch: boolean;
-  urlhausThreat?: string;
-  urlhausTags?: string[];
-  urlhausDateAdded?: string;
-}
+type ThreatIntel = UrlhausResult;
 
 interface DnsInfo {
   ip?: string;
@@ -48,7 +44,7 @@ interface WhoisInfo {
 interface ScanResult {
   url: string;
   hostname: string;
-  verdict: 'safe' | 'suspicious' | 'dangerous';
+  verdict: UrlVerdict;
   riskScore: number; // 0-100: 0=safe, 100=dangerous
   checks: CheckResult[];
   threatIntel: ThreatIntel;
@@ -345,45 +341,16 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
 
       // ── Phase 2: URLhaus Threat Intelligence ──
       setScanStage(lang === 'ar' ? 'فحص قواعد بيانات التهديدات...' : 'Checking threat databases...');
-      let threatIntel: ThreatIntel = { urlhausMatch: false };
-      try {
-        // Check host against URLhaus
-        const formData = new URLSearchParams();
-        formData.append('host', hostname);
-        const uhRes = await fetch('https://urlhaus-api.abuse.ch/v1/host/', {
-          method: 'POST',
-          body: formData,
-        });
-        if (uhRes.ok) {
-          const uhData = await uhRes.json();
-          if (uhData.query_status === 'no_results') {
-            threatIntel = { urlhausMatch: false };
-          } else if (uhData.urls && uhData.urls.length > 0) {
-            const latest = uhData.urls[0];
-            const tags = uhData.tags || latest.tags || [];
-            threatIntel = {
-              urlhausMatch: true,
-              urlhausThreat: latest.threat || 'malware_download',
-              urlhausTags: Array.isArray(tags) ? tags : [],
-              urlhausDateAdded: latest.date_added,
-            };
-          }
-        }
-      } catch (e) { console.warn('URLhaus check failed:', e); }
-
-      // Add threat DB check result
+      const threatIntel = await queryUrlhaus(hostname);
+      const urlhaus = presentUrlhaus(threatIntel);
       checks.push({
         id: 'urlhaus',
         name: 'URLhaus Malware Database',
         nameAr: 'قاعدة بيانات URLhaus للبرمجيات الخبيثة',
-        status: threatIntel.urlhausMatch ? 'fail' : 'pass',
-        detail: threatIntel.urlhausMatch
-          ? `⚠️ MATCH FOUND — This host has been reported to the URLhaus malware database. Threat type: "${threatIntel.urlhausThreat || 'unknown'}". ${threatIntel.urlhausTags?.length ? `Tags: ${threatIntel.urlhausTags.join(', ')}` : ''} ${threatIntel.urlhausDateAdded ? `First reported: ${threatIntel.urlhausDateAdded}` : ''}`
-          : 'This host was NOT found in the URLhaus malware database. No known malware distribution associated with this domain.',
-        detailAr: threatIntel.urlhausMatch
-          ? `⚠️ تم العثور على تطابق — تم الإبلاغ عن هذا النطاق في قاعدة بيانات URLhaus. نوع التهديد: "${threatIntel.urlhausThreat || 'غير محدد'}". ${threatIntel.urlhausTags?.length ? `الوسوم: ${threatIntel.urlhausTags.join(', ')}` : ''}`
-          : 'هذا النطاق غير موجود في قاعدة بيانات URLhaus للبرمجيات الخبيثة. لا توجد برمجيات خبيثة معروفة مرتبطة بهذا الدومين.',
-        severity: threatIntel.urlhausMatch ? 30 : 0,
+        status: urlhaus.status,
+        detail: urlhaus.detail,
+        detailAr: urlhaus.detailAr,
+        severity: urlhaus.severity,
       });
 
       // ── Phase 3: DNS Resolution + GeoIP ──
@@ -484,7 +451,7 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
       // ── Calculate final score ──
       const totalSeverity = checks.reduce((sum, c) => sum + c.severity, 0);
       const riskScore = Math.min(100, totalSeverity);
-      const verdict: ScanResult['verdict'] = riskScore >= 50 ? 'dangerous' : riskScore >= 20 ? 'suspicious' : 'safe';
+      const verdict = urlScanVerdict(riskScore, threatIntel.state);
 
       const scanDuration = Date.now() - startTime;
 
@@ -511,9 +478,9 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
             userId: auth.currentUser.uid,
             target: targetUrl,
             type: 'url',
-            riskLevel: verdict === 'dangerous' ? 'High' : verdict === 'suspicious' ? 'Medium' : 'Low',
-            securityScore: Math.max(0, 100 - riskScore),
-            reportText: `Verdict: ${verdict.toUpperCase()} | Risk Score: ${riskScore}/100 | Checks: ${checks.filter(c => c.status === 'fail').length} failed, ${checks.filter(c => c.status === 'warn').length} warnings | URLhaus: ${threatIntel.urlhausMatch ? 'MATCH' : 'Clean'} | Domain Age: ${whois.ageYears ?? 'Unknown'} years`,
+            riskLevel: urlRiskLevel(verdict),
+            securityScore: urlSecurityScore(verdict, riskScore),
+            reportText: `Verdict: ${verdict.toUpperCase()} | Risk Score: ${riskScore}/100 | Checks: ${checks.filter(c => c.status === 'fail').length} failed, ${checks.filter(c => c.status === 'warn').length} warnings, ${checks.filter(c => c.status === 'unknown').length} unavailable | URLhaus: ${urlhaus.persisted} | Domain Age: ${whois.ageYears ?? 'Unknown'} years`,
             createdAt: serverTimestamp(),
           });
         } catch {}
@@ -532,33 +499,35 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
       case 'warn': return <AlertTriangle className="w-5 h-5 text-amber-400" />;
       case 'fail': return <XCircle className="w-5 h-5 text-red-400" />;
       case 'info': return <Info className="w-5 h-5 text-blue-400" />;
+      case 'unknown': return <Info className="w-5 h-5 text-blue-400" />;
     }
   };
 
+  const copy = urlVerdictCopy(result?.verdict ?? 'incomplete');
   const verdictConfig = {
     safe: {
       icon: ShieldCheck,
       color: 'text-emerald-400',
       bg: 'bg-emerald-500/10',
       border: 'border-emerald-500/30',
-      label: lang === 'ar' ? 'آمن' : 'SAFE',
-      desc: lang === 'ar' ? 'لم يتم اكتشاف تهديدات. هذا الرابط يبدو آمناً بناءً على فحوصاتنا.' : 'No threats detected. This URL appears safe based on our analysis.',
     },
     suspicious: {
       icon: AlertTriangle,
       color: 'text-amber-400',
       bg: 'bg-amber-500/10',
       border: 'border-amber-500/30',
-      label: lang === 'ar' ? 'مشبوه' : 'SUSPICIOUS',
-      desc: lang === 'ar' ? 'تم اكتشاف عوامل مشبوهة. توخَّ الحذر وتحقق من الرابط قبل إدخال أي بيانات.' : 'Suspicious indicators detected. Exercise caution and verify this URL before submitting any data.',
     },
     dangerous: {
       icon: ShieldAlert,
       color: 'text-red-400',
       bg: 'bg-red-500/10',
       border: 'border-red-500/30',
-      label: lang === 'ar' ? 'خطير' : 'DANGEROUS',
-      desc: lang === 'ar' ? '⚠️ تم اكتشاف تهديدات خطيرة! لا تدخل أي بيانات شخصية ولا تحمّل أي ملفات من هذا الرابط.' : '⚠️ Critical threats detected! Do NOT enter personal data or download files from this URL.',
+    },
+    incomplete: {
+      icon: Info,
+      color: 'text-blue-400',
+      bg: 'bg-blue-500/10',
+      border: 'border-blue-500/30',
     },
   };
 
@@ -647,13 +616,15 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
                       <div>
                         <div className="flex items-center gap-3 mb-1">
                           <span className={cn("text-2xl font-black tracking-tight font-mono", vc.color)}>
-                            {vc.label}
+                            {lang === 'ar' ? copy.labelAr : copy.label}
                           </span>
                           <span className={cn("text-xs font-mono font-bold px-2.5 py-1 rounded-full border", vc.bg, vc.color, vc.border)}>
-                            {lang === 'ar' ? 'نسبة الخطر' : 'RISK'}: {result.riskScore}/100
+                            {result.verdict === 'incomplete'
+                              ? (lang === 'ar' ? 'الفحص غير مكتمل' : 'CHECK INCOMPLETE')
+                              : `${lang === 'ar' ? 'نسبة الخطر' : 'RISK'}: ${result.riskScore}/100`}
                           </span>
                         </div>
-                        <p className="text-sm text-text-dim max-w-md">{vc.desc}</p>
+                        <p className="text-sm text-text-dim max-w-md">{lang === 'ar' ? copy.descAr : copy.desc}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
@@ -671,10 +642,10 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
                             await generateReportPDF({
                               type: 'url',
                               target: result.url,
-                              riskLevel: result.verdict === 'dangerous' ? 'High' : result.verdict === 'suspicious' ? 'Medium' : 'Low',
-                              securityScore: 100 - result.riskScore,
+                              riskLevel: urlRiskLevel(result.verdict),
+                              securityScore: urlSecurityScore(result.verdict, result.riskScore),
                               reportText: reportLines,
-                              actionPlan: result.checks.filter(c => c.status === 'fail' || c.status === 'warn').map(c => lang === 'ar' ? c.detailAr : c.detail),
+                              actionPlan: result.checks.filter(c => c.status === 'fail' || c.status === 'warn' || c.status === 'unknown').map(c => lang === 'ar' ? c.detailAr : c.detail),
                             }, 'url', lang as 'en' | 'ar');
                           } finally {
                             setIsExporting(false);
@@ -746,6 +717,7 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-400 inline-block" /> {result.checks.filter(c => c.status === 'fail').length} {lang === 'ar' ? 'خطير' : 'FAIL'}</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> {result.checks.filter(c => c.status === 'warn').length} {lang === 'ar' ? 'تحذير' : 'WARN'}</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" /> {result.checks.filter(c => c.status === 'pass').length} {lang === 'ar' ? 'آمن' : 'PASS'}</span>
+                  {result.checks.some(c => c.status === 'unknown') && <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block" /> {result.checks.filter(c => c.status === 'unknown').length} {lang === 'ar' ? 'غير متاح' : 'UNAVAILABLE'}</span>}
                 </div>
               </div>
 
@@ -775,8 +747,9 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
                         check.status === 'warn' && 'bg-amber-500/10 text-amber-400',
                         check.status === 'fail' && 'bg-red-500/10 text-red-400',
                         check.status === 'info' && 'bg-blue-500/10 text-blue-400',
+                        check.status === 'unknown' && 'bg-blue-500/10 text-blue-400',
                       )}>
-                        {check.status.toUpperCase()}
+                        {check.status === 'unknown' ? (lang === 'ar' ? 'غير متاح' : 'UNAVAILABLE') : check.status.toUpperCase()}
                       </span>
                     </div>
                   </div>

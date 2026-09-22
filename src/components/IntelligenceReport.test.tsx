@@ -4,6 +4,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import IntelligenceReport from './IntelligenceReport';
+import { getRiskColor } from '../lib/generatePDF';
 
 const mocks = vi.hoisted(() => ({
   html2canvas: vi.fn(),
@@ -101,5 +102,32 @@ describe('IntelligenceReport (S01 dossier masking)', () => {
     await user.click(screen.getByRole('button', { name: /export pdf/i }));
     await waitFor(() => expect(mocks.pdfSave).toHaveBeenCalledTimes(1));
     expect(mocks.pdfSave).toHaveBeenCalledWith('joescan_dossier_victim_example_com.pdf');
+  });
+
+  it('renders an unknown URL scan as incomplete rather than a clean result', () => {
+    render(
+      <IntelligenceReport
+        scan={{
+          id: 'abcdefgh12345678',
+          type: 'url',
+          target: 'https://example.com',
+          riskLevel: 'Unknown',
+          securityScore: null,
+          createdAt: new Date('2026-01-02T08:30:00Z'),
+        }}
+        onClose={() => {}}
+      />,
+    );
+
+    const risk = screen.getByText('Unknown');
+    expect(risk.className).toContain('text-[#ffa500]');
+    expect(risk.className).not.toContain('text-[#00ff00]');
+    expect(screen.getByText(/CHECK INCOMPLETE: This result was not assessed/)).toBeTruthy();
+    expect(screen.getByText('Not assessed')).toHaveStyle({ color: '#9aa0a6' });
+    expect(document.body.textContent).toContain('CHECK INCOMPLETE. NOT ASSESSED.');
+    expect(document.body.textContent).not.toContain('NO ACTIVE MATCH IN CORE MATRICES');
+    expect(document.body.textContent).not.toContain('CLEAR POSTURE');
+    expect(getRiskColor('Unknown')).not.toEqual(getRiskColor('Low'));
+    expect(getRiskColor('Unknown')).toEqual([120, 120, 140]);
   });
 });
