@@ -1,4 +1,5 @@
 export const URLHAUS_ENDPOINT = 'https://urlhaus-api.abuse.ch/v1/host/';
+export const URLHAUS_URL_ENDPOINT = 'https://urlhaus-api.abuse.ch/v1/url/';
 export const URLHAUS_TIMEOUT_MS = 15_000;
 
 export type UrlhausState = 'match' | 'no_match' | 'unavailable';
@@ -28,25 +29,42 @@ function cleanStrings(value: unknown): string[] {
     .map((item) => item.trim());
 }
 
-/** Map a parsed URLhaus body to match, confirmed no_results, or unavailable. */
+/** Map a parsed URLhaus body (/v1/host/ or /v1/url/) to match, confirmed no_results, or unavailable. */
 export function interpretUrlhausBody(body: unknown): UrlhausResult {
   if (!body || typeof body !== 'object' || Array.isArray(body)) return unavailable();
   const data = body as Record<string, unknown>;
   const urls = data.urls;
   const hasUrls = Array.isArray(urls) && urls.length > 0;
+  const hasTopLevelUrlMatch =
+    (typeof data.url_status === 'string' && data.url_status.trim().length > 0) ||
+    (typeof data.threat === 'string' && data.threat.trim().length > 0) ||
+    (typeof data.date_added === 'string' && data.date_added.trim().length > 0) ||
+    (typeof data.id === 'string' && data.id.trim().length > 0) ||
+    typeof data.id === 'number';
 
   if (data.query_status === 'no_results') {
-    return hasUrls ? unavailable() : { state: 'no_match', tags: [] };
+    return hasUrls || hasTopLevelUrlMatch ? unavailable() : { state: 'no_match', tags: [] };
   }
-  if (data.query_status !== 'ok' || !hasUrls || !Array.isArray(urls)) return unavailable();
+  if (data.query_status !== 'ok') return unavailable();
 
-  const latest = urls[0];
-  if (!latest || typeof latest !== 'object' || Array.isArray(latest)) return unavailable();
-  const record = latest as Record<string, unknown>;
-  const threat = typeof record.threat === 'string' && record.threat.trim() ? record.threat.trim() : undefined;
-  const dateAdded = typeof record.date_added === 'string' && record.date_added.trim() ? record.date_added.trim() : undefined;
-  const tags = cleanStrings(data.tags).length > 0 ? cleanStrings(data.tags) : cleanStrings(record.tags);
-  return { state: 'match', threat, tags, dateAdded };
+  if (hasUrls && Array.isArray(urls)) {
+    const latest = urls[0];
+    if (!latest || typeof latest !== 'object' || Array.isArray(latest)) return unavailable();
+    const record = latest as Record<string, unknown>;
+    const threat = typeof record.threat === 'string' && record.threat.trim() ? record.threat.trim() : undefined;
+    const dateAdded = typeof record.date_added === 'string' && record.date_added.trim() ? record.date_added.trim() : undefined;
+    const tags = cleanStrings(data.tags).length > 0 ? cleanStrings(data.tags) : cleanStrings(record.tags);
+    return { state: 'match', threat, tags, dateAdded };
+  }
+
+  if (urls === undefined && hasTopLevelUrlMatch) {
+    const threat = typeof data.threat === 'string' && data.threat.trim() ? data.threat.trim() : undefined;
+    const dateAdded = typeof data.date_added === 'string' && data.date_added.trim() ? data.date_added.trim() : undefined;
+    const tags = cleanStrings(data.tags);
+    return { state: 'match', threat, tags, dateAdded };
+  }
+
+  return unavailable();
 }
 
 /**
@@ -85,6 +103,53 @@ export async function queryUrlhaus(
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function queryUrlhausUrl(
+  url: string,
+  fetchImpl: (input: string, init?: RequestInit) => Promise<UrlhausResponse> = globalThis.fetch,
+  timeoutMs = URLHAUS_TIMEOUT_MS,
+): Promise<UrlhausResult> {
+  const trimmed = url.trim();
+  if (!trimmed) return unavailable();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(URLHAUS_URL_ENDPOINT, {
+      method: 'POST',
+      headers: { Accept: 'application/json' },
+      body: new URLSearchParams({ url: trimmed }),
+      signal: controller.signal,
+    });
+    if (!response.ok) return unavailable();
+    try {
+      return interpretUrlhausBody(await response.json());
+    } catch {
+      return unavailable();
+    }
+  } catch {
+    return unavailable();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export function combineUrlhausResults(hostResult: UrlhausResult, urlResult: UrlhausResult): UrlhausResult {
+  if (urlResult.state === 'match' || hostResult.state === 'match') {
+    const primary = urlResult.state === 'match' ? urlResult : hostResult;
+    const secondary = urlResult.state === 'match' ? hostResult : urlResult;
+    const mergedTags = Array.from(new Set([...primary.tags, ...(secondary.state === 'match' ? secondary.tags : [])]));
+    return {
+      state: 'match',
+      threat: primary.threat ?? (secondary.state === 'match' ? secondary.threat : undefined),
+      dateAdded: primary.dateAdded ?? (secondary.state === 'match' ? secondary.dateAdded : undefined),
+      tags: mergedTags,
+    };
+  }
+  if (hostResult.state === 'no_match' && urlResult.state === 'no_match') {
+    return { state: 'no_match', tags: [] };
+  }
+  return unavailable();
 }
 
 export function presentUrlhaus(result: UrlhausResult): UrlhausPresentation {

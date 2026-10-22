@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  URLHAUS_URL_ENDPOINT,
+  combineUrlhausResults,
   interpretUrlhausBody,
   presentUrlhaus,
   queryUrlhaus,
+  queryUrlhausUrl,
   urlScanVerdict,
   urlSecurityScore,
   urlVerdictCopy,
@@ -91,5 +94,68 @@ describe('URLhaus result modeling', () => {
     expect(urlScanVerdict(55, 'unavailable')).toBe('dangerous');
     expect(urlScanVerdict(25, 'unavailable')).toBe('suspicious');
     expect(urlVerdictCopy('safe').desc).toMatch(/no threats detected/i);
+  });
+
+  describe('queryUrlhausUrl (/v1/url/) and combined host+url results', () => {
+    it('interprets a URL-level top-level match response and triggers match verdict', async () => {
+      const fetchImpl = vi.fn(async (endpoint: string, init?: RequestInit) => {
+        expect(endpoint).toBe(URLHAUS_URL_ENDPOINT);
+        expect(String(init?.body)).toBe('url=https%3A%2F%2Fevil.example.com%2Fpayload.exe');
+        return responded({
+          query_status: 'ok',
+          id: '2910441',
+          url_status: 'online',
+          threat: 'malware_download',
+          date_added: '2025-02-10 12:00:00 UTC',
+          tags: ['Mozi', 'mips'],
+        });
+      });
+
+      const result = await queryUrlhausUrl('https://evil.example.com/payload.exe', fetchImpl);
+      expect(result).toEqual({
+        state: 'match',
+        threat: 'malware_download',
+        dateAdded: '2025-02-10 12:00:00 UTC',
+        tags: ['Mozi', 'mips'],
+      });
+      expect(urlScanVerdict(0, result.state)).toBe('suspicious');
+
+      const combined = combineUrlhausResults({ state: 'no_match', tags: [] }, result);
+      expect(combined.state).toBe('match');
+      expect(combined.threat).toBe('malware_download');
+    });
+
+    it('interprets a URL-level no_results response as no_match', async () => {
+      const fetchImpl = vi.fn(async () => responded({ query_status: 'no_results' }));
+      const result = await queryUrlhausUrl('https://clean.example.com/welcome', fetchImpl);
+      expect(result).toEqual({ state: 'no_match', tags: [] });
+
+      const combined = combineUrlhausResults({ state: 'no_match', tags: [] }, result);
+      expect(combined.state).toBe('no_match');
+    });
+
+    it('returns unavailable on empty URL, HTTP error, timeout, or contradictory payload', async () => {
+      expect((await queryUrlhausUrl('   ')).state).toBe('unavailable');
+
+      const httpErrFetch = vi.fn(async () => responded({ query_status: 'no_results' }, false, 502));
+      expect((await queryUrlhausUrl('https://example.com/a', httpErrFetch)).state).toBe('unavailable');
+
+      const timeoutFetch = vi.fn((_url: string, init?: RequestInit): Promise<never> => new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          reject(Object.assign(new Error('Aborted'), { name: 'AbortError' }));
+        });
+      }));
+      expect((await queryUrlhausUrl('https://example.com/a', timeoutFetch, 10)).state).toBe('unavailable');
+
+      const badBodyFetch = vi.fn(async () => responded({
+        query_status: 'no_results',
+        url_status: 'online',
+        threat: 'malware_download',
+      }));
+      expect((await queryUrlhausUrl('https://example.com/a', badBodyFetch)).state).toBe('unavailable');
+
+      const combined = combineUrlhausResults({ state: 'no_match', tags: [] }, { state: 'unavailable', tags: [] });
+      expect(combined.state).toBe('unavailable');
+    });
   });
 });
