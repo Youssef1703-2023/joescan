@@ -4,7 +4,7 @@ import { auth } from '../lib/firebase';
 import { saveScan } from '../lib/webhooks';
 import { useLanguage } from '../contexts/LanguageContext';
 import { analyzePhoneExposure } from '../lib/gemini';
-import { Smartphone, Loader2, ShieldCheck, AlertTriangle, ArrowRight, RefreshCw, X, ShieldAlert, Cpu, Network, Globe, MapPin, MessageSquareWarning, Users, ChevronDown, Download } from 'lucide-react';
+import { Smartphone, Loader2, ShieldCheck, AlertTriangle, ArrowRight, RefreshCw, X, ShieldAlert, Cpu, Network, Globe, MapPin, MessageSquareWarning, Users, ChevronDown, Download, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import MiniHistory from './MiniHistory';
@@ -21,6 +21,33 @@ interface ScanResult {
   thoughtProcess?: string;
 }
 
+interface VerifiedPhoneFacts {
+  valid: boolean;
+  internationalFormat: string;
+  countryRegion: string;
+  callingCode: string;
+  lineType: string;
+}
+
+function deriveLineType(formattedPhone: string, libType?: string): string {
+  if (libType) {
+    return libType.replace(/_/g, ' ');
+  }
+  const cleanNum = formattedPhone.replace(/\D/g, '');
+  if (formattedPhone.startsWith('+20')) {
+    const national = cleanNum.substring(2);
+    return /^(10|11|12|15)/.test(national) ? 'Mobile' : 'Landline';
+  }
+  if (formattedPhone.startsWith('+966')) {
+    const national = cleanNum.substring(3);
+    return /^5/.test(national) ? 'Mobile' : 'Landline / Other';
+  }
+  if (formattedPhone.startsWith('+1')) {
+    return 'Mobile / Landline (NANP)';
+  }
+  return 'Mobile / Fixed Line';
+}
+
 export default function PhoneAnalyzer() {
   const { lang, t } = useLanguage();
   const [phone, setPhone] = useState('');
@@ -28,6 +55,7 @@ export default function PhoneAnalyzer() {
   const [loading, setLoading] = useState(false);
   const [deepScan, setDeepScan] = useState(true);
   const [result, setResult] = useState<ScanResult | null>(null);
+  const [verifiedFacts, setVerifiedFacts] = useState<VerifiedPhoneFacts | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -38,6 +66,7 @@ export default function PhoneAnalyzer() {
     let formattedPhone = phone.trim();
     
     let countryNameExact = '';
+    let nextVerifiedFacts: VerifiedPhoneFacts | null = null;
     
     try {
       // Ensure there's a + if a country code is implied or picked
@@ -58,6 +87,14 @@ export default function PhoneAnalyzer() {
       if (c) {
         countryNameExact = c.name;
       }
+
+      nextVerifiedFacts = {
+        valid: phoneNumber.isValid(),
+        internationalFormat: formattedPhone,
+        countryRegion: countryNameExact || phoneNumber.country || 'Unknown',
+        callingCode: `+${phoneNumber.countryCallingCode}`,
+        lineType: deriveLineType(formattedPhone, phoneNumber.getType()),
+      };
     } catch (err: any) {
       setError(t('phone_invalid_format') || "Invalid real phone number. Please ensure you picked the right country and entered a valid number of digits.");
       return;
@@ -66,6 +103,7 @@ export default function PhoneAnalyzer() {
     setLoading(true);
     setError(null);
     setResult(null);
+    setVerifiedFacts(nextVerifiedFacts);
 
     try {
       const scanResult = await analyzePhoneExposure(formattedPhone, lang, deepScan, countryNameExact);
@@ -221,7 +259,7 @@ export default function PhoneAnalyzer() {
               <div className="shrink-0 p-4 bg-bg-base/50 rounded-full backdrop-blur-md">
                 {renderIcon(result.riskLevel)}
               </div>
-              <div className="flex-1 space-y-4 w-full">
+              <div className="flex-1 space-y-5 w-full">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
                     <h3 className="font-mono text-xs uppercase tracking-widest opacity-80 mb-1">{t('risk_assessed')}</h3>
@@ -245,121 +283,180 @@ export default function PhoneAnalyzer() {
                   </button>
                 </div>
 
-                {/* AI / OSINT Disclaimer */}
-                <div className="text-[11px] font-mono p-2.5 rounded-lg bg-bg-base/60 border border-[currentColor]/15 text-text-dim flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full bg-cyan-400 shrink-0" />
-                  <span>
-                    {lang === 'ar'
-                      ? 'تقييم مبني على أنماط الذكاء الاصطناعي وخطة الترقيم العامة؛ ليس بحثاً مؤكداً في سجلات اتصالات رسمية.'
-                      : 'AI-generated assessment based on public patterns and numbering plans; not a verified database lookup.'}
-                  </span>
-                </div>
-
-                <div className="text-sm opacity-90 leading-relaxed font-medium">
-                  {result.reportText}
-                </div>
-
-                {/* OSINT Deep Links Output */}
-                <div className="pt-4 border-t border-[currentColor]/10">
-                  <h4 className="font-bold uppercase tracking-widest opacity-80 mb-4 flex items-center gap-2 text-accent">
-                    <Globe className="w-4 h-4" /> Live OSINT Investigators
-                  </h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-2 w-full">
-                    <a 
-                      href={`https://api.whatsapp.com/send/?phone=${phone.replace(/\\D/g, '')}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
-                    >
-                      <MessageSquareWarning className="w-5 h-5 opacity-70 text-[#25D366]" />
-                      <div className="text-left w-full truncate">
-                        <p className="text-[10px] tracking-widest opacity-60">PROFILE CHECK</p>
-                        <p className="text-sm font-semibold truncate">Search WhatsApp</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 opacity-50" />
-                    </a>
-                    
-                    <a 
-                      href={`https://sync.me/search/?number=${phone.replace(/\\D/g, '')}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
-                    >
-                      <Users className="w-5 h-5 opacity-70 text-[#1DA1F2]" />
-                      <div className="text-left w-full truncate">
-                        <p className="text-[10px] tracking-widest opacity-60">NAME DIRECTORY</p>
-                        <p className="text-sm font-semibold truncate">Sync.me Search</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 opacity-50" />
-                    </a>
-
-                    <a 
-                      href={`https://www.google.com/search?q="${encodeURIComponent(phone.trim())}"+OR+"${phone.replace(/\\D/g, '')}"+-site:facebook.com`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
-                    >
-                      <Globe className="w-5 h-5 opacity-70 text-[#F4B400]" />
-                      <div className="text-left w-full truncate">
-                        <p className="text-[10px] tracking-widest opacity-60">DIGITAL FOOTPRINT</p>
-                        <p className="text-sm font-semibold truncate">Google Dork Scan</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 opacity-50" />
-                    </a>
-                    
-                    <a 
-                      href={`https://t.me/+${phone.replace(/\\D/g, '')}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
-                    >
-                      <MessageSquareWarning className="w-5 h-5 opacity-70 text-[#0088cc]" />
-                      <div className="text-left w-full truncate">
-                        <p className="text-[10px] tracking-widest opacity-60">MESSENGER CHECK</p>
-                        <p className="text-sm font-semibold truncate">Telegram Search</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 opacity-50" />
-                    </a>
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-[currentColor]/10 grid grid-cols-2 gap-4">
-                  {result.carrier && (
-                    <div className="bg-bg-base/40 p-3 rounded-lg">
-                      <Network className="w-4 h-4 mb-2 opacity-70" />
-                      <p className="text-[10px] font-mono uppercase tracking-widest opacity-60">{t('network_carrier')}</p>
-                      <p className="text-sm font-semibold truncate" title={result.carrier}>{result.carrier}</p>
-                    </div>
-                  )}
-                  {result.country && (
-                    <div className="bg-bg-base/40 p-3 rounded-lg">
-                      <MapPin className="w-4 h-4 mb-2 opacity-70" />
-                      <p className="text-[10px] font-mono uppercase tracking-widest opacity-60">{t('origin_country')}</p>
-                      <p className="text-sm font-semibold truncate" title={result.country}>{result.country}</p>
-                    </div>
-                  )}
-                </div>
-
-                {result.thoughtProcess && (
-                  <div className="bg-bg-base/20 border border-[currentColor]/20 rounded-lg p-4 mt-4 font-mono text-xs">
-                    <h4 className="font-bold uppercase tracking-widest opacity-80 mb-3 flex items-center gap-2 text-accent">
-                      <Cpu className="w-4 h-4" /> Component Inspector Log
+                {/* ── Section 1: Verified from number data (libphonenumber facts) ── */}
+                <div className="bg-bg-base/50 border border-emerald-500/25 rounded-xl p-4 space-y-3">
+                  <div className="flex items-center justify-between border-b border-[currentColor]/10 pb-2">
+                    <h4 className="font-bold font-mono text-xs uppercase tracking-widest flex items-center gap-2 text-emerald-400">
+                      <CheckCircle2 className="w-4 h-4 shrink-0" />
+                      {lang === 'ar' ? 'بيانات موثقة من الرقم' : 'Verified from number data'}
                     </h4>
-                    <p className="opacity-80 leading-relaxed whitespace-pre-wrap text-text-dim">
-                      {result.thoughtProcess}
-                    </p>
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      {lang === 'ar' ? 'خطة الترقيم القياسية' : 'LIBPHONENUMBER E.164'}
+                    </span>
                   </div>
-                )}
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                    <div className="bg-bg-base/60 p-3 rounded-lg border border-[currentColor]/10">
+                      <p className="text-[10px] font-mono uppercase tracking-widest opacity-60">
+                        {lang === 'ar' ? 'صلاحية الرقم' : 'Validity'}
+                      </p>
+                      <p className="text-sm font-semibold text-emerald-400">
+                        {verifiedFacts?.valid
+                          ? lang === 'ar' ? 'صالح (Valid)' : 'Valid Format'
+                          : lang === 'ar' ? 'غير صالح' : 'Invalid'}
+                      </p>
+                    </div>
+
+                    <div className="bg-bg-base/60 p-3 rounded-lg border border-[currentColor]/10">
+                      <p className="text-[10px] font-mono uppercase tracking-widest opacity-60">
+                        {lang === 'ar' ? 'التنسيق الدولي' : 'Format'}
+                      </p>
+                      <p className="text-sm font-semibold font-mono truncate" dir="ltr" title={verifiedFacts?.internationalFormat || phone}>
+                        {verifiedFacts?.internationalFormat || phone}
+                      </p>
+                    </div>
+
+                    { (result.country || verifiedFacts?.countryRegion) && (
+                      <div className="bg-bg-base/60 p-3 rounded-lg border border-[currentColor]/10">
+                        <MapPin className="w-3.5 h-3.5 mb-1 opacity-70 inline-block mr-1" />
+                        <span className="text-[10px] font-mono uppercase tracking-widest opacity-60">{t('origin_country')}</span>
+                        <p className="text-sm font-semibold truncate" title={result.country || verifiedFacts?.countryRegion}>
+                          {result.country || verifiedFacts?.countryRegion}
+                          {verifiedFacts?.callingCode ? ` (${verifiedFacts.callingCode})` : ''}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="bg-bg-base/60 p-3 rounded-lg border border-[currentColor]/10">
+                      <p className="text-[10px] font-mono uppercase tracking-widest opacity-60">
+                        {lang === 'ar' ? 'نوع الخط' : 'Line Type'}
+                      </p>
+                      <p className="text-sm font-semibold truncate">
+                        {verifiedFacts?.lineType || 'Mobile / Fixed Line'}
+                      </p>
+                    </div>
+
+                    {result.carrier && (
+                      <div className="bg-bg-base/60 p-3 rounded-lg border border-[currentColor]/10">
+                        <Network className="w-3.5 h-3.5 mb-1 opacity-70 inline-block mr-1" />
+                        <span className="text-[10px] font-mono uppercase tracking-widest opacity-60">{t('network_carrier')}</span>
+                        <p className="text-sm font-semibold truncate" title={result.carrier}>{result.carrier}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Section 2: AI-inferred — unverified ── */}
+                <div className="bg-bg-base/40 border border-amber-500/25 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center justify-between border-b border-[currentColor]/10 pb-2">
+                    <h4 className="font-bold font-mono text-xs uppercase tracking-widest flex items-center gap-2 text-amber-400">
+                      <Cpu className="w-4 h-4 shrink-0" />
+                      {lang === 'ar' ? 'استنتاج ذكاء اصطناعي — غير موثق' : 'AI-inferred — unverified'}
+                    </h4>
+                    <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      {lang === 'ar' ? 'غير مؤكد' : 'UNVERIFIED'}
+                    </span>
+                  </div>
+
+                  {/* Short bilingual disclaimer */}
+                  <div className="text-[11px] font-mono p-2.5 rounded-lg bg-bg-base/60 border border-[currentColor]/15 text-text-dim flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                    <span>
+                      {lang === 'ar'
+                        ? 'تقييم مبني على أنماط الذكاء الاصطناعي وخطة الترقيم العامة؛ ليس بحثاً مؤكداً في سجلات اتصالات رسمية أو قواعد بيانات مغلقة.'
+                        : 'AI-generated exposure and account assessment based on public numbering patterns; not a verified carrier or breach database lookup.'}
+                    </span>
+                  </div>
+
+                  <div className="text-sm opacity-90 leading-relaxed font-medium">
+                    {result.reportText}
+                  </div>
+
+                  {/* OSINT Deep Links Output */}
+                  <div className="pt-3 border-t border-[currentColor]/10">
+                    <h5 className="font-bold uppercase tracking-widest opacity-80 mb-3 flex items-center gap-2 text-accent text-xs">
+                      <Globe className="w-4 h-4" /> Live OSINT Investigators
+                    </h5>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-1 w-full">
+                      <a 
+                        href={`https://api.whatsapp.com/send/?phone=${phone.replace(/\D/g, '')}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
+                      >
+                        <MessageSquareWarning className="w-5 h-5 opacity-70 text-[#25D366]" />
+                        <div className="text-left w-full truncate">
+                          <p className="text-[10px] tracking-widest opacity-60">PROFILE CHECK</p>
+                          <p className="text-sm font-semibold truncate">Search WhatsApp</p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 opacity-50" />
+                      </a>
+                      
+                      <a 
+                        href={`https://sync.me/search/?number=${phone.replace(/\D/g, '')}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
+                      >
+                        <Users className="w-5 h-5 opacity-70 text-[#1DA1F2]" />
+                        <div className="text-left w-full truncate">
+                          <p className="text-[10px] tracking-widest opacity-60">NAME DIRECTORY</p>
+                          <p className="text-sm font-semibold truncate">Sync.me Search</p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 opacity-50" />
+                      </a>
+
+                      <a 
+                        href={`https://www.google.com/search?q="${encodeURIComponent(phone.trim())}"+OR+"${phone.replace(/\D/g, '')}"+-site:facebook.com`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
+                      >
+                        <Globe className="w-5 h-5 opacity-70 text-[#F4B400]" />
+                        <div className="text-left w-full truncate">
+                          <p className="text-[10px] tracking-widest opacity-60">DIGITAL FOOTPRINT</p>
+                          <p className="text-sm font-semibold truncate">Google Dork Scan</p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 opacity-50" />
+                      </a>
+                      
+                      <a 
+                        href={`https://t.me/+${phone.replace(/\D/g, '')}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
+                      >
+                        <MessageSquareWarning className="w-5 h-5 opacity-70 text-[#0088cc]" />
+                        <div className="text-left w-full truncate">
+                          <p className="text-[10px] tracking-widest opacity-60">MESSENGER CHECK</p>
+                          <p className="text-sm font-semibold truncate">Telegram Search</p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 opacity-50" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {result.thoughtProcess && (
+                    <div className="bg-bg-base/20 border border-[currentColor]/20 rounded-lg p-4 font-mono text-xs">
+                      <h5 className="font-bold uppercase tracking-widest opacity-80 mb-2 flex items-center gap-2 text-accent">
+                        <Cpu className="w-4 h-4" /> Component Inspector Log
+                      </h5>
+                      <p className="opacity-80 leading-relaxed whitespace-pre-wrap text-text-dim">
+                        {result.thoughtProcess}
+                      </p>
+                    </div>
+                  )}
+                </div>
 
                 <div className="bg-bg-base/40 rounded-lg p-4 mt-2">
                   <h4 className="font-bold text-xs uppercase tracking-widest opacity-80 mb-3 flex items-center gap-2">
                     <ArrowRight className="w-4 h-4" /> Remediation Steps
                   </h4>
                   <ul className="space-y-2 text-sm opacity-90">
-                    {result.actionPlan.split('\\n').filter(Boolean).map((step, i) => (
+                    {result.actionPlan.split('\n').filter(Boolean).map((step, i) => (
                       <li key={i} className="flex gap-2">
                         <span className="font-mono opacity-50">{i + 1}.</span>
-                        <span>{step.replace(/^\\d+\\.\\s*/, '')}</span>
+                        <span>{step.replace(/^\d+\.\s*/, '')}</span>
                       </li>
                     ))}
                   </ul>
