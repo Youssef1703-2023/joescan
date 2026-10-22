@@ -41,7 +41,13 @@ function getCustomGroqKey(): string {
   return '';
 }
 
-async function executeUniversalAI(prompt: string, schemaObj: any, _useSearch: boolean, arabicInstruction?: string) {
+async function executeUniversalAI(
+  prompt: string,
+  schemaObj: any,
+  _useSearch: boolean,
+  arabicInstruction?: string,
+  options?: { signal?: AbortSignal },
+) {
   const customKey = getCustomGroqKey();
   const sysInstruction = arabicInstruction || "You are a friendly cybersecurity expert.";
   const schemaDetails = Object.keys(schemaObj.properties || {}).map(k => " - " + k).join("\n");
@@ -55,14 +61,17 @@ async function executeUniversalAI(prompt: string, schemaObj: any, _useSearch: bo
       dangerouslyAllowBrowser: true
     });
 
-    const res = await openai.chat.completions.create({
-      model: 'llama-3.3-70b-versatile',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: prompt }
-      ],
-      response_format: { type: 'json_object' }
-    });
+    const res = await openai.chat.completions.create(
+      {
+        model: 'llama-3.3-70b-versatile',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        response_format: { type: 'json_object' }
+      },
+      { signal: options?.signal },
+    );
     
     return JSON.parse(res.choices[0].message?.content || '{}');
   }
@@ -96,6 +105,7 @@ async function executeUniversalAI(prompt: string, schemaObj: any, _useSearch: bo
       response_format: { type: 'json_object' },
       temperature: 0.7,
     }),
+    signal: options?.signal,
   });
 
   if (!response.ok) {
@@ -378,7 +388,12 @@ Return JSON filling the schema:`;
   }, true);
 }
 
-export async function analyzeSocialFootprint(username: string, platforms: string[], language: string) {
+export async function analyzeSocialFootprint(
+  username: string,
+  platforms: string[],
+  language: string,
+  options?: { signal?: AbortSignal },
+) {
   const isArabic = language === 'ar';
   const prompt = `You are a highly skilled OSINT and cybersecurity expert.
 A username search for '${username}' found active accounts on the following ${platforms.length} platforms:
@@ -402,10 +417,14 @@ Return JSON filling the schema:`;
       scoreImprovement: { type: Type.ARRAY, items: { type: Type.STRING } }
     },
     required: ["riskLevel", "reportText", "actionPlan", "securityScore", "scoreFactors", "scoreImprovement"],
-  }, false);
+  }, false, undefined, options);
 }
 
-export async function searchSocialProfiles(username: string, candidateList: string) {
+export async function searchSocialProfiles(
+  username: string,
+  candidateList: string,
+  options?: { signal?: AbortSignal },
+) {
   const prompt = `You are an expert OSINT (Open Source Intelligence) investigator specializing in username enumeration and digital footprint analysis.
 
 I need you to determine which social media and online platform accounts ACTUALLY EXIST for the username "${username}".
@@ -449,10 +468,13 @@ CRITICAL RULES:
       },
     },
     required: ["foundProfiles"],
-  }, true);
+  }, true, undefined, options);
 }
 
-export async function searchPhoneProfiles(phoneNumber: string) {
+export async function searchPhoneProfiles(
+  phoneNumber: string,
+  options?: { signal?: AbortSignal },
+) {
   const prompt = `You are an expert OSINT investigator specializing in reverse phone number intelligence.
 
 TASK: Find ALL online accounts and services REGISTERED or LINKED to this phone number: "${phoneNumber}"
@@ -529,6 +551,6 @@ CRITICAL RULES:
       },
     },
     required: ["foundProfiles"],
-  }, true);
+  }, true, undefined, options);
 }
 

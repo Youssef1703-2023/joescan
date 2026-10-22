@@ -419,7 +419,7 @@ export const generateReportPDF = async (scanData: any, scanType: string, lang: '
     }
 
     // ─── Section F: Social Footprint (social scans) ───
-    if (scanType === 'social') {
+    if (scanType === 'social' || scanType === 'social_osint') {
       const hits = (scanData.hits || []) as PlatformHit[];
       const groupedHits = hits.reduce((acc, hit) => {
         const category = hit.category || 'other';

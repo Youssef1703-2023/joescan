@@ -109,7 +109,7 @@ export default function SocialOsintScanner() {
         return 'The OSINT service returned an unexpected response. Please try again.';
       case 'TIMEOUT':
       case 'UPSTREAM_TIMEOUT':
-        return 'The username scan took too long to finish. Please try again in a moment.';
+        return t('social_timeout' as never);
       case 'UPSTREAM_UNAVAILABLE':
         return 'The OSINT provider is temporarily unavailable. Please try again shortly.';
       case 'UPSTREAM_ERROR':
@@ -169,6 +169,7 @@ export default function SocialOsintScanner() {
           (status, checked, total) => {
             setScanProgress({ checked, total, status });
           },
+          { signal: controller.signal },
         );
       } else {
         osintResult = await searchUsername(
@@ -180,6 +181,13 @@ export default function SocialOsintScanner() {
         );
       }
 
+      if (controller.signal.aborted) {
+        setScanProgress(null);
+        setPhase('idle');
+        setLoading(false);
+        return;
+      }
+
       setResult(osintResult);
       setScanProgress(null);
 
@@ -189,7 +197,9 @@ export default function SocialOsintScanner() {
         return;
       }
     } catch (scanError: any) {
-      if (scanError instanceof DOMException && scanError.name === 'AbortError') {
+      if (scanError?.name === 'AbortError' || controller.signal.aborted) {
+        setScanProgress(null);
+        setPhase('idle');
         setLoading(false);
         return;
       }
@@ -206,9 +216,16 @@ export default function SocialOsintScanner() {
       setPhase('analyzing');
       try {
         const platformsFound = osintResult.hits.map((hit) => hit.platform);
-        const analysis = await analyzeSocialFootprint(trimmedUsername, platformsFound, lang);
+        const analysis = await analyzeSocialFootprint(
+          trimmedUsername,
+          platformsFound,
+          lang,
+          { signal: controller.signal },
+        );
 
         if (controller.signal.aborted) {
+          setPhase('idle');
+          setResult(null);
           setLoading(false);
           return;
         }
@@ -246,6 +263,12 @@ export default function SocialOsintScanner() {
           console.error('[SocialOSINT] Firestore save failed:', firestoreErr);
         }
       } catch (aiError: any) {
+        if (aiError?.name === 'AbortError' || controller.signal.aborted) {
+          setPhase('idle');
+          setResult(null);
+          setLoading(false);
+          return;
+        }
         console.error('[SocialOSINT] AI analysis failed:', aiError);
         // Still show scan results even if AI analysis failed
         setPhase('success');

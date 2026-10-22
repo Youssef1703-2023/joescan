@@ -40,6 +40,7 @@ vi.mock('../contexts/LanguageContext', () => ({
       social_visit_profile: 'Visit Profile',
       social_ai_analyzing: 'AI is analyzing your digital footprint...',
       social_rate_limit: 'Rate limit reached. Please wait a few minutes and try again.',
+      social_timeout: 'The username scan took too long to finish. Please try again in a moment.',
       social_exposure_summary: 'Exposure Summary',
       exposure: 'Exposure',
       action_plan: 'Action Plan',
@@ -117,7 +118,12 @@ describe('SocialOsintScanner', () => {
     expect(await screen.findByText('Accounts across multiple communities increase correlation risk.')).toBeInTheDocument();
     expect(screen.getByText('GitHub')).toBeInTheDocument();
     expect(screen.getByText('Reddit')).toBeInTheDocument();
-    expect(mocks.analyzeSocialFootprint).toHaveBeenCalledWith('john_doe', ['GitHub', 'Reddit'], 'en');
+    expect(mocks.analyzeSocialFootprint).toHaveBeenCalledWith(
+      'john_doe',
+      ['GitHub', 'Reddit'],
+      'en',
+      { signal: expect.any(AbortSignal) },
+    );
 
     const downloadButton = screen.getByRole('button', { name: /download pdf/i });
     expect(downloadButton).toBeInTheDocument();
@@ -157,5 +163,17 @@ describe('SocialOsintScanner', () => {
     await user.click(screen.getByRole('button', { name: /audit/i }));
 
     expect(await screen.findByText('Rate limit reached. Please wait a few minutes and try again.')).toBeInTheDocument();
+  });
+
+  it('shows the timeout message', async () => {
+    mocks.searchUsername.mockRejectedValue(new Error('TIMEOUT'));
+
+    const user = userEvent.setup();
+    render(<SocialOsintScanner />);
+
+    fireEvent.change(screen.getByLabelText('Social Media OSINT'), { target: { value: 'slow_user' } });
+    await user.click(screen.getByRole('button', { name: /audit/i }));
+
+    expect(await screen.findByText('The username scan took too long to finish. Please try again in a moment.')).toBeInTheDocument();
   });
 });
