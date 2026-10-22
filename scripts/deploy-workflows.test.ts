@@ -24,7 +24,8 @@ describe('production deployment workflows', () => {
 
     expect(cloudflare).toContain('ref: ${{ inputs.ref || github.sha }}');
     expect(cloudflare).toContain('fetch-depth: 0');
-    expect(cloudflare).toContain('npm ci --legacy-peer-deps');
+    expect(cloudflare).toContain('npm ci');
+    expect(cloudflare).not.toContain('--legacy-peer-deps');
     expect(cloudflare).toContain('npm run lint');
     expect(cloudflare).toContain('npm test');
     expect(cloudflare).toContain('npm audit --omit=dev --audit-level=low');
@@ -50,7 +51,8 @@ describe('production deployment workflows', () => {
     expect(cloudflare).not.toMatch(/cp\s+dist\/index\.html/);
     expect(cloudflare).not.toContain('npm install');
 
-    expect(legacy).toContain('npm ci --legacy-peer-deps');
+    expect(legacy).toContain('npm ci');
+    expect(legacy).not.toContain('--legacy-peer-deps');
     expect(legacy).toContain('VITE_AI_PROXY_URL');
     expect(legacy).not.toMatch(/cp\s+dist\/index\.html/);
     expect(legacy).not.toMatch(/^\s*push:/m);
