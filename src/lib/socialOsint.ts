@@ -149,14 +149,77 @@ function generateCandidateList(username: string): string {
   ).join('\n');
 }
 
+export interface SocialSearchOptions {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+}
+
+const DEFAULT_TIMEOUT_MS = 120000;
+
+function createAbortError(): Error {
+  const err = new Error('The operation was aborted.');
+  err.name = 'AbortError';
+  return err;
+}
+
+async function runWithAbortAndTimeout<T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  options: SocialSearchOptions = {},
+): Promise<T> {
+  const { signal: callerSignal, timeoutMs = DEFAULT_TIMEOUT_MS } = options;
+
+  if (callerSignal?.aborted) {
+    throw createAbortError();
+  }
+
+  const controller = new AbortController();
+  let timedOut = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let onCallerAbort: (() => void) | undefined;
+
+  const raceControl = new Promise<never>((_resolve, reject) => {
+    onCallerAbort = () => {
+      controller.abort();
+      reject(createAbortError());
+    };
+    callerSignal?.addEventListener('abort', onCallerAbort, { once: true });
+
+    timer = setTimeout(() => {
+      timedOut = true;
+      controller.abort();
+      reject(new Error('TIMEOUT'));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([operation(controller.signal), raceControl]);
+  } catch (err: any) {
+    if (timedOut || err?.message === 'TIMEOUT') {
+      throw new Error('TIMEOUT');
+    }
+    if (callerSignal?.aborted || err?.name === 'AbortError') {
+      throw createAbortError();
+    }
+    throw err;
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+    if (onCallerAbort && callerSignal) {
+      callerSignal.removeEventListener('abort', onCallerAbort);
+    }
+  }
+}
+
 // ───── Main search function ─────
 export async function searchUsername(
   username: string,
   onProgress?: (status: string, checked: number, total: number) => void,
-  _options: { signal?: AbortSignal } = {},
+  options: SocialSearchOptions = {},
 ): Promise<SocialOsintResult> {
   const trimmed = username.trim();
-  if (!trimmed) throw new Error('INVALID_USERNAME');
+  if (!trimmed || trimmed.length > 64) throw new Error('INVALID_USERNAME');
+  if (options.signal?.aborted) throw createAbortError();
 
   const totalPlatforms = PLATFORM_DB.length;
 
@@ -173,9 +236,15 @@ export async function searchUsername(
     let result: any;
 
     try {
-      result = await searchSocialProfiles(trimmed, candidateList);
+      result = await runWithAbortAndTimeout(
+        (signal) => searchSocialProfiles(trimmed, candidateList, { signal }),
+        options,
+      );
     } catch (aiErr: any) {
       clearInterval(progressInterval);
+      if (aiErr?.name === 'AbortError' || aiErr?.message === 'TIMEOUT') {
+        throw aiErr;
+      }
       console.error('[SocialOSINT] AI search failed:', aiErr);
       if (aiErr.message?.includes('429') || aiErr.message?.includes('quota') || aiErr.message?.includes('Resource has been exhausted')) {
         throw new Error('RATE_LIMIT');
@@ -227,9 +296,12 @@ export async function searchUsername(
 export async function searchPhoneNumber(
   phoneNumber: string,
   onProgress?: (status: string, checked: number, total: number) => void,
+  options: SocialSearchOptions = {},
 ): Promise<SocialOsintResult> {
   const trimmed = phoneNumber.trim();
-  if (!trimmed) throw new Error('INVALID_PHONE');
+  const digits = trimmed.replace(/\D/g, '');
+  if (!trimmed || digits.length < 7) throw new Error('INVALID_PHONE');
+  if (options.signal?.aborted) throw createAbortError();
 
   const totalPlatforms = 50; // Approximate platforms checked for phone
 
@@ -243,9 +315,15 @@ export async function searchPhoneNumber(
   try {
     let result: any;
     try {
-      result = await searchPhoneProfiles(trimmed);
+      result = await runWithAbortAndTimeout(
+        (signal) => searchPhoneProfiles(trimmed, { signal }),
+        options,
+      );
     } catch (aiErr: any) {
       clearInterval(progressInterval);
+      if (aiErr?.name === 'AbortError' || aiErr?.message === 'TIMEOUT') {
+        throw aiErr;
+      }
       console.error('[PhoneOSINT] AI search failed:', aiErr);
       if (aiErr.message?.includes('429') || aiErr.message?.includes('quota') || aiErr.message?.includes('Resource has been exhausted')) {
         throw new Error('RATE_LIMIT');
