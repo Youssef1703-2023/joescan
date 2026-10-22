@@ -99,7 +99,7 @@ export default function SocialOsintScanner() {
       case 'RATE_LIMIT':
         return t('social_rate_limit' as never);
       case 'INVALID_USERNAME':
-        return 'Use 1-50 characters: letters, numbers, dot, underscore, or hyphen.';
+        return 'Use 1-64 characters: letters, numbers, dot, underscore, or hyphen.';
       case 'INVALID_QUERY_ID':
         return 'The username scan session became invalid. Please try again.';
       case 'NETWORK_ERROR':

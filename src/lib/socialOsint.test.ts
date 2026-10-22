@@ -84,6 +84,37 @@ describe('socialOsint', () => {
 
     await expect(searchPhoneNumber('+1 (234) 56')).rejects.toThrow('INVALID_PHONE');
     expect(searchPhoneProfiles).not.toHaveBeenCalled();
+
+    await expect(searchPhoneNumber('1'.repeat(25))).rejects.toThrow('INVALID_PHONE');
+    expect(searchPhoneProfiles).not.toHaveBeenCalled();
+  });
+
+  it('rejects usernames with characters outside the documented set before any AI call', async () => {
+    const { searchSocialProfiles } = await import('./gemini');
+    const { searchUsername } = await import('./socialOsint');
+
+    await expect(searchUsername('bad user')).rejects.toThrow('INVALID_USERNAME');
+    await expect(searchUsername('user!name')).rejects.toThrow('INVALID_USERNAME');
+    await expect(searchUsername('user@name')).rejects.toThrow('INVALID_USERNAME');
+    expect(searchSocialProfiles).not.toHaveBeenCalled();
+  });
+
+  it('accepts a username at the 64-character boundary', async () => {
+    const { searchSocialProfiles } = await import('./gemini');
+    vi.mocked(searchSocialProfiles).mockResolvedValueOnce({ foundProfiles: [] });
+
+    const { searchUsername } = await import('./socialOsint');
+    const username = 'a'.repeat(64);
+    const result = await searchUsername(username);
+
+    expect(searchSocialProfiles).toHaveBeenCalledWith(
+      username,
+      expect.any(String),
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(result.username).toBe(username);
+    expect(result.status).toBe('completed');
+    expect(result.hits).toEqual([]);
   });
 
   it('surfaces rate-limit failures from the provider', async () => {

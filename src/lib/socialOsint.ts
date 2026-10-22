@@ -156,6 +156,11 @@ export interface SocialSearchOptions {
 
 const DEFAULT_TIMEOUT_MS = 120000;
 
+// Single username contract for the client search path: 1-64 characters using
+// letters, numbers, dot, underscore, or hyphen. The SocialOsintScanner error
+// copy states exactly this rule, and the tests pin both bounds.
+const USERNAME_PATTERN = /^[a-zA-Z0-9._-]{1,64}$/;
+
 function createAbortError(): Error {
   const err = new Error('The operation was aborted.');
   err.name = 'AbortError';
@@ -218,7 +223,7 @@ export async function searchUsername(
   options: SocialSearchOptions = {},
 ): Promise<SocialOsintResult> {
   const trimmed = username.trim();
-  if (!trimmed || trimmed.length > 64) throw new Error('INVALID_USERNAME');
+  if (!USERNAME_PATTERN.test(trimmed)) throw new Error('INVALID_USERNAME');
   if (options.signal?.aborted) throw createAbortError();
 
   const totalPlatforms = PLATFORM_DB.length;
@@ -300,7 +305,10 @@ export async function searchPhoneNumber(
 ): Promise<SocialOsintResult> {
   const trimmed = phoneNumber.trim();
   const digits = trimmed.replace(/\D/g, '');
-  if (!trimmed || digits.length < 7) throw new Error('INVALID_PHONE');
+  // 7 is the shortest plausible dialable number; 20 leaves room for an
+  // E.164 maximum (15 digits) plus a 00-prefix and a short extension,
+  // while keeping absurd inputs from reaching the AI call.
+  if (!trimmed || digits.length < 7 || digits.length > 20) throw new Error('INVALID_PHONE');
   if (options.signal?.aborted) throw createAbortError();
 
   const totalPlatforms = 50; // Approximate platforms checked for phone
