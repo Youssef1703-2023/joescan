@@ -1,4 +1,4 @@
-import { queryUrlhaus, type UrlhausResult, type UrlhausState } from './urlhausCheck';
+import { queryUrlhaus, urlhausAuthKey, type UrlhausResult, type UrlhausState } from './urlhausCheck';
 
 export type MessageRiskLevel = 'Low' | 'Medium' | 'High';
 export type MessageSignalStatus = 'pass' | 'warn' | 'fail' | 'info' | 'unknown';
@@ -469,6 +469,7 @@ export function buildMessageSignals(
 export async function analyzeMessageSignals(
   text: string,
   fetchImpl?: typeof globalThis.fetch,
+  authKey = urlhausAuthKey(),
 ): Promise<MessageSignalsResult> {
   const urls = extractUrls(text);
   const hostnames = Array.from(
@@ -489,7 +490,7 @@ export async function analyzeMessageSignals(
   const urlhausByHost: Record<string, UrlhausResult> = {};
   await Promise.all(
     hostnames.map(async (host) => {
-      urlhausByHost[host] = await queryUrlhaus(host, fetchImpl as never);
+      urlhausByHost[host] = await queryUrlhaus(host, fetchImpl as never, undefined, authKey);
     }),
   );
 

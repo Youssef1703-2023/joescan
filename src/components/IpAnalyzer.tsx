@@ -9,12 +9,15 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
 import { generateReportPDF } from '../lib/generatePDF';
 import { fetchGeoIp } from '../lib/geoip';
+import { deriveIpVerdict, isPrivateOrReservedIp, isValidIp, type IpVerdict } from '../lib/ipVerdict';
+import { queryUrlhaus, urlhausAuthKey, type UrlhausResult } from '../lib/urlhausCheck';
 import MiniHistory from './MiniHistory';
 
 interface ScanResult {
   riskLevel: 'Low' | 'Medium' | 'High';
   reportText: string;
   actionPlan: string;
+  verdict?: IpVerdict;
   isp?: string;
   asn?: string;
   country?: string;
@@ -47,13 +50,22 @@ export default function IpAnalyzer() {
   }, []);
 
   const performScan = async (ipToScan: string) => {
-    if (!ipToScan.trim()) return;
+    const trimmedIp = ipToScan.trim();
+    if (!trimmedIp) return;
+
+    if (!isValidIp(trimmedIp)) {
+      setError(t('ip_invalid_format'));
+      setResult(null);
+      setLoading(false);
+      return;
+    }
 
     try {
       consumeScanAttempt();
     } catch (rateLimitError) {
       if (rateLimitError instanceof ScanRateLimitError) {
         setError('Temporary scan limit reached. Please wait one minute and try again.');
+        setLoading(false);
         return;
       }
       throw rateLimitError;
@@ -64,19 +76,21 @@ export default function IpAnalyzer() {
     setResult(null);
 
     try {
+      const structuralPrivate = isPrivateOrReservedIp(trimmedIp);
+
       // Try multiple free HTTPS geolocation APIs as fallbacks
       let geoData: { ip: string; isp: string; asn: string; country: string; city: string; region: string; lat: number; lon: number; isPrivate?: boolean } | null = null;
 
       // API 1: ipapi.co (1000/day free, HTTPS)
       try {
-        const res = await fetch(`https://ipapi.co/${ipToScan.trim()}/json/`, {
+        const res = await fetch(`https://ipapi.co/${trimmedIp}/json/`, {
           headers: { 'Accept': 'application/json' }
         });
         if (res.ok) {
           const d = await res.json();
-          if (!d.error) {
+          if (!d.error || d.reserved) {
             geoData = {
-              ip: d.ip || ipToScan,
+              ip: d.ip || trimmedIp,
               isp: d.org || 'Unknown ISP',
               asn: d.asn || '',
               country: d.country_name || '',
@@ -84,7 +98,7 @@ export default function IpAnalyzer() {
               region: d.region || '',
               lat: d.latitude,
               lon: d.longitude,
-              isPrivate: d.reserved || false
+              isPrivate: Boolean(d.reserved) || structuralPrivate
             };
           }
         }
@@ -93,10 +107,10 @@ export default function IpAnalyzer() {
       // API 2: ipwho.is (10000/month free, HTTPS via shared helper)
       if (!geoData) {
         try {
-          const res = await fetchGeoIp(ipToScan);
+          const res = await fetchGeoIp(trimmedIp);
           if (res) {
             geoData = {
-              ip: res.ip || ipToScan,
+              ip: res.ip || trimmedIp,
               isp: res.isp,
               asn: res.as,
               country: res.country,
@@ -104,7 +118,7 @@ export default function IpAnalyzer() {
               region: res.region,
               lat: res.lat,
               lon: res.lon,
-              isPrivate: res.isPrivate || false,
+              isPrivate: Boolean(res.isPrivate) || structuralPrivate,
             };
           }
         } catch (e) { console.warn('[IP] ipwho.is failed, trying fallback...'); }
@@ -113,35 +127,80 @@ export default function IpAnalyzer() {
       // API 3: freeipapi.com (HTTPS, no key needed)
       if (!geoData) {
         try {
-          const res = await fetch(`https://freeipapi.com/api/json/${ipToScan.trim()}`);
+          const res = await fetch(`https://freeipapi.com/api/json/${trimmedIp}`);
           if (res.ok) {
             const d = await res.json();
             if (d.ipAddress) {
               geoData = {
-                ip: d.ipAddress || ipToScan,
+                ip: d.ipAddress || trimmedIp,
                 isp: d.isp || 'Unknown ISP',
                 asn: '',
                 country: d.countryName || '',
                 city: d.cityName || '',
                 region: d.regionName || '',
                 lat: d.latitude,
-                lon: d.longitude
+                lon: d.longitude,
+                isPrivate: structuralPrivate,
               };
             }
           }
         } catch (e) { console.warn('[IP] freeipapi.com also failed.'); }
       }
 
+      if (!geoData && structuralPrivate) {
+        geoData = {
+          ip: trimmedIp,
+          isp: 'Local Area Network (LAN)',
+          asn: '',
+          country: 'Internal Network',
+          city: '',
+          region: '',
+          lat: 0,
+          lon: 0,
+          isPrivate: true,
+        };
+      }
+
       if (!geoData) {
         throw new Error(lang === 'ar' ? 'فشل التحليل. تأكد من صحة عنوان الـ IP وجرب تاني.' : 'Analysis failed. Check the IP address and try again.');
       }
 
+      const isPrivate = Boolean(geoData.isPrivate) || structuralPrivate;
+      const urlhausResult: UrlhausResult = isPrivate
+        ? { state: 'no_match', tags: [] }
+        : await queryUrlhaus(trimmedIp, undefined, undefined, urlhausAuthKey());
+      const verdict = deriveIpVerdict({
+        isPrivate,
+        urlhausState: urlhausResult.state,
+        urlhausThreat: urlhausResult.threat,
+      });
+
       let scanResult: ScanResult;
       const isArabic = lang === 'ar';
 
-      if (geoData.isPrivate) {
+      if (verdict.category === 'threat_match') {
+        const threatDetailEn = urlhausResult.threat ? ` (${urlhausResult.threat})` : '';
+        const threatDetailAr = urlhausResult.threat ? ` (${urlhausResult.threat})` : '';
         scanResult = {
-          riskLevel: 'Low',
+          riskLevel: verdict.riskLevel,
+          verdict,
+          reportText: isArabic
+            ? `تحذير أمني: عنوان الـ IP (${geoData.ip}) مدرج في قاعدة بيانات التهديدات URLhaus${threatDetailAr}. الموقع الجغرافي المسجل: ${geoData.city}، ${geoData.country} عبر المزود ${geoData.isp}. تجنب الاتصال المباشر بهذا العنوان أو الوثوق بالروابط المستضافة عليه.`
+            : `Security Alert: IP address (${geoData.ip}) is actively listed in the abuse.ch URLhaus threat database${threatDetailEn}. Resolved location: ${geoData.city}, ${geoData.country} under ISP ${geoData.isp}. Avoid interacting with services or files hosted on this address.`,
+          actionPlan: isArabic
+            ? "1. احظر الاتصال بهذا الـ IP على جدار الحماية (Firewall) إذا ظهر في سجلات شبكتك.\\n2. افحص الأجهزة التي تواصلت مع هذا العنوان بحثاً عن برمجيات خبيثة.\\n3. راجع تقارير AbuseIPDB وVirusTotal بالأسفل لمزيد من التفاصيل الجنائية."
+            : "1. Block traffic to/from this IP in your firewall if it appears in your logs.\\n2. Audit any endpoint that communicated with this host for malware.\\n3. Review the AbuseIPDB and VirusTotal reports below for full threat telemetry.",
+          isp: geoData.isp,
+          asn: geoData.asn,
+          country: geoData.country,
+          city: geoData.region ? `${geoData.city}, ${geoData.region}` : geoData.city,
+          lat: geoData.lat,
+          lon: geoData.lon
+        };
+      } else if (isPrivate) {
+        scanResult = {
+          riskLevel: verdict.riskLevel,
+          verdict,
           reportText: isArabic
             ? `هذا عنوان شبكة محلي (Local/Private IP). هذه العناوين تُستخدم فقط داخل شبكة الراوتر الخاص بك (لربط أجهزتك ببعضها) ولا يمكن تتبعها موقعياً أو اختراقها من الخارج بشكل مباشر.`
             : `This is a Private Local Network IP. These addresses are isolated within your router's LAN and are not routed publicly on the internet. As such, they cannot be geo-located or directly targeted from the outside.`,
@@ -153,10 +212,11 @@ export default function IpAnalyzer() {
         };
       } else {
         scanResult = {
-          riskLevel: 'Low',
+          riskLevel: verdict.riskLevel,
+          verdict,
           reportText: isArabic 
-            ? `تم تحليل عنوان الـ IP (${geoData.ip}) بنجاح. تم تحديد موقعه في ${geoData.city}، ${geoData.country} وتابع لشركة الإنترنت ${geoData.isp}. استخدم أدوات التحقيق العميق بالأسفل للكشف عن تقارير الاختراق.`
-            : `IP address (${geoData.ip}) successfully resolved. Located in ${geoData.city}, ${geoData.country} under the ISP ${geoData.isp}. Use the deep investigation tools below to scan for active threats.`,
+            ? `تحديد الموقع الجغرافي فقط: يقع عنوان الـ IP (${geoData.ip}) في ${geoData.city}، ${geoData.country} ويتبع مزود الخدمة ${geoData.isp}. هذا الفحص يحدد الموقع الجغرافي ولا يُعد شهادة أمان كاملة للسمعة — استخدم أدوات التحقيق العميق بالأسفل لفحص السمعة الأمنية والبلاغات.`
+            : `Geolocation only: IP address (${geoData.ip}) resolved to ${geoData.city}, ${geoData.country} under ISP ${geoData.isp}. This result reflects geolocation only — use the deep investigation tools below for reputation, spam, and open-port checks.`,
           actionPlan: isArabic
             ? "1. تحقق من تقرير AbuseIPDB لمعرفة إذا كان الـ IP مبلغ عنه كـ Spam.\\n2. استخدم Shodan للبحث عن بوابات (Ports) مفتوحة أو ثغرات.\\n3. ابحث في VirusTotal عن أي ملفات ضارة مرتبطة بالـ IP."
             : "1. Check the AbuseIPDB report to see if the IP is flagged for spam/attacks.\\n2. Use Shodan to discover open ports and vulnerabilities.\\n3. Search VirusTotal for malicious files communicating with this IP.",
@@ -174,7 +234,7 @@ export default function IpAnalyzer() {
       if (auth.currentUser) {
         await saveScan({
           userId: auth.currentUser.uid,
-          target: ipToScan,
+          target: trimmedIp,
           type: 'ip',
           riskLevel: scanResult.riskLevel,
           reportText: scanResult.reportText,
@@ -282,16 +342,23 @@ export default function IpAnalyzer() {
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="w-full border border-accent/30 rounded-xl overflow-hidden p-6 transition-all bg-bg-base"
+            className={cn(
+              "w-full border rounded-xl overflow-hidden p-6 transition-all bg-bg-base",
+              getRiskColor(result.riskLevel)
+            )}
           >
             <div className="flex flex-col md:flex-row gap-6 md:items-start items-center text-center md:text-left">
-              <div className="shrink-0 p-3 bg-accent/10 rounded-full">
-                <Wifi className="w-10 h-10 text-accent" />
+              <div className="shrink-0 p-3 bg-bg-base/50 rounded-full">
+                {renderIcon(result.riskLevel)}
               </div>
               <div className="flex-1 w-full">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                   <div>
-                    <h3 className="font-mono text-xs uppercase tracking-widest text-text-dim mb-1">{lang === 'ar' ? 'نتائج التحليل الجغرافي' : 'Geolocation Results'}</h3>
+                    <h3 className="font-mono text-xs uppercase tracking-widest text-text-dim mb-1">
+                      {result.verdict
+                        ? (lang === 'ar' ? result.verdict.labelAr : result.verdict.labelEn)
+                        : (lang === 'ar' ? 'نتائج التحليل الجغرافي' : 'Geolocation Results')}
+                    </h3>
                     <div className="text-xl font-black text-text-main tracking-tight font-mono">{ip}</div>
                   </div>
                   <button
@@ -311,6 +378,12 @@ export default function IpAnalyzer() {
                     {lang === 'ar' ? (isExporting ? 'جاري التحميل...' : 'تحميل التقرير') : (isExporting ? 'Downloading...' : 'Download Report')}
                   </button>
                 </div>
+
+                {result.verdict && (
+                  <div className="text-xs font-mono bg-bg-base/40 border border-[currentColor]/15 rounded-lg px-3 py-2 mb-3 text-text-main">
+                    {lang === 'ar' ? result.verdict.evidenceAr : result.verdict.evidenceEn}
+                  </div>
+                )}
 
                 <div className="text-sm text-text-dim leading-relaxed font-medium mb-4">
                   {result.reportText}

@@ -10,7 +10,7 @@ import { cn } from '../lib/utils';
 import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
 import { generateReportPDF } from '../lib/generatePDF';
 import { fetchGeoIp } from '../lib/geoip';
-import { combineUrlhausResults, presentUrlhaus, queryUrlhaus, queryUrlhausUrl, urlRiskLevel, urlScanVerdict, urlSecurityScore, urlVerdictCopy, type UrlhausResult, type UrlVerdict } from '../lib/urlhausCheck';
+import { combineUrlhausResults, presentUrlhaus, queryUrlhaus, queryUrlhausUrl, urlhausAuthKey, urlRiskLevel, urlScanVerdict, urlSecurityScore, urlVerdictCopy, type UrlhausResult, type UrlVerdict } from '../lib/urlhausCheck';
 import MiniHistory from './MiniHistory';
 
 // ─── Types ───
@@ -341,9 +341,10 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
 
       // ── Phase 2: URLhaus Threat Intelligence (Host + URL) ──
       setScanStage(lang === 'ar' ? 'فحص قواعد بيانات التهديدات...' : 'Checking threat databases...');
+      const authKey = urlhausAuthKey();
       const [hostIntel, urlIntel] = await Promise.all([
-        queryUrlhaus(hostname),
-        queryUrlhausUrl(targetUrl),
+        queryUrlhaus(hostname, undefined, undefined, authKey),
+        queryUrlhausUrl(targetUrl, undefined, undefined, authKey),
       ]);
       const threatIntel = combineUrlhausResults(hostIntel, urlIntel);
       const urlhaus = presentUrlhaus(threatIntel);

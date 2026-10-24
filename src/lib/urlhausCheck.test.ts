@@ -6,6 +6,7 @@ import {
   presentUrlhaus,
   queryUrlhaus,
   queryUrlhausUrl,
+  urlhausAuthKey,
   urlScanVerdict,
   urlSecurityScore,
   urlVerdictCopy,
@@ -156,6 +157,50 @@ describe('URLhaus result modeling', () => {
 
       const combined = combineUrlhausResults({ state: 'no_match', tags: [] }, { state: 'unavailable', tags: [] });
       expect(combined.state).toBe('unavailable');
+    });
+  });
+
+  describe('Auth-Key header and urlhausAuthKey() resolver', () => {
+    it('omits Auth-Key header when no authKey is provided or when it is blank', async () => {
+      const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
+        expect(init?.headers).toEqual({ Accept: 'application/json' });
+        expect((init?.headers as Record<string, string>)['Auth-Key']).toBeUndefined();
+        return responded({ query_status: 'no_results' });
+      });
+
+      await queryUrlhaus('example.com', fetchImpl);
+      await queryUrlhaus('example.com', fetchImpl, 15_000, '   ');
+      await queryUrlhausUrl('https://example.com/test', fetchImpl);
+      await queryUrlhausUrl('https://example.com/test', fetchImpl, 15_000, '');
+      expect(fetchImpl).toHaveBeenCalledTimes(4);
+    });
+
+    it('sends the Auth-Key header when a non-empty authKey is provided to queryUrlhaus and queryUrlhausUrl', async () => {
+      const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
+        expect(init?.headers).toEqual({
+          Accept: 'application/json',
+          'Auth-Key': 'secret-abuse-ch-key',
+        });
+        return responded({ query_status: 'no_results' });
+      });
+
+      const hostRes = await queryUrlhaus('example.com', fetchImpl, 15_000, '  secret-abuse-ch-key  ');
+      const urlRes = await queryUrlhausUrl('https://example.com/path', fetchImpl, 15_000, 'secret-abuse-ch-key');
+      expect(hostRes.state).toBe('no_match');
+      expect(urlRes.state).toBe('no_match');
+      expect(fetchImpl).toHaveBeenCalledTimes(2);
+    });
+
+    it('resolves VITE_URLHAUS_AUTH_KEY from import.meta.env and returns empty string when unset', () => {
+      try {
+        vi.stubEnv('VITE_URLHAUS_AUTH_KEY', '');
+        expect(urlhausAuthKey()).toBe('');
+
+        vi.stubEnv('VITE_URLHAUS_AUTH_KEY', '  my-test-key-123  ');
+        expect(urlhausAuthKey()).toBe('my-test-key-123');
+      } finally {
+        vi.unstubAllEnvs();
+      }
     });
   });
 });
