@@ -18,11 +18,29 @@ VITE_URLHAUS_AUTH_KEY=your_abuse_ch_auth_key_here
 
 Restart the Vite dev server (`npm run dev`) so `import.meta.env.VITE_URLHAUS_AUTH_KEY` is picked up. When unset, JoeScan gracefully degrades and marks URLhaus lookups as `unavailable` without false-positive or false-negative verdicts.
 
-## 3. Configure for Production (Cloudflare Pages)
-Because `VITE_*` variables are embedded at build time by Vite:
-1. Open the **Cloudflare Dashboard** and go to **Workers & Pages** → select your **JoeScan Pages project**.
-2. Go to **Settings** → **Environment variables**.
-3. Under **Production** (and **Preview** if desired), click **Add variable**:
-   - **Variable name:** `VITE_URLHAUS_AUTH_KEY`
-   - **Value:** *(paste your abuse.ch Auth-Key)*
-4. Save and trigger a new deployment so the production bundle is built with `VITE_URLHAUS_AUTH_KEY` populated.
+## 3. Configure for Production (GitHub Actions build)
+
+> Do NOT use the Cloudflare Dashboard environment-variables screen for this key.
+> joescan's production bundle is built in GitHub Actions
+> (`.github/workflows/deploy-cloudflare.yml` runs `npm run build`, then uploads
+> the prebuilt `dist/` with Wrangler), so only variables present in the Actions
+> build environment are embedded by Vite. A Dashboard variable never reaches
+> the bundle.
+
+1. In the repo, go to **Settings → Secrets and variables → Actions** and add a
+   repository secret:
+   - **Name:** `VITE_URLHAUS_AUTH_KEY`
+   - **Value:** *(your abuse.ch Auth-Key — never commit it to the repo)*
+2. In `.github/workflows/deploy-cloudflare.yml`, the `Build` step's `env` block
+   must pass the secret through:
+   ```yaml
+   - name: Build
+     run: npm run build
+     env:
+       NODE_ENV: production
+       VITE_URLHAUS_AUTH_KEY: ${{ secrets.VITE_URLHAUS_AUTH_KEY }}
+   ```
+3. Merge and let the Deploy workflow run, so the production bundle is built
+   with `VITE_URLHAUS_AUTH_KEY` populated. When the secret is absent, JoeScan
+   gracefully degrades and marks URLhaus lookups as `unavailable` without
+   false-positive or false-negative verdicts.
