@@ -77,10 +77,26 @@ type UrlhausResponse = {
   json: () => Promise<unknown>;
 };
 
+export function urlhausAuthKey(): string {
+  const metaEnv = (import.meta as ImportMeta & { env?: Record<string, unknown> }).env;
+  const raw =
+    metaEnv?.VITE_URLHAUS_AUTH_KEY ??
+    (typeof process !== 'undefined' ? process.env?.VITE_URLHAUS_AUTH_KEY : undefined);
+  return typeof raw === 'string' ? raw.trim() : '';
+}
+
+function buildUrlhausHeaders(authKey?: string): Record<string, string> {
+  const trimmedKey = typeof authKey === 'string' ? authKey.trim() : '';
+  return trimmedKey
+    ? { Accept: 'application/json', 'Auth-Key': trimmedKey }
+    : { Accept: 'application/json' };
+}
+
 export async function queryUrlhaus(
   hostname: string,
   fetchImpl: (input: string, init?: RequestInit) => Promise<UrlhausResponse> = globalThis.fetch,
   timeoutMs = URLHAUS_TIMEOUT_MS,
+  authKey?: string,
 ): Promise<UrlhausResult> {
   if (!hostname.trim()) return unavailable();
   const controller = new AbortController();
@@ -88,7 +104,7 @@ export async function queryUrlhaus(
   try {
     const response = await fetchImpl(URLHAUS_ENDPOINT, {
       method: 'POST',
-      headers: { Accept: 'application/json' },
+      headers: buildUrlhausHeaders(authKey),
       body: new URLSearchParams({ host: hostname }),
       signal: controller.signal,
     });
@@ -109,6 +125,7 @@ export async function queryUrlhausUrl(
   url: string,
   fetchImpl: (input: string, init?: RequestInit) => Promise<UrlhausResponse> = globalThis.fetch,
   timeoutMs = URLHAUS_TIMEOUT_MS,
+  authKey?: string,
 ): Promise<UrlhausResult> {
   const trimmed = url.trim();
   if (!trimmed) return unavailable();
@@ -117,7 +134,7 @@ export async function queryUrlhausUrl(
   try {
     const response = await fetchImpl(URLHAUS_URL_ENDPOINT, {
       method: 'POST',
-      headers: { Accept: 'application/json' },
+      headers: buildUrlhausHeaders(authKey),
       body: new URLSearchParams({ url: trimmed }),
       signal: controller.signal,
     });
