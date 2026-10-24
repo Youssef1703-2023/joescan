@@ -63,6 +63,7 @@ jobs:
         run: npm run build
         env:
           NODE_ENV: production
+          VITE_URLHAUS_AUTH_KEY: ${{ secrets.VITE_URLHAUS_AUTH_KEY }}
 
       # npm run build already writes public pages, the noindex 404, and legal pages.
       # Do not run scripts/prerender-seo.mjs here: it marks private blog and academy
