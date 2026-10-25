@@ -99,6 +99,34 @@ describe('socialOsint', () => {
     expect(searchSocialProfiles).not.toHaveBeenCalled();
   });
 
+  it('rejects structurally impossible usernames before any AI call', async () => {
+    const { searchSocialProfiles } = await import('./gemini');
+    const { searchUsername } = await import('./socialOsint');
+
+    // No platform owns a handle starting with . or -, ending with ., or
+    // containing a double dot; a leading @ is pasted-handle syntax, not a
+    // username, and stays rejected (no @-forgiveness, by design).
+    for (const bad of ['.john', '-john', 'john.', 'john..doe', '@john']) {
+      await expect(searchUsername(bad)).rejects.toThrow('INVALID_USERNAME');
+    }
+    expect(searchSocialProfiles).not.toHaveBeenCalled();
+  });
+
+  it('still accepts a leading underscore, which real platforms allow', async () => {
+    const { searchSocialProfiles } = await import('./gemini');
+    vi.mocked(searchSocialProfiles).mockResolvedValueOnce({ foundProfiles: [] });
+
+    const { searchUsername } = await import('./socialOsint');
+    const result = await searchUsername('_john');
+
+    expect(searchSocialProfiles).toHaveBeenCalledWith(
+      '_john',
+      expect.any(String),
+      { signal: expect.any(AbortSignal) },
+    );
+    expect(result.username).toBe('_john');
+  });
+
   it('accepts a username at the 64-character boundary', async () => {
     const { searchSocialProfiles } = await import('./gemini');
     vi.mocked(searchSocialProfiles).mockResolvedValueOnce({ foundProfiles: [] });
