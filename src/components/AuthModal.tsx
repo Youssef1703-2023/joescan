@@ -7,11 +7,13 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
   updateProfile,
   getAdditionalUserInfo,
   sendEmailVerification
 } from 'firebase/auth';
 import { auth, db } from '../lib/firebase';
+import { saveGoogleUserToFirestore, shouldFallbackToRedirect } from '../lib/googleSignIn';
 import { doc, setDoc, getDoc, getDocs, collection, query, where } from 'firebase/firestore';
 import '../styles/auth-experience.css';
 import { isDisposableEmail } from '../utils/disposableDomains';
@@ -155,16 +157,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           setMfaError(popupErr);
           return;
         }
+        if (shouldFallbackToRedirect(popupErr)) {
+          // The popup machinery itself failed (blocked window, unavailable
+          // storage, or the opaque internal-error the popup flow surfaces).
+          // Retry as a full-page redirect to the same handler: completion
+          // happens via getRedirectResult on return, in App.
+          await signInWithRedirect(auth, provider);
+          return;
+        }
         throw popupErr;
       }
       
       // Always save email + name to Firestore on Google login
       if (cred.user) {
-        await setDoc(doc(db, 'users', cred.user.uid), {
-          uid: cred.user.uid,
-          email: cred.user.email?.toLowerCase() || '',
-          name: cred.user.displayName || '',
-        }, { merge: true });
+        await saveGoogleUserToFirestore(cred.user);
       }
 
       const additionalInfo = getAdditionalUserInfo(cred);
