@@ -11,6 +11,7 @@ import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
 import { generateReportPDF } from '../lib/generatePDF';
 import { fetchGeoIp } from '../lib/geoip';
 import { combineUrlhausResults, presentUrlhaus, queryUrlhaus, queryUrlhausUrl, urlhausAuthKey, urlRiskLevel, urlScanVerdict, urlSecurityScore, urlVerdictCopy, type UrlhausResult, type UrlVerdict } from '../lib/urlhausCheck';
+import { parseScanUrl } from '../lib/scanUrl';
 import MiniHistory from './MiniHistory';
 
 // ─── Types ───
@@ -302,6 +303,18 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
     e.preventDefault();
     if (!url.trim()) return;
 
+    // Validate before consuming a scan attempt: an unparseable URL used to
+    // burn one attempt and only then throw "Invalid URL format." Email,
+    // Domain and IP all validate first; URL now matches them.
+    const parsed = parseScanUrl(url);
+    if (!parsed) {
+      setError("Invalid URL format.");
+      setResult(null);
+      return;
+    }
+    const { targetUrl, urlObj } = parsed;
+    const hostname = urlObj.hostname;
+
     try {
       consumeScanAttempt();
     } catch (rateLimitError) {
@@ -318,14 +331,6 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
     const startTime = Date.now();
 
     try {
-      let targetUrl = url.trim();
-      if (!/^https?:\/\//i.test(targetUrl)) targetUrl = 'http://' + targetUrl;
-
-      let urlObj: URL;
-      try { urlObj = new URL(targetUrl); } catch { throw new Error("Invalid URL format."); }
-
-      const hostname = urlObj.hostname;
-
       // ── Phase 1: Local heuristic checks ──
       setScanStage(lang === 'ar' ? 'تحليل بنية الرابط...' : 'Analyzing URL structure...');
       const checks: CheckResult[] = [];

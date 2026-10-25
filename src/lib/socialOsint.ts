@@ -159,7 +159,18 @@ const DEFAULT_TIMEOUT_MS = 120000;
 // Single username contract for the client search path: 1-64 characters using
 // letters, numbers, dot, underscore, or hyphen. The SocialOsintScanner error
 // copy states exactly this rule, and the tests pin both bounds.
+// The charset alone is not the whole contract: no platform owns a handle
+// starting with a dot or hyphen, ending with a dot, or containing a double
+// dot, so those are rejected here too instead of burning an AI call.
 const USERNAME_PATTERN = /^[a-zA-Z0-9._-]{1,64}$/;
+
+function isStructurallyValidUsername(username: string): boolean {
+  if (!USERNAME_PATTERN.test(username)) return false;
+  if (username.startsWith('.') || username.startsWith('-')) return false;
+  if (username.endsWith('.')) return false;
+  if (username.includes('..')) return false;
+  return true;
+}
 
 function createAbortError(): Error {
   const err = new Error('The operation was aborted.');
@@ -223,7 +234,7 @@ export async function searchUsername(
   options: SocialSearchOptions = {},
 ): Promise<SocialOsintResult> {
   const trimmed = username.trim();
-  if (!USERNAME_PATTERN.test(trimmed)) throw new Error('INVALID_USERNAME');
+  if (!isStructurallyValidUsername(trimmed)) throw new Error('INVALID_USERNAME');
   if (options.signal?.aborted) throw createAbortError();
 
   const totalPlatforms = PLATFORM_DB.length;
