@@ -3,8 +3,9 @@ import EmailVerificationGate from './components/EmailVerificationGate';
 import {clearPrivateSession} from './lib/privateSession';
 import './styles/workspace.css';
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
-import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User } from 'firebase/auth';
+import { onAuthStateChanged, signInWithPopup, signInWithRedirect, GoogleAuthProvider, User } from 'firebase/auth';
 import { auth, db, isUserBanned, logActivity, ADMIN_EMAIL, getUserTier, getUserProfile, ensureUserProfile } from './lib/firebase';
+import { consumeGoogleRedirectResult, saveGoogleUserToFirestore, shouldFallbackToRedirect } from './lib/googleSignIn';
 import { LanguageProvider, useLanguage, LANGUAGE_OPTIONS } from './contexts/LanguageContext';
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import {type TabId,TAB_TO_PATH,PATH_TO_TAB} from './lib/workspaceRoutes';
@@ -215,6 +216,13 @@ function AppContent() {
     return () => { unsub(); window.removeEventListener('avatar_updated', onAvatarUpdate); };
   }, []);
 
+  // Complete a Google sign-in that fell back to redirect: after the auth
+  // handler redirects back, resolve the pending credential (profile save
+  // happens inside). No-ops when no redirect is pending; never breaks load.
+  useEffect(() => {
+    void consumeGoogleRedirectResult();
+  }, []);
+
   const handleLogin = async () => {
     setLoginLoading(true);
     try {
@@ -227,14 +235,25 @@ function AppContent() {
         // we'll let it proceed and check after
       }
       const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
+      let cred;
+      try {
+        cred = await signInWithPopup(auth, provider);
+      } catch (popupErr: any) {
+        if (shouldFallbackToRedirect(popupErr)) {
+          // Same popup-machinery failure as the dialog flow: retry as a
+          // full-page redirect; completion happens via getRedirectResult.
+          try {
+            await signInWithRedirect(auth, provider);
+          } catch (redirectErr) {
+            console.error(redirectErr);
+          }
+          return;
+        }
+        throw popupErr;
+      }
       // Save email + name to Firestore immediately on Google login
       if (cred.user) {
-        await setDoc(doc(db, 'users', cred.user.uid), {
-          uid: cred.user.uid,
-          email: cred.user.email?.toLowerCase() || '',
-          name: cred.user.displayName || '',
-        }, { merge: true });
+        await saveGoogleUserToFirestore(cred.user);
       }
     } catch (err: any) {
       console.error(err);
