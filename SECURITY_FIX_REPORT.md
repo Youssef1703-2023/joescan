@@ -1,5 +1,14 @@
 # JoeScan — Critical Security Remediation (Spark Plan Architecture)
 
+> **STATUS UPDATE — 2026-10-25 (verified on `main` @ `6c8f075`): the "Not live yet" header
+> below is OUTDATED.** Findings C1–C4 are live on `main` and deployed: the hardened
+> `firestore.rules` ship with the app, the Cloudflare Worker AI proxy serves production
+> traffic, and the gate results below no longer hold — `npm run lint` passes with
+> 0 errors and `npm test` passes (39 files, 207/207 tests, verified 2026-10-25 from a
+> clean `npm ci`). The one item from this report that remains genuinely outstanding is
+> the §7 owner action: rotating any AI provider keys that were exposed before the proxy
+> existed. The body below is preserved unchanged as the 2026-08-22 record.
+
 _Branch `claude/website-comprehensive-audit-fca334` · 2026-08-22_
 
 Remediation of the four CRITICAL findings from the platform audit tailored for the **Firebase Spark (free) plan**.
