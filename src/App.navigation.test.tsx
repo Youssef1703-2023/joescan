@@ -17,7 +17,7 @@ vi.mock('./components/AdminDashboard',()=>({default:()=><h1>Admin content</h1>})
 vi.mock('./components/MfaGate',()=>({default:({onVerified}:any)=><button onClick={onVerified}>Complete MFA</button>}));
 vi.mock('./components/EmailVerificationGate',()=>({default:()=><h1>Verify your email</h1>}));
 vi.mock('./components/NotificationCenter',()=>({default:()=>null}));
-vi.mock('./components/Toast',()=>({default:()=>null}));
+vi.mock('./components/Toast',()=>({default:()=>null,showToast:vi.fn()}));
 vi.mock('./components/LoadingSkeleton',()=>({default:()=>null}));
 vi.mock('./components/SEOHead',()=>({default:()=>null}));
 vi.mock('./components/CyberAssistant',()=>({default:()=>null}));
