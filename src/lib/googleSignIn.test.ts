@@ -98,29 +98,30 @@ describe('googleSignIn', () => {
   describe('consumeGoogleRedirectResult', () => {
     beforeEach(() => vi.clearAllMocks());
 
-    it('returns null when no redirect is pending', async () => {
+    it('returns no user and no error when no redirect is pending', async () => {
       mockedGetRedirectResult.mockResolvedValue(null as never);
-      await expect(consumeGoogleRedirectResult()).resolves.toBeNull();
+      await expect(consumeGoogleRedirectResult()).resolves.toEqual({ user: null, error: null });
       expect(mockedSetDoc).not.toHaveBeenCalled();
     });
 
-    it('saves the profile and returns the user on a pending result', async () => {
+    it('saves the profile and returns the user with no error on a pending result', async () => {
       const user = fakeUser();
       mockedGetRedirectResult.mockResolvedValue({ user } as never);
-      await expect(consumeGoogleRedirectResult()).resolves.toBe(user);
+      await expect(consumeGoogleRedirectResult()).resolves.toEqual({ user, error: null });
       expect(mockedSetDoc).toHaveBeenCalled();
     });
 
-    it('returns null instead of throwing when resolution fails', async () => {
-      mockedGetRedirectResult.mockRejectedValue(new Error('boom'));
-      await expect(consumeGoogleRedirectResult()).resolves.toBeNull();
+    it('returns the error instead of throwing when resolution fails', async () => {
+      const boom = new Error('boom');
+      mockedGetRedirectResult.mockRejectedValue(boom);
+      await expect(consumeGoogleRedirectResult()).resolves.toEqual({ user: null, error: boom });
     });
 
-    it('still returns the user when the profile save fails', async () => {
+    it('still returns the user with no error when the profile save fails', async () => {
       const user = fakeUser();
       mockedGetRedirectResult.mockResolvedValue({ user } as never);
       mockedSetDoc.mockRejectedValue(new Error('firestore down'));
-      await expect(consumeGoogleRedirectResult()).resolves.toBe(user);
+      await expect(consumeGoogleRedirectResult()).resolves.toEqual({ user, error: null });
     });
   });
 });

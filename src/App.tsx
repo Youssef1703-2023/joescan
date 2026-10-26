@@ -36,7 +36,7 @@ const ThreatMap3D = lazy(() => import('./components/ThreatMap3D'));
 const ReferralSystem = lazy(() => import('./components/ReferralSystem'));
 const Blog = lazy(() => import('./components/Blog'));
 import LoadingSkeleton from './components/LoadingSkeleton';
-import ToastContainer from './components/Toast';
+import ToastContainer, { showToast } from './components/Toast';
 import OnboardingTour from './components/OnboardingTour';
 import KeyboardShortcuts from './components/KeyboardShortcuts';
 import SEOHead from './components/SEOHead';
@@ -219,8 +219,19 @@ function AppContent() {
   // Complete a Google sign-in that fell back to redirect: after the auth
   // handler redirects back, resolve the pending credential (profile save
   // happens inside). No-ops when no redirect is pending; never breaks load.
+  // A failed completion is shown as an error toast instead of failing
+  // silently — a silent redirect failure used to leave users signed out
+  // with no explanation at all.
   useEffect(() => {
-    void consumeGoogleRedirectResult();
+    consumeGoogleRedirectResult().then(({ error }) => {
+      if (!error) return;
+      const code = (error as { code?: unknown })?.code;
+      if (code === 'auth/multi-factor-auth-required') {
+        showToast('error', 'Google sign-in needs multi-factor verification. Please sign in via the login dialog.');
+      } else {
+        showToast('error', `Google sign-in failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    });
   }, []);
 
   const handleLogin = async () => {

@@ -38,27 +38,29 @@ export async function saveGoogleUserToFirestore(user: User): Promise<void> {
 /**
  * Complete a Google sign-in that fell back to redirect. Call once on app
  * mount: after the auth handler redirects back, this resolves the pending
- * credential and saves the profile row. Returns the user, or null when
- * there is no pending redirect result.
+ * credential and saves the profile row. Returns the user (or null when
+ * there is no pending redirect result) together with any completion error.
  *
- * Never throws to the caller: a failed redirect completion must not break
- * page load. MFA-after-redirect is the known gap — the MFA challenge UI
- * lives in the popup dialog, so an MFA-required redirect result leaves the
+ * It never throws to the caller: a failed redirect completion must not
+ * break page load. But the error is returned, not swallowed — a previous
+ * version swallowed it and left users signed out with no explanation at
+ * all. MFA-after-redirect is the known gap — the MFA challenge UI lives
+ * in the popup dialog, so an MFA-required redirect result leaves the
  * user signed out to retry via popup instead of surfacing a dead end here.
  */
-export async function consumeGoogleRedirectResult(): Promise<User | null> {
+export async function consumeGoogleRedirectResult(): Promise<{ user: User | null; error: unknown }> {
   let result;
   try {
     result = await getRedirectResult(auth);
   } catch (err) {
     console.warn('Google redirect sign-in could not be completed:', err);
-    return null;
+    return { user: null, error: err };
   }
-  if (!result?.user) return null;
+  if (!result?.user) return { user: null, error: null };
   try {
     await saveGoogleUserToFirestore(result.user);
   } catch (err) {
     console.warn('Saving Google user profile after redirect failed:', err);
   }
-  return result.user;
+  return { user: result.user, error: null };
 }
