@@ -36,6 +36,66 @@ export async function saveGoogleUserToFirestore(user: User): Promise<void> {
 }
 
 /**
+ * Storage key for a redirect error that must survive one reload.
+ *
+ * A toast alone is not enough evidence: it auto-dismisses after seconds
+ * and vanishes entirely on reload, so a failed redirect could come and go
+ * before anyone looked. Persisting the error lets the app re-surface it
+ * on the next mount, once, and then forget it.
+ */
+const REDIRECT_ERROR_STORAGE_KEY = 'joescan:redirect-error';
+
+export interface StoredRedirectError {
+  code?: string;
+  message: string;
+}
+
+function readStorage(): Storage | null {
+  try {
+    return typeof sessionStorage !== 'undefined' ? sessionStorage : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Persist a redirect failure so it can be re-surfaced after a reload. */
+export function storeRedirectError(error: StoredRedirectError): void {
+  try {
+    readStorage()?.setItem(REDIRECT_ERROR_STORAGE_KEY, JSON.stringify(error));
+  } catch {
+    // Storage unavailable (private mode, tests) — the toast still shows.
+  }
+}
+
+/**
+ * Take a previously stored redirect error, if any. Returns it once and
+ * clears it, so it is re-surfaced exactly once after a reload, never on
+ * every mount. Returns null when nothing was stored or it is unreadable.
+ */
+export function takeStoredRedirectError(): StoredRedirectError | null {
+  const storage = readStorage();
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(REDIRECT_ERROR_STORAGE_KEY);
+    if (!raw) return null;
+    storage.removeItem(REDIRECT_ERROR_STORAGE_KEY);
+    const parsed = JSON.parse(raw) as StoredRedirectError;
+    return typeof parsed?.message === 'string' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Drop any stored redirect error (e.g. after a successful sign-in). */
+export function clearStoredRedirectError(): void {
+  try {
+    readStorage()?.removeItem(REDIRECT_ERROR_STORAGE_KEY);
+  } catch {
+    // Ignore storage failures.
+  }
+}
+
+/**
  * Complete a Google sign-in that fell back to redirect. Call once on app
  * mount: after the auth handler redirects back, this resolves the pending
  * credential and saves the profile row. Returns the user (or null when
