@@ -6,6 +6,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { UserSearch, Loader2, Search, Github, Twitter, Facebook, Instagram, Video, ArrowRight, ShieldAlert, AlertTriangle, Monitor, Calendar, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '../lib/utils';
+import { countUsernameStealers, usernameBreachRisk } from '../lib/usernameScan';
 import MiniHistory from './MiniHistory';
 
 interface StolenCred {
@@ -80,11 +81,15 @@ export default function UsernameAnalyzer() {
       setSearched(true);
 
       if (auth.currentUser) {
+        // NOTE: derive the saved risk from the LOCAL fetch result `data`,
+        // not from `breachData` state — setBreachData() above has not
+        // re-rendered yet, so reading state here would save the PREVIOUS
+        // scan's risk (a first scan with stealers found saved 'Low').
         await saveScan({
           userId: auth.currentUser.uid,
           target: username.trim(),
           type: 'username',
-          riskLevel: breachData?.stealers?.length ? 'High' : 'Low',
+          riskLevel: usernameBreachRisk(data),
           reportText: `Username OSINT scan completed`,
           createdAt: serverTimestamp(),
         });
@@ -98,7 +103,7 @@ export default function UsernameAnalyzer() {
     }
   };
 
-  const stealerCount = breachData?.stealers?.length || breachData?.total_results || 0;
+  const stealerCount = countUsernameStealers(breachData);
   const isCompromised = stealerCount > 0;
 
   const platforms = [
