@@ -9,6 +9,7 @@ import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { saveScan } from '../lib/webhooks';
 import { assessEmailBreaches, EmailSourceError, type EmailBreach } from '../lib/emailExposure';
 import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
+import { checkEmailDomainMx } from '../lib/emailDomainMx';
 import { useLanguage } from '../contexts/LanguageContext';
 import { analyzeEmailExposure, translateReport } from '../lib/gemini';
 import { ShieldAlert, ShieldCheck, Shield, Loader2, ArrowRight, Check, X, Share2, CheckCircle2, RefreshCw, Download, Twitter, Facebook, Link as LinkIcon, Settings2, SlidersHorizontal, Search, Star, Database, GlobeLock, FileSearch, HardDrive, Trash2, Eye, Mail } from 'lucide-react';
@@ -245,6 +246,17 @@ export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={
       return;
     }
 
+    // Validate the domain BEFORE consuming a scan attempt: a valid-format
+    // email on a domain with no MX records (e.g. `hello@heloo.com`) used to
+    // burn one of the user's 12/minute attempts and only then show the
+    // invalid-domain error. A DNS failure ('unknown') still falls back to
+    // letting the scan proceed, exactly as the old inline check did.
+    const domainMx = await checkEmailDomainMx(cleanedEmail.split('@')[1]);
+    if (domainMx === 'no_mx') {
+      setError(t('email_invalid_domain'));
+      return;
+    }
+
     try {
       consumeScanAttempt();
     } catch (rateLimitError) {
@@ -259,26 +271,7 @@ export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={
     setError(null);
     setShowScanSettings(false);
     try {
-      // 1. Actually verify the Domain via public DNS Google before anything else
-      // This stops completely fake domains like `hello@heloo.com` dead in their tracks.
-      const domain = cleanedEmail.split('@')[1];
-      try {
-        const dnsResp = await fetch(`https://dns.google/resolve?name=${domain}&type=MX`);
-        const dnsData = await dnsResp.json();
-        
-        // If Google DNS returns Status 0 (NOERROR) but has NO Answer array containing an MX record...
-        // OR it flat out fails, it's not a real email domain.
-        if (dnsData.Status !== 0 || !dnsData.Answer || dnsData.Answer.length === 0) {
-           setError(t('email_invalid_domain'));
-           setLoading(false);
-           return;
-        }
-      } catch (dnsErr) {
-        // If we get blocked entirely, fallback safely to letting it pass rather than breaking functionality
-        console.log("DNS Check failed/blocked:", dnsErr);
-      }
-
-      // 2. Perform exposure AI search
+      // 1. Perform exposure AI search
       const analysis = await fetchCombinedEmailExposure(cleanedEmail, lang, async()=>{
         const base=import.meta.env.VITE_AI_PROXY_URL;
         if(!base||!auth.currentUser)throw new Error('Source unavailable');
