@@ -4,6 +4,7 @@ import { serverTimestamp } from 'firebase/firestore';
 import { auth } from '../lib/firebase';
 import { saveScan } from '../lib/webhooks';
 import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
+import { cleanDomain, isValidLookupDomain } from '../lib/domainValidation';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Globe, Loader2, Search, ShieldCheck, ShieldAlert, AlertTriangle, Download, Server, MapPin, Calendar, User, Link as LinkIcon, Network, Clock, FileText, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -59,17 +60,9 @@ export default function DomainLookup() {
   const [historyKey, setHistoryKey] = useState(0);
   const [isExporting, setIsExporting] = useState(false);
 
-  const cleanDomain = (input: string): string => {
-    let d = input.trim().toLowerCase();
-    d = d.replace(/^(https?:\/\/)?(www\.)?/, '');
-    d = d.split('/')[0];
-    d = d.split('?')[0];
-    return d;
-  };
-
   const performLookup = async () => {
     const cleanedDomain = cleanDomain(domain);
-    if (!cleanedDomain || !cleanedDomain.includes('.')) {
+    if (!isValidLookupDomain(cleanedDomain)) {
       setError(lang === 'ar' ? 'أدخل دومين صحيح (مثل: google.com)' : 'Enter a valid domain (e.g. google.com)');
       return;
     }
