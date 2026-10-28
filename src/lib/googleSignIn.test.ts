@@ -16,9 +16,12 @@ import { getRedirectResult } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import {
   GOOGLE_REDIRECT_FALLBACK_CODES,
+  clearStoredRedirectError,
   consumeGoogleRedirectResult,
   saveGoogleUserToFirestore,
   shouldFallbackToRedirect,
+  storeRedirectError,
+  takeStoredRedirectError,
 } from './googleSignIn';
 
 const mockedGetRedirectResult = vi.mocked(getRedirectResult);
@@ -122,6 +125,42 @@ describe('googleSignIn', () => {
       mockedGetRedirectResult.mockResolvedValue({ user } as never);
       mockedSetDoc.mockRejectedValue(new Error('firestore down'));
       await expect(consumeGoogleRedirectResult()).resolves.toEqual({ user, error: null });
+    });
+  });
+
+  describe('redirect error storage', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      sessionStorage.clear();
+    });
+
+    it('returns null when nothing was stored', () => {
+      expect(takeStoredRedirectError()).toBeNull();
+    });
+
+    it('stores and takes an error exactly once', () => {
+      storeRedirectError({ code: 'auth/internal-error', message: 'Firebase: Error (auth/internal-error).' });
+      expect(takeStoredRedirectError()).toEqual({
+        code: 'auth/internal-error',
+        message: 'Firebase: Error (auth/internal-error).',
+      });
+      expect(takeStoredRedirectError()).toBeNull();
+    });
+
+    it('rejects a stored value without a message', () => {
+      sessionStorage.setItem('joescan:redirect-error', JSON.stringify({ code: 'auth/internal-error' }));
+      expect(takeStoredRedirectError()).toBeNull();
+    });
+
+    it('rejects unreadable stored values', () => {
+      sessionStorage.setItem('joescan:redirect-error', 'not-json{');
+      expect(takeStoredRedirectError()).toBeNull();
+    });
+
+    it('clears a stored error without returning it', () => {
+      storeRedirectError({ message: 'boom' });
+      clearStoredRedirectError();
+      expect(takeStoredRedirectError()).toBeNull();
     });
   });
 });

@@ -5,7 +5,7 @@ import './styles/workspace.css';
 import { useState, useEffect, useRef, useMemo, lazy, Suspense } from 'react';
 import { onAuthStateChanged, signInWithPopup, signInWithRedirect, GoogleAuthProvider, User } from 'firebase/auth';
 import { auth, db, isUserBanned, logActivity, ADMIN_EMAIL, getUserTier, getUserProfile, ensureUserProfile } from './lib/firebase';
-import { consumeGoogleRedirectResult, saveGoogleUserToFirestore, shouldFallbackToRedirect } from './lib/googleSignIn';
+import { consumeGoogleRedirectResult, clearStoredRedirectError, saveGoogleUserToFirestore, shouldFallbackToRedirect, storeRedirectError, takeStoredRedirectError } from './lib/googleSignIn';
 import { LanguageProvider, useLanguage, LANGUAGE_OPTIONS } from './contexts/LanguageContext';
 import { NotificationProvider, useNotifications } from './contexts/NotificationContext';
 import {type TabId,TAB_TO_PATH,PATH_TO_TAB} from './lib/workspaceRoutes';
@@ -219,18 +219,32 @@ function AppContent() {
   // Complete a Google sign-in that fell back to redirect: after the auth
   // handler redirects back, resolve the pending credential (profile save
   // happens inside). No-ops when no redirect is pending; never breaks load.
-  // A failed completion is shown as an error toast instead of failing
-  // silently — a silent redirect failure used to leave users signed out
-  // with no explanation at all.
+  // A failed completion is shown as a long-lived error toast instead of
+  // failing silently — and it is also stored, so a reload re-surfaces it
+  // once instead of losing it (a 4-second toast alone could come and go
+  // before anyone looked). A successful sign-in clears any stored error.
   useEffect(() => {
-    consumeGoogleRedirectResult().then(({ error }) => {
-      if (!error) return;
-      const code = (error as { code?: unknown })?.code;
+    const showRedirectError = (code: string | undefined, message: string) => {
       if (code === 'auth/multi-factor-auth-required') {
-        showToast('error', 'Google sign-in needs multi-factor verification. Please sign in via the login dialog.');
+        showToast('error', 'Google sign-in needs multi-factor verification. Please sign in via the login dialog.', 60000);
       } else {
-        showToast('error', `Google sign-in failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        showToast('error', `Google sign-in failed: ${message}`, 60000);
       }
+    };
+    consumeGoogleRedirectResult().then(({ user, error }) => {
+      if (user) {
+        clearStoredRedirectError();
+        return;
+      }
+      if (error) {
+        const code = (error as { code?: unknown })?.code;
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        storeRedirectError({ code: typeof code === 'string' ? code : undefined, message });
+        showRedirectError(typeof code === 'string' ? code : undefined, message);
+        return;
+      }
+      const stored = takeStoredRedirectError();
+      if (stored) showRedirectError(stored.code, stored.message);
     });
   }, []);
 
