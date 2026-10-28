@@ -176,4 +176,19 @@ describe('SocialOsintScanner', () => {
 
     expect(await screen.findByText('The username scan took too long to finish. Please try again in a moment.')).toBeInTheDocument();
   });
+
+  it('pins the INVALID_USERNAME banner copy to the 1-64 contract', async () => {
+    // The lib-level 1-64 contract is tested in socialOsint.test.ts; this pins
+    // the user-facing banner itself, which previously drifted (1-50 copy
+    // against a 64 cap) without any test noticing.
+    mocks.searchUsername.mockRejectedValue(new Error('INVALID_USERNAME'));
+
+    const user = userEvent.setup();
+    render(<SocialOsintScanner />);
+
+    fireEvent.change(screen.getByLabelText('Social Media OSINT'), { target: { value: 'john_doe' } });
+    await user.click(screen.getByRole('button', { name: /audit/i }));
+
+    expect(await screen.findByText('Use 1-64 characters: letters, numbers, dot, underscore, or hyphen.')).toBeInTheDocument();
+  });
 });
