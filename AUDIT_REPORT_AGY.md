@@ -1,5 +1,29 @@
 # JoeScan — Comprehensive Audit Report (agy / gemini-3.7-flash-high)
 
+> **STATUS UPDATE — 2026-10-25 (verified on `main` @ `6c8f075`): this report is HISTORICAL.**
+> It describes the repo as of 2026-08-22. Every one of its Top-5 findings is now fixed on
+> current `main` — do not act on them as if they were still open:
+>
+> 1. **Firestore holes + tier self-escalation — FIXED.** `firestore.rules` lists are
+>    admin-only or owner-scoped, and user updates cannot set `tier` to anything but
+>    `free` (paid tiers go through the admin `tierRequests` flow); see also
+>    `SECURITY_FIX_REPORT.md` (C1, C2, closed).
+> 2. **AI secrets in the frontend bundle — FIXED.** A source-wide grep on current `main`
+>    finds no Groq/OpenRouter/Gemini key in `src/` or the deploy workflows — AI calls go
+>    through the authenticated Cloudflare Worker proxy. The only `VITE_*_KEY` left in
+>    `src/` is `VITE_URLHAUS_AUTH_KEY`, intentionally client-side (the browser queries
+>    abuse.ch directly; see `docs/urlhaus-auth-key.md`).
+> 3. **Broken Vitest suite — FIXED.** `npm test` now runs: 39 files, 207/207 tests passing
+>    (verified 2026-10-25 from a clean `npm ci`).
+> 4. **Blog 2.91 MB JSON in the bundle — FIXED.** `src/components/Blog.tsx` fetches
+>    `/data/dailyNews.json` at runtime instead of statically importing it.
+> 5. **Cloud Functions type-check + Paymob dead code — SPLIT.** The type-check half is
+>    FIXED (root `tsconfig.json` excludes `functions/`; `npm run lint` passes with
+>    0 errors). The Paymob half is still genuinely open: `functions/` is archived and
+>    undeployed, and deleting it awaits an owner decision.
+>
+> The body below is preserved unchanged as the 2026-08-22 record.
+
 _Audit conducted on 2026-08-22 across the JoeScan React 19 + TypeScript + Vite repository._
 
 ---

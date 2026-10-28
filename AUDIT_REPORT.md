@@ -1,5 +1,27 @@
 # JoeScan — Comprehensive Audit Report
 
+> **STATUS UPDATE — 2026-10-25 (verified on `main` @ `6c8f075`): this report is HISTORICAL.**
+> It describes the repo as of 2026-08-22. Every one of its Top-5 findings is now fixed on
+> current `main` — do not act on them as if they were still open:
+>
+> 1. **Firestore cross-tenant `list` leaks — FIXED.** All `allow list` rules in
+>    `firestore.rules` are now admin-only or owner-scoped (`resource.data.userId ==
+>    request.auth.uid`); see also `SECURITY_FIX_REPORT.md` (C2, closed).
+> 2. **Test harness broken — FIXED.** `npm test` now runs: 39 files, 207/207 tests passing
+>    (verified 2026-10-25 from a clean `npm ci`).
+> 3. **Blog 2.97 MB chunk — FIXED.** `src/components/Blog.tsx` fetches
+>    `/data/dailyNews.json` at runtime instead of statically importing it.
+> 4. **Referral counter exploitable — FIXED.** `SECURITY_FIX_REPORT.md` (C4, closed):
+>    deterministic `referralClaims` + permanent markers + admin approval transaction.
+> 5. **Cloud Functions won't type-check — FIXED.** Root `tsconfig.json` excludes
+>    `functions/` (and `workers/`); `npm run lint` (`tsc --noEmit`) passes with 0 errors.
+>    `functions/src/index.ts` itself is now an archived, undeployed reference (see its header).
+>
+> Still genuinely open (not papered over by this note): the archived Paymob code in
+> `functions/` awaits an owner decision on deletion; pre-proxy AI key rotation is an owner
+> action (`SECURITY_FIX_REPORT.md` §7); the Google sign-in investigation is ongoing in a
+> separate thread. The body below is preserved unchanged as the 2026-08-22 record.
+
 _Audit conducted against `claude/website-comprehensive-audit-fca334` @ commit a71a741 on 2026-08-22._
 
 ---
