@@ -55,5 +55,22 @@ describe('isValidLookupDomain', () => {
   it('rejects over-long input', () => {
     expect(isValidLookupDomain(`${'a'.repeat(64)}.com`)).toBe(false);
     expect(isValidLookupDomain(`${'a.'.repeat(130)}com`)).toBe(false);
+    // Exact total-length boundary: 63+63+63+62 + 3 dots = 254.
+    expect(
+      isValidLookupDomain(
+        `${'a'.repeat(63)}.${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(62)}`,
+      ),
+    ).toBe(false);
+  });
+
+  it('accepts inputs exactly at the length boundaries', () => {
+    // Longest allowed single label.
+    expect(isValidLookupDomain(`${'a'.repeat(63)}.com`)).toBe(true);
+    // Longest allowed total length: 63+63+63+61 + 3 dots = 253.
+    expect(
+      isValidLookupDomain(
+        `${'a'.repeat(63)}.${'b'.repeat(63)}.${'c'.repeat(63)}.${'d'.repeat(61)}`,
+      ),
+    ).toBe(true);
   });
 });
