@@ -10,6 +10,7 @@ import { saveScan } from '../lib/webhooks';
 import { assessEmailBreaches, EmailSourceError, type EmailBreach } from '../lib/emailExposure';
 import { consumeScanAttempt, ScanRateLimitError } from '../lib/scanRateLimit';
 import { checkEmailDomainMx } from '../lib/emailDomainMx';
+import { cleanEmailAddress, suggestEmailCorrection } from '../lib/emailTypo';
 import { useLanguage } from '../contexts/LanguageContext';
 import { analyzeEmailExposure, translateReport } from '../lib/gemini';
 import { ShieldAlert, ShieldCheck, Shield, Loader2, ArrowRight, Check, X, Share2, CheckCircle2, RefreshCw, Download, Twitter, Facebook, Link as LinkIcon, Settings2, SlidersHorizontal, Search, Star, Database, GlobeLock, FileSearch, HardDrive, Trash2, Eye, Mail } from 'lucide-react';
@@ -40,53 +41,6 @@ interface ScanResult {
   language?: string;
 }
 
-const COMMON_DOMAINS = [
-  'gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 
-  'icloud.com', 'aol.com', 'proton.me', 'protonmail.com', 'live.com',
-  'msn.com', 'me.com', 'mac.com'
-];
-
-function levenshteinDistance(a: string, b: string): number {
-  const matrix = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
-  for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
-  for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1,
-        matrix[i][j - 1] + 1,
-        matrix[i - 1][j - 1] + cost
-      );
-    }
-  }
-  return matrix[a.length][b.length];
-}
-
-function normalizeEmail(rawEmail: string): string {
-  let clean = rawEmail.trim().toLowerCase();
-  const parts = clean.split('@');
-  if (parts.length !== 2) return clean;
-  
-  const local = parts[0];
-  const domain = parts[1];
-  
-  if (COMMON_DOMAINS.includes(domain)) return clean;
-
-  let closestDomain = domain;
-  let minDist = 3; // Max distance to auto-correct
-  
-  for (const d of COMMON_DOMAINS) {
-    const dist = levenshteinDistance(domain, d);
-    if (dist > 0 && dist < minDist) {
-      minDist = dist;
-      closestDomain = d;
-    }
-  }
-
-  return `${local}@${closestDomain}`;
-}
-
 export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={}) {
   const { lang, t } = useLanguage();
   const [email, setEmail] = useState(initialValue);
@@ -97,6 +51,12 @@ export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={
   const [isTranslating, setIsTranslating] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A typo-correction suggestion for the typed address, shown only when the
+  // typed domain has no MX records. It is NEVER applied automatically: the
+  // user adopts it explicitly by tapping the suggestion button. (The old
+  // code silently rewrote the domain on blur and at submit, so scans could
+  // attach to a different address than the one typed.)
+  const [emailSuggestion, setEmailSuggestion] = useState<string | null>(null);
   const [shareCopied, setShareCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [showScanSettings, setShowScanSettings] = useState(false);
@@ -235,9 +195,14 @@ export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={
     e.preventDefault();
     if (!email) return;
 
-    // Aggressively clean up trailing spaces/typos before validation
-    const cleanedEmail = normalizeEmail(email);
+    // Clean up whitespace/case only. The domain is NEVER rewritten here:
+    // a typo'd domain used to be silently auto-corrected (e.g. gmial.com
+    // -> gmail.com), so the scan, saved record and monitoring could attach
+    // to a different address than the one the user typed. A correction is
+    // only ever offered as an explicit suggestion (see the no-MX branch).
+    const cleanedEmail = cleanEmailAddress(email);
     if (cleanedEmail !== email) setEmail(cleanedEmail);
+    setEmailSuggestion(null);
 
     // Client-side email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -254,6 +219,11 @@ export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={
     const domainMx = await checkEmailDomainMx(cleanedEmail.split('@')[1]);
     if (domainMx === 'no_mx') {
       setError(t('email_invalid_domain'));
+      // The typed domain does not exist. If it is a near-miss of a common
+      // provider domain, offer the correction as a tap-to-adopt suggestion
+      // instead of silently rewriting the address: no attempt is consumed
+      // and no scan is saved either way.
+      setEmailSuggestion(suggestEmailCorrection(cleanedEmail));
       return;
     }
 
@@ -473,11 +443,13 @@ export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={
                 onChange={(e) => {
                   setEmail(e.target.value);
                   setError(null);
+                  setEmailSuggestion(null);
                 }}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => {
                   setIsFocused(false);
-                  if (email) setEmail(normalizeEmail(email));
+                  // Hygiene only (trim + lowercase) — never rewrite the domain.
+                  if (email) setEmail(cleanEmailAddress(email));
                 }}
                 placeholder="you@example.com"
                 className="w-full min-w-0 bg-transparent border-0 pl-12 pr-14 py-4 rounded-xl text-text-main text-base outline-none placeholder:text-text-dim/60"
@@ -542,6 +514,21 @@ export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={
 
         <p className="mx-auto mt-4 max-w-3xl text-xs text-text-dim">This check uses XposedOrNot and LeakCheck Public using your email. Source metadata is saved with your report. <a href="/privacy" className="text-accent underline">Privacy policy</a></p>
         {error && <p role="alert" className="mx-auto max-w-3xl text-error text-sm mt-4 bg-error/10 border border-error/30 p-3 rounded-xl">{error}</p>}
+        {emailSuggestion && (
+          <p className="mx-auto max-w-3xl text-sm mt-2 text-center">
+            <button
+              type="button"
+              className="text-accent underline"
+              onClick={() => {
+                setEmail(emailSuggestion);
+                setEmailSuggestion(null);
+                setError(null);
+              }}
+            >
+              {lang === 'ar' ? `هل تقصد ${emailSuggestion}؟` : `Did you mean ${emailSuggestion}?`}
+            </button>
+          </p>
+        )}
         <div className="mx-auto mt-7 flex max-w-3xl flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-border-subtle pt-5 text-[11px] text-text-dim">
           <span className="flex items-center gap-2"><Database className="h-3.5 w-3.5 text-accent/70" /> Available breach records</span>
           <span className="flex items-center gap-2"><FileSearch className="h-3.5 w-3.5 text-accent/70" /> Clear exposure report</span>

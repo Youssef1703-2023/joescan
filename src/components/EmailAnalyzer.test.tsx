@@ -165,3 +165,99 @@ describe('EmailAnalyzer MX validation order', () => {
     expect(attempts()).toHaveLength(1);
   });
 });
+
+describe('EmailAnalyzer typo suggestion (no silent domain rewrite)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    mocks.saveScan.mockResolvedValue({ id: 'scan-1' });
+    mocks.fetchCombinedEmailExposure.mockResolvedValue({
+      riskLevel: 'Low',
+      reportText: 'No breaches found.',
+      actionPlan: 'Keep monitoring.',
+      securityScore: 90,
+      scoreFactors: [],
+      scoreImprovement: [],
+      breaches: [],
+      source: 'test',
+      checkedAt: '2026-10-28',
+      assessmentVersion: 3,
+      evidenceGroups: [],
+      sourceStatuses: { xposedornot: 'complete', leakcheck: 'complete' },
+      coverageIncomplete: false,
+      language: 'en',
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('shows a tap-to-adopt suggestion (and consumes nothing) for a typo domain with no MX', async () => {
+    // Regression test: the old code silently rewrote gmial.com -> gmail.com
+    // on blur and at submit, so the scan attached to a different address
+    // than the one typed. Now the typed address is kept, the invalid-domain
+    // error is shown, and the correction is only offered as a suggestion.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ json: async () => ({ Status: 3 }) })),
+    );
+    await submitEmail('user@gmial.com');
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        'This email domain does not exist.',
+      ),
+    );
+    expect(
+      screen.getByRole('button', { name: /did you mean user@gmail\.com/i }),
+    ).toBeTruthy();
+    expect(attempts()).toHaveLength(0);
+    expect(mocks.saveScan).not.toHaveBeenCalled();
+  });
+
+  it('clicking the suggestion fills the corrected address into the input', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ json: async () => ({ Status: 3 }) })),
+    );
+    await submitEmail('user@gmial.com');
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: /did you mean user@gmail\.com/i }),
+      ).toBeTruthy(),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /did you mean user@gmail\.com/i }),
+    );
+    expect(
+      (screen.getByPlaceholderText('you@example.com') as HTMLInputElement).value,
+    ).toBe('user@gmail.com');
+  });
+
+  it('blur does NOT rewrite the domain in the input', async () => {
+    render(<EmailAnalyzer />);
+    const input = screen.getByPlaceholderText('you@example.com');
+    fireEvent.change(input, { target: { value: 'user@gmial.com' } });
+    fireEvent.blur(input);
+    expect((input as HTMLInputElement).value).toBe('user@gmial.com');
+  });
+
+  it('scans the TYPED address when the typo domain actually has MX records', async () => {
+    // A real domain that merely sits close to a common provider must never
+    // be rewritten: the scan runs on exactly what the user typed.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        json: async () => ({ Status: 0, Answer: [{ data: '1 mail.gmial.com.' }] }),
+      })),
+    );
+    await submitEmail('user@gmial.com');
+    await waitFor(() => expect(mocks.saveScan).toHaveBeenCalledTimes(1));
+    expect(mocks.saveScan).toHaveBeenCalledWith(
+      expect.objectContaining({ emailScanned: 'user@gmial.com' }),
+    );
+    expect(
+      screen.queryByRole('button', { name: /did you mean/i }),
+    ).toBeNull();
+  });
+});
