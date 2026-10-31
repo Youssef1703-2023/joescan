@@ -161,6 +161,24 @@ export default function PhoneAnalyzer() {
   const scannedPhone = verifiedFacts?.internationalFormat || phone;
   const scannedPhoneDigits = scannedPhone.replace(/\D/g, '');
 
+  // Country-selector change: prepend the new calling code (stripping any
+  // previous one, exactly as before), then — only when the composed number
+  // parses as a valid number — show its international format in the box,
+  // so the input agrees with what the scan will use and with the verified
+  // card. The parser decides what is normalized: trunk zeros are dropped
+  // for Egypt/UK/Saudi numbers, but Italy's significant 0 survives, and a
+  // partial or wrong-country number is left exactly as composed.
+  const handleCountryChange = (newCode: string) => {
+    setSelectedCountryCode(newCode);
+    const composed = `${newCode} ${phone.replace(/^\+\d+\s*/, '')}`;
+    try {
+      const parsed = parsePhoneNumberWithError(composed);
+      setPhone(parsed.isValid() ? parsed.formatInternational() : composed);
+    } catch {
+      setPhone(composed);
+    }
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto min-w-0 flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <motion.div 
@@ -183,11 +201,7 @@ export default function PhoneAnalyzer() {
           <div className="flex flex-col sm:flex-row gap-2 w-full">
             <div className="relative">
               <select
-                onChange={(e) => {
-                  const newCode = e.target.value;
-                  setSelectedCountryCode(newCode);
-                  setPhone(`${newCode} ${phone.replace(/^\+\d+\s*/, '')}`);
-                }}
+                onChange={(e) => handleCountryChange(e.target.value)}
                 className="w-full sm:w-[140px] appearance-none bg-bg-surface border border-border-subtle rounded-lg pl-4 pr-10 py-3 text-text-main focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all font-mono text-sm cursor-pointer"
                 defaultValue=""
                 dir="ltr"
