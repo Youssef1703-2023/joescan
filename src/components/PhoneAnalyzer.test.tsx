@@ -124,3 +124,45 @@ describe('PhoneAnalyzer saved/exported number', () => {
     expect(mocks.saveScan).not.toHaveBeenCalled();
   });
 });
+
+describe('PhoneAnalyzer country selector', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  async function typePhoneAndSelectCountry(typed: string, code: string) {
+    render(<PhoneAnalyzer />);
+    fireEvent.change(screen.getByPlaceholderText('e.g. +1 555 019 2093'), {
+      target: { value: typed },
+    });
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: code },
+    });
+    // Re-query: the motion mock remounts the subtree on every render, so
+    // a node held across the select change is detached afterwards.
+    return screen.getByPlaceholderText(
+      'e.g. +1 555 019 2093',
+    ) as HTMLInputElement;
+  }
+
+  it('normalizes the trunk zero in the input when a country is picked', async () => {
+    // Regression test: picking a country used to prepend its code as a
+    // raw string, so the box showed '+20 010...' while the scan and the
+    // verified card used '+20 10...'. The box must show what will be
+    // scanned.
+    const input = await typePhoneAndSelectCountry('01012345678', '+20');
+    expect(input.value).toBe('+20 10 12345678');
+  });
+
+  it('leaves a partial number exactly as composed when a country is picked', async () => {
+    // A number too short to parse must not be rewritten: the old prepend
+    // behaviour is preserved for anything libphonenumber cannot validate.
+    const input = await typePhoneAndSelectCountry('01012', '+20');
+    expect(input.value).toBe('+20 01012');
+  });
+
+  it('normalizes a manually typed trunk-zero number on re-selecting its code', async () => {
+    const input = await typePhoneAndSelectCountry('+20 010 1234 5678', '+20');
+    expect(input.value).toBe('+20 10 12345678');
+  });
+});
