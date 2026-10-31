@@ -110,9 +110,14 @@ export default function PhoneAnalyzer() {
       setResult(scanResult);
 
       if (auth.currentUser) {
+        // Save the number that was actually scanned (the normalized E.164
+        // format), not the raw typed string: the two differ for national
+        // input (trunk zero, spaces, country-selector prefix), so saving
+        // the raw string would attach the scan to a different-looking
+        // number than the one shown in the verified card.
         await saveScan({
           userId: auth.currentUser.uid,
-          target: phone,
+          target: formattedPhone,
           type: 'phone',
           riskLevel: scanResult.riskLevel,
           reportText: scanResult.reportText,
@@ -146,6 +151,15 @@ export default function PhoneAnalyzer() {
       default: return <Smartphone className="w-12 h-12 text-text-dim" />;
     }
   };
+
+  // The number that was actually scanned, in E.164 form. The verified card
+  // already shows this; the PDF export and the dialing deep links below
+  // must use it too, not the raw typed string — for national input with a
+  // trunk zero (e.g. +20 010...) the raw digits contain an extra 0 and
+  // would dial/search the wrong number. Falls back to the raw input only
+  // before any scan has produced verified facts.
+  const scannedPhone = verifiedFacts?.internationalFormat || phone;
+  const scannedPhoneDigits = scannedPhone.replace(/\D/g, '');
 
   return (
     <div className="w-full max-w-6xl mx-auto min-w-0 flex flex-col gap-6" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
@@ -270,7 +284,7 @@ export default function PhoneAnalyzer() {
                       if (!result || isExporting) return;
                       setIsExporting(true);
                       try {
-                        await generateReportPDF({ ...result, target: phone }, 'phone', lang);
+                        await generateReportPDF({ ...result, target: scannedPhone }, 'phone', lang);
                       } finally {
                         setIsExporting(false);
                       }
@@ -379,7 +393,7 @@ export default function PhoneAnalyzer() {
                     </h5>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-1 w-full">
                       <a 
-                        href={`https://api.whatsapp.com/send/?phone=${phone.replace(/\D/g, '')}`} 
+                        href={`https://api.whatsapp.com/send/?phone=${scannedPhoneDigits}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
@@ -393,7 +407,7 @@ export default function PhoneAnalyzer() {
                       </a>
                       
                       <a 
-                        href={`https://sync.me/search/?number=${phone.replace(/\D/g, '')}`} 
+                        href={`https://sync.me/search/?number=${scannedPhoneDigits}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
@@ -407,7 +421,7 @@ export default function PhoneAnalyzer() {
                       </a>
 
                       <a 
-                        href={`https://www.google.com/search?q="${encodeURIComponent(phone.trim())}"+OR+"${phone.replace(/\D/g, '')}"+-site:facebook.com`} 
+                        href={`https://www.google.com/search?q="${encodeURIComponent(phone.trim())}"+OR+"${scannedPhoneDigits}"+-site:facebook.com`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
@@ -421,7 +435,7 @@ export default function PhoneAnalyzer() {
                       </a>
                       
                       <a 
-                        href={`https://t.me/+${phone.replace(/\D/g, '')}`} 
+                        href={`https://t.me/+${scannedPhoneDigits}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent"
