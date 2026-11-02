@@ -6,12 +6,15 @@ describe('parseScanUrl', () => {
     const parsed = parseScanUrl('example.com');
     expect(parsed?.targetUrl).toBe('http://example.com');
     expect(parsed?.urlObj.hostname).toBe('example.com');
+    // The http:// came from us, not from the user.
+    expect(parsed?.schemeSpecified).toBe(false);
   });
 
   it('preserves an explicit https scheme, path and query', () => {
     const parsed = parseScanUrl('https://example.com/path?q=1');
     expect(parsed?.targetUrl).toBe('https://example.com/path?q=1');
     expect(parsed?.urlObj.hostname).toBe('example.com');
+    expect(parsed?.schemeSpecified).toBe(true);
   });
 
   it('trims surrounding whitespace before parsing', () => {
