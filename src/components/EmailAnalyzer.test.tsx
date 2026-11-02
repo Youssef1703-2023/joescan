@@ -360,4 +360,20 @@ describe('EmailAnalyzer follow-up flag (no fake monitoring)', () => {
     // Only the save notified; clearing the local flag adds no toast.
     expect(mocks.addNotification).toHaveBeenCalledTimes(1);
   });
+
+  it('renders the report summary through translation keys', async () => {
+    // The card used to hardcode English ("SECURITY SCORE", "ASSESSMENT",
+    // "01 / SOURCE EVIDENCE") regardless of language. The test locale is 'en'
+    // and the mock `t` echoes unknown keys, so a rendered key proves the
+    // component asks for the translation instead of printing English.
+    await submitEmail('user@example.com');
+    await waitFor(() => expect(mocks.saveScan).toHaveBeenCalledTimes(1));
+    await screen.findByRole('button', { name: 'Save for follow-up' });
+
+    expect(screen.getByText('email_report_score_label')).toBeTruthy();
+    expect(screen.getByText('email_report_assessment')).toBeTruthy();
+    expect(screen.getByText('email_report_section_evidence')).toBeTruthy();
+    expect(screen.queryByText('SECURITY SCORE')).toBeNull();
+    expect(screen.queryByText('01 / SOURCE EVIDENCE')).toBeNull();
+  });
 });
