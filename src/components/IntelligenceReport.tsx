@@ -18,6 +18,25 @@ interface Props {
   onClose: () => void;
 }
 
+// btoa() only accepts Latin-1 code points, so hashing a scan target directly
+// throws InvalidCharacterError for Arabic or emoji text (a phishing message is
+// a normal scan target here). The app has no error boundary, so that throw
+// blanks the whole window. Re-encoding through UTF-8 first keeps every ASCII
+// target byte-identical to the legacy hash while making the rest safe.
+function targetHash(target: string): string {
+  try {
+    const utf8Binary = encodeURIComponent(target).replace(
+      /%([0-9A-F]{2})/g,
+      (_match, hex) => String.fromCharCode(parseInt(hex, 16)),
+    );
+    return btoa(utf8Binary);
+  } catch {
+    // Lone surrogates cannot be percent-encoded; fall back to a stable hash
+    // instead of crashing the report.
+    return btoa('unencodable-target');
+  }
+}
+
 export default function IntelligenceReport({ scan, onClose }: Props) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [userTier, setUserTier] = useState<SubscriptionTier>('free');
@@ -191,7 +210,7 @@ export default function IntelligenceReport({ scan, onClose }: Props) {
                      <div><span className="text-white">Timestamp:</span> {scan.createdAt.toISOString()}</div>
                      <div><span className="text-white">Query Vector:</span> OSINT_DEEP_SEARCH_{scan.type.toUpperCase()}</div>
                      {!isPasswordScan && (
-                       <div><span className="text-white">Target Hash:</span> {btoa(scan.target).substring(0,20).toUpperCase()}</div>
+                       <div><span className="text-white">Target Hash:</span> {targetHash(scan.target).substring(0,20).toUpperCase()}</div>
                      )}
                      <div><span className="text-white">Status Flags:</span> SCANNED, CORRELATED, ARCHIVED</div>
                      

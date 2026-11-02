@@ -104,6 +104,26 @@ describe('IntelligenceReport (S01 dossier masking)', () => {
     expect(mocks.pdfSave).toHaveBeenCalledWith('joescan_dossier_victim_example_com.pdf');
   });
 
+  it('renders a report for an Arabic and emoji target instead of throwing on the hash', async () => {
+    render(
+      <IntelligenceReport
+        scan={{
+          ...baseScan,
+          type: 'message',
+          target: 'رسالة تصيّد اضغط هنا ⚠️',
+          riskLevel: 'High',
+        }}
+        onClose={() => {}}
+      />,
+    );
+
+    const hashLabel = await screen.findByText(/Target Hash:/);
+    // Base64 of the UTF-8 bytes of the target, truncated to 20 chars and uppercased.
+    // btoa(target) would throw InvalidCharacterError here and blank the app.
+    expect(hashLabel.closest('div')?.textContent).toContain('2LHYS9IN2YTYQSDYQTI1');
+    expect(screen.getByText('رسالة تصيّد اضغط هنا ⚠️')).toBeInTheDocument();
+  });
+
   it('renders an unknown URL scan as incomplete rather than a clean result', () => {
     render(
       <IntelligenceReport
