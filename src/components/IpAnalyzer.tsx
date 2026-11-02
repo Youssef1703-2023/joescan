@@ -14,6 +14,11 @@ import { queryUrlhaus, urlhausAuthKey, type UrlhausResult } from '../lib/urlhaus
 import MiniHistory from './MiniHistory';
 
 interface ScanResult {
+  // The IP that was actually scanned. The result card, PDF export and
+  // deep-investigation links MUST use this, never the live `ip` input
+  // state: the user can edit the box after a scan, and the card must not
+  // silently start pointing at an IP that was never scanned.
+  scannedIp: string;
   riskLevel: 'Low' | 'Medium' | 'High';
   reportText: string;
   actionPlan: string;
@@ -182,6 +187,7 @@ export default function IpAnalyzer() {
         const threatDetailEn = urlhausResult.threat ? ` (${urlhausResult.threat})` : '';
         const threatDetailAr = urlhausResult.threat ? ` (${urlhausResult.threat})` : '';
         scanResult = {
+          scannedIp: trimmedIp,
           riskLevel: verdict.riskLevel,
           verdict,
           reportText: isArabic
@@ -199,6 +205,7 @@ export default function IpAnalyzer() {
         };
       } else if (isPrivate) {
         scanResult = {
+          scannedIp: trimmedIp,
           riskLevel: verdict.riskLevel,
           verdict,
           reportText: isArabic
@@ -212,6 +219,7 @@ export default function IpAnalyzer() {
         };
       } else {
         scanResult = {
+          scannedIp: trimmedIp,
           riskLevel: verdict.riskLevel,
           verdict,
           reportText: isArabic 
@@ -359,14 +367,14 @@ export default function IpAnalyzer() {
                         ? (lang === 'ar' ? result.verdict.labelAr : result.verdict.labelEn)
                         : (lang === 'ar' ? 'نتائج التحليل الجغرافي' : 'Geolocation Results')}
                     </h3>
-                    <div className="text-xl font-black text-text-main tracking-tight font-mono">{ip}</div>
+                    <div className="text-xl font-black text-text-main tracking-tight font-mono">{result.scannedIp}</div>
                   </div>
                   <button
                     onClick={async () => {
                       if (!result || isExporting) return;
                       setIsExporting(true);
                       try {
-                        await generateReportPDF({ ...result, target: ip }, 'ip', lang);
+                        await generateReportPDF({ ...result, target: result.scannedIp }, 'ip', lang);
                       } finally {
                         setIsExporting(false);
                       }
@@ -430,7 +438,7 @@ export default function IpAnalyzer() {
                     </h4>
                     <div className="pt-4 border-t border-[currentColor]/10 grid grid-cols-1 md:grid-cols-2 gap-3 pb-2 w-full">
                       <a 
-                        href={`https://www.abuseipdb.com/check/${ip}`} 
+                        href={`https://www.abuseipdb.com/check/${result.scannedIp}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent group"
@@ -444,7 +452,7 @@ export default function IpAnalyzer() {
                       </a>
                       
                       <a 
-                        href={`https://www.shodan.io/host/${ip}`} 
+                        href={`https://www.shodan.io/host/${result.scannedIp}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent group"
@@ -458,7 +466,7 @@ export default function IpAnalyzer() {
                       </a>
 
                       <a 
-                        href={`https://www.virustotal.com/gui/ip-address/${ip}`} 
+                        href={`https://www.virustotal.com/gui/ip-address/${result.scannedIp}`} 
                         target="_blank" 
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 bg-bg-base/40 p-3 rounded-lg hover:bg-bg-base/60 transition font-mono border border-[currentColor]/10 hover:border-accent group"
