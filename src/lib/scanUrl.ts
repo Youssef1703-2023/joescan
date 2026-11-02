@@ -9,14 +9,19 @@
 export interface ParsedScanUrl {
   targetUrl: string;
   urlObj: URL;
+  /** True when the input already carried an http(s) scheme. Callers need it:
+   *  a bare domain is scanned over http:// only because we prepend it, and
+   *  must not be reported to the user as an unencrypted site. */
+  schemeSpecified: boolean;
 }
 
 export function parseScanUrl(raw: string): ParsedScanUrl | null {
   let targetUrl = raw.trim();
-  if (!/^https?:\/\//i.test(targetUrl)) targetUrl = 'http://' + targetUrl;
+  const schemeSpecified = /^https?:\/\//i.test(targetUrl);
+  if (!schemeSpecified) targetUrl = 'http://' + targetUrl;
 
   try {
-    return { targetUrl, urlObj: new URL(targetUrl) };
+    return { targetUrl, urlObj: new URL(targetUrl), schemeSpecified };
   } catch {
     return null;
   }

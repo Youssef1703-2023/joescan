@@ -52,6 +52,7 @@ interface ScanResult {
   dns: DnsInfo;
   whois: WhoisInfo;
   scanDuration: number;
+  schemeSpecified: boolean; // false when the input carried no http(s) scheme
 }
 
 // ─── Suspicious TLDs ───
@@ -104,20 +105,28 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
   const [isExporting, setIsExporting] = useState(false);
 
   // ━━━ Heuristic checks ━━━
-  function checkProtocol(urlObj: URL): CheckResult {
+  function checkProtocol(urlObj: URL, schemeSpecified: boolean): CheckResult {
     const isHttp = urlObj.protocol === 'http:';
+    // A bare domain is scanned over http:// only because no protocol was typed.
+    // Failing the check (and docking 15 risk points) for that would be a false
+    // verdict about a site we never probed, so report it as unverified.
+    const isAssumed = isHttp && !schemeSpecified;
     return {
       id: 'protocol',
       name: 'SSL / HTTPS Encryption',
       nameAr: 'تشفير SSL / HTTPS',
-      status: isHttp ? 'fail' : 'pass',
-      detail: isHttp
+      status: isAssumed ? 'unknown' : isHttp ? 'fail' : 'pass',
+      detail: isAssumed
+        ? 'No protocol was entered, so this check ran over http://. HTTPS support for this host was not verified, and it is not counted as a failure.'
+        : isHttp
         ? 'This URL uses unencrypted HTTP. Data sent to this site (passwords, personal info) can be intercepted by attackers on the same network.'
         : 'This URL uses HTTPS encryption. Communication with the server is encrypted and protected from eavesdropping.',
-      detailAr: isHttp
+      detailAr: isAssumed
+        ? 'لم يُدخل بروتوكول، لذلك أُجري الفحص عبر http://. لم يُتحقق من دعم HTTPS لهذا النطاق، ولا يُحتسب الفحص فشلًا.'
+        : isHttp
         ? 'هذا الرابط يستخدم HTTP غير مشفر. البيانات المرسلة (كلمات المرور، المعلومات الشخصية) يمكن اعتراضها من قبل أي شخص على نفس الشبكة.'
         : 'هذا الرابط يستخدم تشفير HTTPS. الاتصال بالسيرفر مشفر ومحمي من التنصت.',
-      severity: isHttp ? 15 : 0,
+      severity: isAssumed ? 0 : isHttp ? 15 : 0,
     };
   }
 
@@ -312,7 +321,7 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
       setResult(null);
       return;
     }
-    const { targetUrl, urlObj } = parsed;
+    const { targetUrl, urlObj, schemeSpecified } = parsed;
     const hostname = urlObj.hostname;
 
     try {
@@ -334,7 +343,7 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
       // ── Phase 1: Local heuristic checks ──
       setScanStage(lang === 'ar' ? 'تحليل بنية الرابط...' : 'Analyzing URL structure...');
       const checks: CheckResult[] = [];
-      checks.push(checkProtocol(urlObj));
+      checks.push(checkProtocol(urlObj, schemeSpecified));
       checks.push(checkIPHostname(hostname));
       checks.push(checkHomoglyphs(hostname));
       checks.push(checkTyposquat(hostname));
@@ -475,6 +484,7 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
         dns,
         whois,
         scanDuration,
+        schemeSpecified,
       };
 
       setResult(finalResult);
@@ -680,11 +690,15 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
                       'flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-medium',
                       result.url.toLowerCase().startsWith('https://')
                         ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300'
+                        : !result.schemeSpecified
+                        ? 'border-white/15 bg-white/5 text-text-dim'
                         : 'border-red-400/30 bg-red-400/10 text-red-300'
                     )} title={lang === 'ar' ? 'يؤكد بروتوكول الرابط فقط؛ لا يضمن موثوقية الموقع.' : 'Confirms the URL protocol only; it does not guarantee the site is trustworthy.'}>
                       <Lock className="w-3.5 h-3.5" />
                       <span>{result.url.toLowerCase().startsWith('https://')
                         ? (lang === 'ar' ? 'HTTPS ظاهر في الرابط' : 'HTTPS detected')
+                        : !result.schemeSpecified
+                        ? (lang === 'ar' ? 'افترض http://' : 'http:// assumed')
                         : (lang === 'ar' ? 'HTTP غير مشفّر' : 'Unencrypted HTTP')}</span>
                     </div>
                     {result.dns.ip && (
@@ -800,7 +814,7 @@ export default function UrlAnalyzer({initialValue=""}:{initialValue?:string}={})
                 </a>
 
                 <a
-                  href={`https://transparencyreport.google.com/safe-browsing/search?url=${encodeURIComponent(url)}`}
+                  href={`https://transparencyreport.google.com/safe-browsing/search?url=${encodeURIComponent(result.url)}`}
                   target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-3 bg-bg-surface p-4 rounded-lg hover:bg-bg-surface/80 transition font-mono border border-border-subtle hover:border-[#F4B400] group"
                 >

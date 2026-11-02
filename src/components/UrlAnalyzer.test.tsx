@@ -51,9 +51,9 @@ function mockFetch(urlhaus: () => unknown) {
   });
 }
 
-async function scan() {
+async function scan(value = 'https://example.com') {
   render(<UrlAnalyzer />);
-  fireEvent.change(screen.getByLabelText('Link to check'), { target: { value: 'https://example.com' } });
+  fireEvent.change(screen.getByLabelText('Link to check'), { target: { value } });
   fireEvent.click(screen.getByRole('button', { name: /check link/i }));
   await waitFor(() => expect(mocks.saveScan).toHaveBeenCalledTimes(1));
   return mocks.saveScan.mock.calls[0][0] as { reportText: string; riskLevel: string; securityScore: number | null };
@@ -121,5 +121,37 @@ describe('UrlAnalyzer URLhaus outcomes', () => {
     expect(saved.reportText).not.toContain('URLhaus: NO MATCH');
     expect(screen.getByText(/not evidence that the host is safe/)).toBeTruthy();
     expect(screen.queryByText(/No threats detected/)).toBeNull();
+  });
+
+  it('does not fail the SSL check for a bare domain that specified no scheme', async () => {
+    vi.stubGlobal('fetch', mockFetch(() => provider({ query_status: 'no_results' })));
+    const saved = await scan('example.com');
+    // http:// was prepended by the analyzer, not typed by the user, so it is
+    // not a failure - but HTTPS support was never verified either.
+    expect(saved.reportText).toContain('0 failed');
+    expect(saved.reportText).toContain('1 unavailable');
+    expect(saved.riskLevel).toBe('Low');
+    expect(screen.getByText('http:// assumed')).toBeTruthy();
+    expect(screen.queryByText('Unencrypted HTTP')).toBeNull();
+    expect(screen.getByText(/No protocol was entered/)).toBeTruthy();
+  });
+
+  it('still fails the SSL check when http:// was typed explicitly', async () => {
+    vi.stubGlobal('fetch', mockFetch(() => provider({ query_status: 'no_results' })));
+    const saved = await scan('http://example.com');
+    expect(saved.reportText).toContain('1 failed');
+    expect(saved.reportText).toContain('0 unavailable');
+    expect(screen.getByText('Unencrypted HTTP')).toBeTruthy();
+    expect(screen.queryByText('http:// assumed')).toBeNull();
+    expect(screen.getByText(/uses unencrypted HTTP/)).toBeTruthy();
+  });
+
+  it('links Safe Browsing to the scanned URL instead of the live input', async () => {
+    vi.stubGlobal('fetch', mockFetch(() => provider({ query_status: 'no_results' })));
+    await scan('example.com');
+    const href = screen.getByText('Google Safe Browsing').closest('a')?.getAttribute('href');
+    // The input box still holds the bare domain; the report must link to what
+    // was actually scanned (http:// was prepended by the analyzer).
+    expect(href).toBe(`https://transparencyreport.google.com/safe-browsing/search?url=${encodeURIComponent('http://example.com')}`);
   });
 });
