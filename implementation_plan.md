@@ -1,473 +1,230 @@
-# Social Media OSINT Scanner - Full Implementation Plan
+# Social Media OSINT Scanner - Implementation Plan
 
-## Document purpose
-
-This plan describes how to finish, harden, and validate the Social Media OSINT Scanner inside the JoeScan app at `E:\joescan`.
-
-It is intentionally based on the current codebase state, not a greenfield assumption. As of April 17, 2026, the feature foundation already exists in the app:
-
-- Navigation entry already exists in `E:\joescan\src\App.tsx`
-- Translation keys already exist in `E:\joescan\src\contexts\LanguageContext.tsx`
-- API wrapper already exists in `E:\joescan\src\lib\socialOsint.ts`
-- AI analysis function already exists in `E:\joescan\src\lib\gemini.ts`
-- Main UI already exists in `E:\joescan\src\components\SocialOsintScanner.tsx`
-
-Because of that, this plan focuses on production readiness, cleanup, and verification rather than first-pass scaffolding.
-
----
-
-## Goal
-
-Allow a signed-in JoeScan user to enter a username, scan a large platform set through the WhatsMyName API, review categorized hits, receive an AI-generated exposure assessment, save the scan to Firestore, and export a readable PDF report.
-
-The final experience should feel native to JoeScan:
-
-- Same visual system
-- Same bilingual behavior
-- Same persistence model as the other analyzers
-- Same report/export expectations
-- Same reliability bar as the rest of the product
+> **STATUS UPDATE - 2026-11-02 (verified on `main` @ `66e66881`): CLOSED - this document is history, not a to-do list.**
+>
+> Every phase below shipped (see *Status by phase*), and the feature it planned has since been
+> retired from the app. Before acting on anything in this file, note:
+>
+> 1. **The Social OSINT page was retired on 2026-09-13** - commit [`ebb8d89`](https://github.com/Youssef1703-2023/joescan/commit/ebb8d8996cbac64c9bec17e311f48fff86cd8a58),
+>    "Retire Social Media OSINT page and redirect legacy links". `/social-osint` now redirects to the
+>    dashboard (`redirectRetiredPage` in `src/App.tsx`), `social` is not a `TabId` in
+>    `src/lib/workspaceRoutes.ts`, and `src/components/SocialOsintScanner.tsx` is imported only by its
+>    own test file.
+> 2. **The WhatsMyName client flow described under "Confirmed external dependency" is gone.**
+>    `src/lib/socialOsint.ts` now searches through the AI proxy (`searchSocialProfiles` /
+>    `searchPhoneProfiles` in `src/lib/gemini.ts`). The WhatsMyName relay survives only as the
+>    `server.ts` `/api/social-osint/*` endpoints (upstream `https://whatsmyname.ink`), covered by
+>    `server.test.ts`; nothing under `src/` calls it.
+> 3. **All `E:\joescan\...` paths were removed.** That prefix referred to one local clone, never to
+>    the repository. Every path below is repo-relative.
+> 4. **The Phase 5 "no test harness" note is obsolete.** Vitest + React Testing Library run in CI:
+>    `src/lib/socialOsint.test.ts` (10 cases) and `src/components/SocialOsintScanner.test.tsx` (5 cases).
+>
+> **CI on `main` is green.** *Security audit* (`npm run lint`, `npm audit`) passed for `5bfc8034` and
+> `66e66881`; *Deploy to Cloudflare Pages* (`npm run lint`, `npm test`, `npm run build`) passed for
+> `5bfc8034`. `66e66881` only changes `public/data/dailyNews.json`, so the test result still describes
+> the current tree.
 
 ---
 
-## Confirmed external dependency
+## Goal (as written in April 2026)
 
-The current code targets the WhatsMyName API at `https://whatsmyname.ink`.
+Allow a signed-in JoeScan user to enter a username, enumerate a large platform set, review
+categorized hits, receive an AI-generated exposure assessment, save the scan to Firestore, and
+export a readable PDF report - matching the app's visual system, bilingual behavior, persistence
+model, and reliability bar.
 
-Verified current documentation:
-
-- API docs: [WhatsMyName API Documentation](https://whatsmyname.ink/api-docs)
-- Platform coverage page: [WhatsMyName Platforms](https://whatsmyname.ink/platforms)
-
-What the docs currently confirm:
-
-- `POST /api/search` starts a username search
-- `GET /api/search?id={queryId}` polls for status and results
-- `GET /api/platforms` returns platform metadata
-- Free tier is rate limited
-
-This matches the assumptions already present in `E:\joescan\src\lib\socialOsint.ts`.
+**Current reality:** that pipeline is implemented and test-covered, but the entry screen is retired,
+so no user can reach it from the app shell today.
 
 ---
 
-## Current state snapshot
+## Current state snapshot (2026-11-02)
 
-### Already implemented
+### Where the surfaces stand
 
-1. App shell integration
-   - `social` tab is registered in `E:\joescan\src\App.tsx`
-   - `SocialOsintScanner` is imported and rendered
+| Surface | State on `main` @ `66e66881` |
+|---|---|
+| Reachable tabs | `dashboard`, `history`, `watchlist`, `email`, `password`, `url`, `message`, `domain`, `blog`, `referral`, `pricing`, plus `team` / `threat_3d` (enterprise or admin) and `admin` (admin) - `STANDARD_SIGNAL_TABS` in `src/components/navigation/signalPages.ts` |
+| Social OSINT screen | **Retired** (`ebb8d89`); legacy URL redirects to the dashboard, asserted by `src/App.navigation.test.tsx` |
+| 2D Threat Map screen | **Retired** (`c8bf7b6`); `ThreatMap3D` is the surviving variant |
+| `src/components/SocialOsintScanner.tsx` | Kept and tested, not rendered by `src/App.tsx` |
+| `server.ts` WhatsMyName relay | Kept and tested, not called from `src/` |
 
-2. Localization wiring
-   - Social OSINT copy keys are present in `E:\joescan\src\contexts\LanguageContext.tsx`
+### Implemented, with evidence
 
-3. API integration
-   - `searchUsername()` exists in `E:\joescan\src\lib\socialOsint.ts`
-   - Platform categorization logic exists
-   - Polling flow exists
-
-4. AI analysis
-   - `analyzeSocialFootprint()` exists in `E:\joescan\src\lib\gemini.ts`
-
-5. UI flow
-   - Username input, scan action, progress bar, grouped results, AI panel, and PDF download are already implemented in `E:\joescan\src\components\SocialOsintScanner.tsx`
-
-6. Persistence
-   - Firestore save logic for `type: 'social_osint'` already exists
-
-7. Type safety
-   - `npx tsc --noEmit` currently passes successfully
-
-### Gaps still worth addressing
-
-1. The existing markdown plan is stale and assumes the feature does not exist yet.
-2. The user-facing translations and markdown file show encoding corruption in some environments.
-3. API handling is functional but not yet resilient enough for production traffic.
-4. PDF export works, but it is still generic rather than Social OSINT specific.
-5. There are no dedicated tests for the new flow.
-6. There is no documented acceptance checklist tied to this module.
-
----
-
-## Scope
-
-### In scope
-
-- Username-based social OSINT scanning
-- Progress feedback during remote enumeration
-- Categorized result display
-- AI exposure and risk assessment
-- Firestore persistence
-- PDF export
-- EN and AR support
-- Error handling and resilience improvements
-- Validation and QA
-
-### Out of scope for this phase
-
-- Batch username scanning
-- Historical diffing between two Social OSINT scans
-- Forced refresh or cache bypass controls
-- Background jobs or scheduled rescans
-- CSV or JSON exports
-- Platform-level screenshots or previews
+1. **Search wrapper** - `src/lib/socialOsint.ts`: `searchUsername()` / `searchPhoneNumber()`, the
+   username contract (`/^[a-zA-Z0-9._-]{1,64}$/` plus structural rules that reject a leading
+   dot or hyphen, a trailing dot, and `..`), `DEFAULT_TIMEOUT_MS = 120000`, `AbortSignal` support,
+   and the explicit `RATE_LIMIT` / `TIMEOUT` error contract.
+2. **AI analysis** - `analyzeSocialFootprint()`, `searchSocialProfiles()`, `searchPhoneProfiles()`
+   in `src/lib/gemini.ts`, behind the authenticated proxy with quota handling
+   (`AiQuotaExceededError`).
+3. **UI state model** - `src/components/SocialOsintScanner.tsx`:
+   `ScanPhase = 'idle' | 'scanning' | 'analyzing' | 'success' | 'empty' | 'error'`, a fixed category
+   order (social, professional, gaming, forums, other) with alphabetical sorting inside each
+   category, per-category counts, abort on unmount or rescan, `role="status"` +
+   `aria-live="polite"` progress, `role="alert"` errors, and a report button that renders only when
+   both scan results and AI analysis exist.
+4. **Persistence** - `saveScan({ type: 'social_osint', platformsFound, platforms,
+   totalPlatformsChecked, riskLevel, securityScore, reportText, actionPlan })`;
+   `src/components/ScanHistory.tsx` labels and iconifies `social_osint`, and
+   `src/components/Dashboard.tsx` counts it, including the `social` to `social_osint` alias.
+5. **PDF export** - `src/lib/generatePDF.ts` adds a "Platforms Found" block: per-category
+   `CATEGORY / ACCOUNTS FOUND` tables plus the platform list, on top of the executive summary and
+   action plan.
+6. **Localization and encoding** - Social OSINT keys exist in all seven languages;
+   `src/contexts/LanguageContext.tsx` passes a strict UTF-8 decode (139,091 bytes), so the `?????`
+   seen in some terminals is a console rendering artifact, not file corruption.
 
 ---
 
-## Implementation strategy
+## Status by phase
 
-The work should proceed as a hardening pass in six phases:
+### Phase 1 - Normalize text and documentation: DONE
 
-1. Normalize text and documentation
-2. Harden the API layer
-3. Tighten the UI and state model
-4. Improve persistence and downstream reporting
-5. Add validation coverage
-6. Run manual QA and release checks
+- [x] Greenfield plan replaced by this reality-based document.
+- [x] `src/contexts/LanguageContext.tsx` audited: valid UTF-8, Arabic code points intact.
+- [x] Social OSINT copy exists as translation keys for `en, ar, fr, de, es, tr, ru`.
+- [ ] Removal of hardcoded fallback labels - not pursued. Some scanner copy is still inline
+      English (for example the AI-failure notice in `SocialOsintScanner.tsx`). Low priority while
+      the screen is retired.
 
----
+### Phase 2 - Harden the API layer: DONE (design changed)
 
-## Phase 1 - Normalize text and documentation
+- [x] Input validation before any network or AI call (charset, length cap, structural rules).
+- [x] Timeout handling: `TIMEOUT` after `timeoutMs` (default 120 s), unit-tested.
+- [x] Cancellation: `AbortController`; the scanner aborts on unmount and on a new scan;
+      `AbortError` stays distinct from `RATE_LIMIT` and `TIMEOUT`.
+- [x] Rate limit: the `RATE_LIMIT` error contract is preserved and surfaced with dedicated copy.
+- [x] Proxy decision - superseded: the client goes through the AI proxy, and a first-party
+      WhatsMyName relay exists in `server.ts` (10 s upstream timeout, typed `UPSTREAM_ERROR` /
+      `UPSTREAM_TIMEOUT` bodies) with coverage in `server.test.ts`.
+- [ ] Polling hardening - superseded: the `POST /api/search` + `GET /api/search?id=` polling flow
+      was removed with the WhatsMyName client; no `queryId` polling remains in
+      `src/lib/socialOsint.ts`.
+- [ ] `GET /api/platforms` metadata - not adopted. Grouping uses the local keyword classifier
+      `categorizePlatform()`, and the AI path returns categories itself. Accept as the current
+      design; revisit only if grouping accuracy is reported as a problem.
 
-### Objective
+### Phase 3 - Tighten the UI and state model: DONE
 
-Remove confusion caused by stale instructions and encoding issues.
+- [x] Six explicit UI phases (`ScanPhase`).
+- [x] State reset on rescan and abort; progress clears only when the run finishes.
+- [x] Stable ordering: fixed category order, alphabetical inside each category, stable count badges.
+- [x] Accessibility: `role="status"` / `aria-live="polite"` for progress, `role="alert"` /
+      `aria-live="assertive"` for errors, keyboard-submittable form.
+- [x] Empty state separated from the failure state (`empty` vs `error`).
+- [x] Report button translated and gated on AI completion.
+- Covered by `src/components/SocialOsintScanner.test.tsx`: happy path with export, no-hit,
+  rate limit, timeout, invalid-username banner copy.
 
-### Files
+### Phase 4 - Persistence and reporting: DONE
 
-- `E:\joescan\implementation_plan.md`
-- `E:\joescan\src\contexts\LanguageContext.tsx`
-- `E:\joescan\src\lib\generatePDF.ts`
-- Any user-facing strings in `E:\joescan\src\components\SocialOsintScanner.tsx`
+- [x] `social_osint` records appear in history with a label and icon (`src/components/ScanHistory.tsx`).
+- [x] The dashboard chart counts the type, including the `social` alias (`src/components/Dashboard.tsx`).
+- [x] Extra scan fields persisted: platform names, hit count, total platforms checked. Category
+      counts are derived at export time rather than stored.
+- [x] PDF carries Social OSINT-specific evidence: "Platforms Found" with per-category tables
+      (`src/lib/generatePDF.ts`).
 
-### Tasks
+### Phase 5 - Validation coverage: DONE
 
-1. Replace the old greenfield plan with this reality-based plan.
-2. Audit the Social OSINT translation strings and confirm the source file is saved with proper UTF-8 encoding.
-3. Verify Arabic strings render correctly in the browser, not only in the editor.
-4. Remove fallback strings where translated keys already exist, unless the fallback protects runtime safety.
-5. Normalize labels such as "Download Report" to use shared translation keys where possible.
+- [x] Unit tests for the wrapper: `src/lib/socialOsint.test.ts` - category mapping, validation
+      boundaries, rate limit, timeout, abort, error propagation.
+- [x] Component tests: `src/components/SocialOsintScanner.test.tsx` - happy path with AI and
+      export, no-hit path, rate-limit path, timeout path, pinned error copy.
+- [x] Navigation smoke test: `src/App.navigation.test.tsx` pins that `/social-osint` redirects and
+      the screen is not exposed.
+- [x] Test harness: Vitest + Testing Library, executed by `npm test` in the deploy workflow;
+      `npm run lint` (`tsc --noEmit`) runs in the security-audit workflow.
 
-### Deliverable
+### Phase 6 - Manual QA and release checks: BLOCKED BY THE RETIREMENT
 
-A clean document set and correctly rendered Social OSINT copy in English and Arabic.
+The automated gates run in CI (lint, tests, audit, build). The original 12-step checklist cannot run
+today: step 2, "the Social OSINT tab appears in navigation", fails by design because the tab was
+removed. Re-run it only if the screen is re-launched.
 
----
+Checklist kept for a potential re-launch:
 
-## Phase 2 - Harden the API layer
-
-### Objective
-
-Make the WhatsMyName integration resilient to rate limits, timeouts, partial failures, and browser quirks.
-
-### Primary file
-
-- `E:\joescan\src\lib\socialOsint.ts`
-
-### Tasks
-
-1. Add input validation before network calls.
-   - Trim whitespace
-   - Reject empty usernames
-   - Consider a simple username length cap to prevent abuse and malformed requests
-
-2. Strengthen polling behavior.
-   - Guard against non-JSON responses
-   - Guard against missing `queryId`
-   - Handle incomplete payloads safely
-   - Stop polling on terminal failures
-
-3. Improve rate-limit handling.
-   - Preserve the existing `RATE_LIMIT` error contract
-   - Add optional exponential backoff for repeated transient failures
-   - Differentiate `429`, timeout, network, and malformed response errors
-
-4. Add cancellation support.
-   - Use `AbortController` so a component unmount or a new scan can cancel the in-flight request chain
-
-5. Decide whether to keep direct browser calls or move to a proxy.
-   - If browser CORS remains stable, keep direct calls
-   - If CORS becomes unreliable, introduce a small backend relay instead of depending on a public proxy service
-
-6. Consider using the platform metadata endpoint.
-   - `GET /api/platforms` can be used to improve category mapping instead of relying only on keyword heuristics
-   - If adopted, cache the metadata client-side and map categories from source data first, then fall back to local keywords
-
-### Acceptance criteria
-
-- Empty or invalid input never triggers a remote scan
-- Network failures surface readable errors
-- Rate limits produce a specific user-facing message
-- Polling never hangs indefinitely
-- Starting a new scan does not leave the old one running in the background
+1. Start the app (`npm run dev`) and confirm the Social OSINT entry exists in navigation.
+2. Layout matches the app design system; Arabic RTL renders correctly in the browser.
+3. Search a known username; progress updates; grouped results render.
+4. The AI panel appears after completion and the report button enables only then.
+5. A `social_osint` record is saved for signed-in users and shows in history and dashboard.
+6. The PDF download is readable and contains the "Platforms Found" section.
+7. A quick rescan resets state; invalid input and network failure show distinct error states.
 
 ---
 
-## Phase 3 - Tighten the UI and state model
+## Acceptance checklist
 
-### Objective
+Verified statically on `main` @ `66e66881`; GitHub Actions is the execution gate.
 
-Make the feature feel polished, predictable, and consistent with other JoeScan analyzers.
-
-### Primary file
-
-- `E:\joescan\src\components\SocialOsintScanner.tsx`
-
-### Tasks
-
-1. Formalize UI states.
-   - Idle
-   - Scanning
-   - AI analyzing
-   - Success with hits
-   - Success with no hits
-   - Error
-
-2. Review state reset behavior.
-   - Clear previous scan results when a new scan begins
-   - Clear previous AI output before rescanning
-   - Ensure progress disappears only when scanning is truly finished
-
-3. Improve progress messaging.
-   - Keep current checked versus total display
-   - Consider exposing the remote status string if it is useful and user-safe
-   - Prevent percentage jitter if total changes unexpectedly
-
-4. Tighten result rendering.
-   - Sort categories in a stable order: social, professional, gaming, forums, other
-   - Sort items alphabetically within each category
-   - Show a stable count badge per category
-
-5. Improve accessibility.
-   - Add `aria-live` to progress and error regions
-   - Ensure keyboard users can submit and tab through result cards
-   - Confirm color contrast for risk badges in both themes
-
-6. Improve empty-state clarity.
-   - Distinguish "no accounts found" from "scan failed"
-   - Show the scanned username in the empty state if useful
-
-7. Review favicon loading.
-   - Keep graceful fallback when a favicon fails
-   - Avoid UI breakage if `new URL(hit.url)` throws on malformed URLs
-
-8. Review report button behavior.
-   - Use translated text
-   - Disable or hide the button until AI analysis is ready
-
-### Acceptance criteria
-
-- No stale data leaks between scans
-- Result ordering is stable across renders
-- The feature is usable with keyboard-only interaction
-- The UI clearly separates scanning, analyzing, success, and error states
+- [x] Invalid or malformed usernames never reach the network or AI path.
+- [x] Timeout, abort, and rate-limit failures are distinct, readable, and unit-tested.
+- [x] Progress, empty, success, and error states are explicit and stable.
+- [x] Result grouping order is stable across renders.
+- [x] Progress and error regions are announced through `aria-live`.
+- [x] Scans persist to Firestore with the expected `social_osint` shape.
+- [x] History and dashboard surfaces label and count the scan type.
+- [x] PDF export carries Social OSINT-specific sections.
+- [x] English and Arabic strings exist, and the source file is valid UTF-8.
+- [x] `npm run lint` and `npm test` pass in CI on `main`.
+- [ ] **Reachable from the app shell** - not met; the screen was retired in `ebb8d89`.
+- [ ] **End-to-end manual QA in a browser** - not applicable while the screen is retired.
 
 ---
 
-## Phase 4 - Improve persistence and reporting
+## How this status was verified
 
-### Objective
-
-Make saved Social OSINT scans useful in history, dashboard summaries, and exported reports.
-
-### Primary files
-
-- `E:\joescan\src\components\SocialOsintScanner.tsx`
-- `E:\joescan\src\components\ScanHistory.tsx`
-- `E:\joescan\src\components\Dashboard.tsx`
-- `E:\joescan\src\lib\generatePDF.ts`
-
-### Tasks
-
-1. Validate Firestore payload shape.
-   - Confirm `social_osint` records show up correctly wherever scan types are summarized
-   - Confirm history filters do not silently exclude the new type
-
-2. Decide whether additional fields should be stored.
-   - Category counts
-   - Top platforms
-   - Total platforms checked
-   - Raw hit URLs or only platform names
-
-3. Upgrade PDF output for Social OSINT.
-   - Add a "Platforms Found" section
-   - Include grouped platform lists
-   - Include category counts
-   - Keep the existing executive summary and action plan
-
-4. Confirm dashboard compatibility.
-   - If dashboard charts group scan types, verify `social_osint` is counted
-   - If dashboard labels are user-facing, add a readable label for this module
-
-### Acceptance criteria
-
-- A saved Social OSINT scan appears in history
-- The new scan type does not break existing summaries
-- The PDF contains Social OSINT-specific evidence, not only generic text
+- Static audit of a `main` checkout at `66e66881`, cross-checked against GitHub commit, pull
+  request, and Actions history.
+- CI evidence: *Security audit* green for `5bfc8034` and `66e66881`; *Deploy to Cloudflare Pages*
+  (lint, test, build) green for `5bfc8034`.
+- The auditing machine has no Node.js, so `npm run lint` / `npm test` were not run locally.
 
 ---
 
-## Phase 5 - Add validation coverage
+## Open items outside this plan (flagged, not fixed here)
 
-### Objective
-
-Protect the new module against regressions.
-
-### Suggested coverage areas
-
-1. Unit tests for `socialOsint.ts`
-   - Category mapping
-   - Response parsing
-   - Error propagation
-   - Timeout handling
-
-2. Component tests for `SocialOsintScanner.tsx`
-   - Happy path with hits
-   - No-hit path
-   - Rate-limit error path
-   - AI analysis rendering
-   - PDF button visibility rules
-
-3. Optional smoke tests for integration points
-   - App navigation reaches the component
-   - Firestore save path is called with the expected shape
-
-### Notes
-
-- The repository does not currently show a test harness in the inspected files, so adding tests may require introducing a test runner such as Vitest and React Testing Library.
-- If test setup is deferred, capture that explicitly as a documented risk rather than leaving the gap implicit.
-
-### Acceptance criteria
-
-- Core parsing logic is covered by automated tests
-- At minimum, the error and happy paths are protected
+1. **README documents screens the app shell no longer renders.** `README.md` has dedicated sections
+   for Phone Number OSINT, OSINT Username, IP Scan, Browser Fingerprinting, Device Security, and
+   Cyber Academy, and lists Social OSINT in the overview table - but `src/App.tsx` renders only
+   `STANDARD_SIGNAL_TABS` (plus `team`, `threat_3d`, `admin`). `IpAnalyzer`, `PhoneAnalyzer`,
+   `UsernameAnalyzer`, and `SocialOsintScanner` are imported only by their tests;
+   `BrowserFingerprint`, `DeviceSecurityCheck`, and `CyberAcademy` have no importer at all.
+   Either README or routing needs to catch up. (The SIEM section is partly accurate: dispatch is
+   live through `saveScan` -> `dispatchWebhooks`, but its settings screen `SiemWebhooks.tsx` is
+   unreachable.)
+2. **Recent fixes target unreachable components.** PRs [#21](https://github.com/Youssef1703-2023/joescan/pull/21)
+   and [#22](https://github.com/Youssef1703-2023/joescan/pull/22) (PhoneAnalyzer) and
+   [#23](https://github.com/Youssef1703-2023/joescan/pull/23) (IpAnalyzer), merged 2026-11-01 and
+   2026-11-02, touch components `src/App.tsx` never renders. Decide explicitly: re-wire the
+   routes, or retire those screens the way Social OSINT and the 2D threat map were retired.
+3. **The `server.ts` WhatsMyName relay is unused by the client.** Keep it for external or legacy
+   callers (it is tested) or remove it now that searches go through the AI proxy.
+4. **`support` and `api_keys` are valid `TabId`s with no renderer** in `src/App.tsx`. They are
+   excluded from navigation and appear only in `TAB_TO_PATH` plus the SEO noindex allowlist
+   (`scripts/build-public-pages.mjs`, `scripts/verify-public-seo.mjs`).
 
 ---
 
-## Phase 6 - Manual QA and release checks
+## Definition of done - final status
 
-### Objective
-
-Prove the feature works end-to-end in the real app.
-
-### Commands
-
-```bash
-npm run dev
-npx tsc --noEmit
-```
-
-### Manual QA checklist
-
-1. Start the app and open `http://localhost:3000`
-2. Verify the `Social OSINT` tab appears in navigation
-3. Open the module and confirm the layout matches the app design system
-4. Search a known username
-5. Confirm the progress bar updates during scanning
-6. Confirm grouped platform results render
-7. Confirm the AI panel appears after scan completion
-8. Confirm a Firestore scan record is created for signed-in users
-9. Download the PDF and confirm the report is readable
-10. Switch to Arabic and verify RTL alignment and readable Arabic strings
-11. Repeat a scan quickly to test reset behavior
-12. Trigger an invalid input or network failure and verify the error state
-
-### Release gate
-
-Do not consider the module complete until:
-
-- TypeScript passes
-- Manual QA passes
-- Firestore persistence is confirmed
-- PDF export is confirmed
-- Arabic rendering is confirmed in-browser
+| # | Criterion | Status |
+|---|---|---|
+| 1 | A user can scan a username from the JoeScan UI | Not met - screen retired (`ebb8d89`); component tests cover the flow |
+| 2 | Progress, success, no-result, and error states are clear and stable | Met - `ScanPhase` plus tests |
+| 3 | Results are grouped and readable | Met - fixed category order with counts |
+| 4 | AI analysis appears reliably after scan completion | Met - `analyzing` phase, gated report button |
+| 5 | Firestore saves the scan with the expected structure | Met - `saveScan` payload |
+| 6 | The scan type is visible in downstream surfaces | Met - history label/icon, dashboard counter |
+| 7 | PDF export includes Social OSINT-specific content | Met - "Platforms Found" plus category tables |
+| 8 | English and Arabic both render correctly | Met - keys present, file is valid UTF-8; in-browser check pending a re-launch |
+| 9 | TypeScript passes and the core logic is validated | Met - CI lint and tests green on `main` |
 
 ---
 
-## Execution order
-
-Use this order to minimize rework:
-
-1. Documentation and encoding cleanup
-2. API hardening in `socialOsint.ts`
-3. UI state cleanup in `SocialOsintScanner.tsx`
-4. Persistence and history/dashboard verification
-5. PDF enhancement
-6. Automated validation
-7. Manual QA
-
----
-
-## Risk register
-
-### Risk 1 - External API rate limiting
-
-Impact:
-- Users may hit free-tier limits during demos or repeated scans
-
-Mitigation:
-- Preserve explicit `RATE_LIMIT` handling
-- Consider local caching or queued retries
-- Document expected free-tier behavior in the UI if needed
-
-### Risk 2 - CORS instability
-
-Impact:
-- Browser-only integration may fail unpredictably
-
-Mitigation:
-- Prefer a first-party relay endpoint over a third-party public CORS proxy if direct browser access proves unstable
-
-### Risk 3 - Weak category accuracy
-
-Impact:
-- Some hits may be grouped incorrectly
-
-Mitigation:
-- Use platform metadata from the provider if available
-- Keep keyword fallback only as a secondary classifier
-
-### Risk 4 - Arabic rendering issues
-
-Impact:
-- Social OSINT strings may display incorrectly despite compiling
-
-Mitigation:
-- Save sources as UTF-8
-- Verify in the running browser, not only in the terminal
-
-### Risk 5 - Generic PDF output
-
-Impact:
-- Exported reports may undersell the value of the scan
-
-Mitigation:
-- Add Social OSINT-specific sections before shipping
-
----
-
-## Definition of done
-
-The Social Media OSINT Scanner is done when all of the following are true:
-
-1. A user can scan a username successfully from the JoeScan UI.
-2. Progress, success, no-result, and error states are all clear and stable.
-3. Results are grouped and readable.
-4. AI analysis appears reliably after scan completion.
-5. Firestore saves the scan with the expected structure.
-6. The new scan type is visible in downstream product surfaces where appropriate.
-7. PDF export includes Social OSINT-specific content.
-8. English and Arabic both render correctly.
-9. TypeScript passes and the core logic is validated.
-
----
-
-## Recommended next action
-
-If implementation work continues from here, the highest-value next step is:
-
-1. Harden `E:\joescan\src\lib\socialOsint.ts`
-2. Polish `E:\joescan\src\components\SocialOsintScanner.tsx`
-3. Upgrade `E:\joescan\src\lib\generatePDF.ts` for Social OSINT-specific reporting
-
-That sequence gives the best balance of user-visible quality and release safety.
+*Earlier revisions of this plan described a local clone at `E:\joescan` and a WhatsMyName polling
+client. Both were corrected on 2026-11-02; see the status header at the top.*
