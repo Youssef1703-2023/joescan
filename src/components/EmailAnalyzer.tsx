@@ -41,6 +41,29 @@ interface ScanResult {
   language?: string;
 }
 
+// The follow-up flag is a per-device bookmark: it only records which addresses
+// the user marked, and it is NEVER presented as active monitoring. The watchlist
+// backend does not sweep email targets at all (workers/ai-proxy/src/watchlist.ts
+// returns status 'on_demand' with lastChecked: null for type 'email').
+const WATCHED_EMAILS_KEY = 'joescan:watched-emails:v1';
+
+function readWatchedEmails(): string[] {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(WATCHED_EMAILS_KEY) || '[]');
+    return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeWatchedEmails(list: string[]): void {
+  try {
+    window.localStorage.setItem(WATCHED_EMAILS_KEY, JSON.stringify(list));
+  } catch {
+    // localStorage can be unavailable (private mode); the in-memory state still works.
+  }
+}
+
 export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={}) {
   const { lang, t } = useLanguage();
   const [email, setEmail] = useState(initialValue);
@@ -64,19 +87,24 @@ export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={
   const [historySearchQuery, setHistorySearchQuery] = useState('');
   const [importantEmails, setImportantEmails] = useState<string[]>([]);
   const { addNotification } = useNotifications();
-  const [watchedEmails, setWatchedEmails] = useState<string[]>([]);
+  const [watchedEmails, setWatchedEmails] = useState<string[]>(readWatchedEmails);
 
   const toggleWatch = (emailTarget: string) => {
     const isWatched = watchedEmails.includes(emailTarget);
-    if (isWatched) {
-      setWatchedEmails(prev => prev.filter(e => e !== emailTarget));
-    } else {
-      setWatchedEmails(prev => [...prev, emailTarget]);
+    const next = isWatched
+      ? watchedEmails.filter(e => e !== emailTarget)
+      : [...watchedEmails, emailTarget];
+    setWatchedEmails(next);
+    // Persist: this flag used to live in component state only, so leaving the
+    // tab silently dropped it while the UI kept acting like it was saved.
+    writeWatchedEmails(next);
+    if (!isWatched) {
       addNotification({
-        title: 'Monitor Activated',
-        message: `${emailTarget} has been added to the continuous monitoring queue. You will be alerted of new breaches.`,
-        type: 'success',
-        linkTab: 'email'
+        title: lang === 'ar' ? 'حُفظت للمتابعة' : 'Saved for follow-up',
+        message: lang === 'ar'
+          ? `${emailTarget} محفوظ في هذا المتصفح فقط. المراقبة المستمرة لعناوين البريد غير متاحة في هذه النسخة.`
+          : `${emailTarget} is saved in this browser only. Continuous monitoring for email addresses is not available in this version.`,
+        type: 'info',
       });
     }
   };
