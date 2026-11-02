@@ -761,23 +761,44 @@ export default function EmailAnalyzer({initialValue=""}:{initialValue?:string}={
                   </div>
 
                   <div className="fe-report-summary">
-                    <div className="fe-score"><span>SECURITY SCORE</span><strong>{displayScan.securityScore ?? '—'}<small> / 100</small></strong><p>A local assessment, not a security guarantee.</p></div>
-                    <div className="fe-verdict"><span>ASSESSMENT</span><h3>{displayScan.coverageIncomplete ? 'Coverage incomplete' : displayScan.riskLevel === 'High' ? 'Review your exposure.' : displayScan.riskLevel === 'Medium' ? 'A closer look is worthwhile.' : 'Review the available findings.'}</h3><p>{displayScan.coverageIncomplete ? 'One or more sources could not complete the check. Review available findings and retry for fuller coverage.' : 'Use the source evidence below to understand what was found and decide what to do next.'}</p><span className="fe-risk-pill">{displayScan.riskLevel} risk estimate</span></div>
+                    <div className="fe-score"><span>{t('email_report_score_label')}</span><strong>{displayScan.securityScore ?? '-'}<small> / 100</small></strong><p>{t('email_report_score_note')}</p></div>
+                    <div className="fe-verdict">
+                      <span>{t('email_report_assessment')}</span>
+                      <h3>
+                        {displayScan.coverageIncomplete
+                          ? t('email_report_verdict_incomplete')
+                          : displayScan.riskLevel === 'High'
+                            ? t('email_report_verdict_high')
+                            : displayScan.riskLevel === 'Medium'
+                              ? t('email_report_verdict_medium')
+                              : t('email_report_verdict_low')}
+                      </h3>
+                      <p>
+                        {displayScan.coverageIncomplete
+                          ? t('email_report_verdict_note_incomplete')
+                          : t('email_report_verdict_note')}
+                      </p>
+                      <span className="fe-risk-pill">
+                        {lang === 'ar'
+                          ? `تقدير الخطر: ${translatedRiskLevel(displayScan.riskLevel)}`
+                          : `${displayScan.riskLevel} risk estimate`}
+                      </span>
+                    </div>
                   </div>
-                  {displayScan.scoreFactors?.length ? <details className="fe-score-details"><summary>How this assessment was reached</summary><ul>{(Array.isArray(displayScan.scoreFactors) ? displayScan.scoreFactors : [String(displayScan.scoreFactors)]).map((factor,index)=><li key={index}>{factor}</li>)}</ul></details> : null}
+                  {displayScan.scoreFactors?.length ? <details className="fe-score-details"><summary>{t('email_report_how_scored')}</summary><ul>{(Array.isArray(displayScan.scoreFactors) ? displayScan.scoreFactors : [String(displayScan.scoreFactors)]).map((factor,index)=><li key={index}>{factor}</li>)}</ul></details> : null}
 
-                  <div className="fe-report-evidence"><span className="fe-section-number">01 / SOURCE EVIDENCE</span>
+                  <div className="fe-report-evidence"><span className="fe-section-number">{t('email_report_section_evidence')}</span>
                     <h3 className="text-lg font-medium mb-3">{lang === 'ar' ? 'نتائج الفحص' : 'Findings'}</h3>
                     {displayScan.sourceStatuses || displayScan.assessmentVersion === 2 ? (
                       <AdditionalEmailSource embedded email={displayScan.emailScanned} groups={displayScan.evidenceGroups || groupEmailEvidence(displayScan.breaches || [], null)} statuses={displayScan.sourceStatuses || {xposedornot:'complete',leakcheck:'not checked in this historical scan'}} />
                     ) : (
                       <div className="text-sm leading-relaxed text-text-dim whitespace-pre-wrap">{displayScan.reportText}</div>
                     )}
-                    <p className="mt-4 text-xs text-text-dim">Coverage varies by provider. HIBP is not connected. The score is a local estimate, not a security guarantee.</p>
-                    {!displayScan.assessmentVersion && <p className="mt-2 text-sm text-warning">This older report used previous assessment logic. Run a new check for an updated report.</p>}
+                    <p className="mt-4 text-xs text-text-dim">{t('email_report_coverage_note')}</p>
+                    {!displayScan.assessmentVersion && <p className="mt-2 text-sm text-warning">{t('email_report_legacy_notice')}</p>}
                   </div>
 
-                <div className="fe-report-plan mt-6 border-t border-border-subtle pt-6"><span className="fe-section-number">02 / YOUR NEXT STEPS</span>
+                <div className="fe-report-plan mt-6 border-t border-border-subtle pt-6"><span className="fe-section-number">{t('email_report_section_steps')}</span>
                   <div className="flex items-center gap-3 mb-6">
                     <ShieldCheck className="w-6 h-6 text-accent" />
                     <h3 className="text-[20px] text-accent uppercase tracking-[1px] font-bold">
