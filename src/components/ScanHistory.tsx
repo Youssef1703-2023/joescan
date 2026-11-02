@@ -39,6 +39,9 @@ export default function ScanHistory() {
     setLoading(true);
 
     try {
+      // Clear any previous failure first, otherwise a successful retry keeps
+      // showing the stale "could not be loaded" banner forever.
+      setError('');
       const historyQuery = query(
         collection(db, 'scans'),
         where('userId', '==', auth.currentUser.uid),
@@ -75,11 +78,16 @@ export default function ScanHistory() {
       return;
     }
 
+    setDeleting(id);
     try {
       await deleteDoc(doc(db, 'scans', id));
       setScans(previous => previous.filter((scan) => scan.id !== id));
+      setError('');
     } catch (error) {
       console.error('Error deleting document:', error);
+      setError(copy('This check could not be deleted. Please try again.', 'تعذر حذف هذا السجل. حاول مرة أخرى.'));
+    } finally {
+      setDeleting(null);
     }
   };
 
