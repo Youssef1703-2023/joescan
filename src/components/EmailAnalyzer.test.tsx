@@ -6,6 +6,7 @@ import EmailAnalyzer from './EmailAnalyzer';
 const mocks = vi.hoisted(() => ({
   saveScan: vi.fn(),
   fetchCombinedEmailExposure: vi.fn(),
+  addNotification: vi.fn(),
 }));
 
 vi.mock('motion/react', () => ({
@@ -27,12 +28,15 @@ vi.mock('../contexts/LanguageContext', () => ({
       ({
         email_invalid_domain: 'This email domain does not exist.',
         email_invalid_format: 'Please enter a valid email address.',
+        watch_disabled: 'Save for follow-up',
+        watch_enabled: 'Saved for follow-up',
+        watch_tooltip: 'Keeps this address on a follow-up list stored in this browser.',
       })[key] || key,
   }),
 }));
 
 vi.mock('../contexts/NotificationContext', () => ({
-  useNotifications: () => ({ addNotification: vi.fn() }),
+  useNotifications: () => ({ addNotification: mocks.addNotification }),
 }));
 
 vi.mock('../lib/firebase', () => ({
@@ -259,5 +263,101 @@ describe('EmailAnalyzer typo suggestion (no silent domain rewrite)', () => {
     expect(
       screen.queryByRole('button', { name: /did you mean/i }),
     ).toBeNull();
+  });
+});
+
+describe('EmailAnalyzer follow-up flag (no fake monitoring)', () => {
+  const makeExposure = () => ({
+    riskLevel: 'Low' as const,
+    reportText: 'No breaches found.',
+    actionPlan: 'Keep monitoring.',
+    securityScore: 90,
+    scoreFactors: [],
+    scoreImprovement: [],
+    breaches: [],
+    source: 'test',
+    checkedAt: '2026-10-28',
+    assessmentVersion: 3,
+    evidenceGroups: [],
+    sourceStatuses: { xposedornot: 'complete', leakcheck: 'complete' },
+    coverageIncomplete: false,
+    language: 'en',
+  });
+
+  function savedFlags(): string[] {
+    try {
+      return JSON.parse(window.localStorage.getItem('joescan:watched-emails:v1') || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  function typeAndSubmit(value: string) {
+    fireEvent.change(screen.getByPlaceholderText('you@example.com'), {
+      target: { value },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /check email/i }));
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    window.localStorage.clear();
+    mocks.saveScan.mockResolvedValue({ id: 'scan-1' });
+    mocks.fetchCombinedEmailExposure.mockResolvedValue(makeExposure());
+    // Domain has MX records, so the scan runs and the report card renders.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        json: async () => ({ Status: 0, Answer: [{ data: '1 mail.example.com.' }] }),
+      })),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('persists the flag locally and never claims active monitoring', async () => {
+    await submitEmail('user@example.com');
+    await waitFor(() => expect(mocks.saveScan).toHaveBeenCalledTimes(1));
+    const button = await screen.findByRole('button', { name: 'Save for follow-up' });
+
+    fireEvent.click(button);
+
+    expect(savedFlags()).toEqual(['user@example.com']);
+    expect(screen.getByRole('button', { name: 'Saved for follow-up' })).toBeTruthy();
+
+    expect(mocks.addNotification).toHaveBeenCalledTimes(1);
+    const notification = mocks.addNotification.mock.calls[0][0];
+    expect(notification.title).toBe('Saved for follow-up');
+    expect(notification.type).toBe('info');
+    expect(notification.message).toContain('saved in this browser only');
+    // The old copy promised a "continuous monitoring queue" and breach alerts;
+    // nothing sweeps email targets, so that promise must not come back.
+    expect(notification.message).not.toMatch(
+      /continuous monitoring queue|alerted of new breaches/i,
+    );
+  });
+
+  it('restores the flag after a remount and stays silent when toggled off', async () => {
+    const first = render(<EmailAnalyzer />);
+    typeAndSubmit('user@example.com');
+    await waitFor(() => expect(mocks.saveScan).toHaveBeenCalledTimes(1));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save for follow-up' }));
+    expect(savedFlags()).toEqual(['user@example.com']);
+    first.unmount();
+
+    // Fresh mount: the flag must come back from storage instead of vanishing
+    // with the old component state.
+    render(<EmailAnalyzer />);
+    typeAndSubmit('user@example.com');
+    await waitFor(() => expect(mocks.saveScan).toHaveBeenCalledTimes(2));
+    expect(await screen.findByRole('button', { name: 'Saved for follow-up' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Saved for follow-up' }));
+    expect(savedFlags()).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Save for follow-up' })).toBeTruthy();
+    // Only the save notified; clearing the local flag adds no toast.
+    expect(mocks.addNotification).toHaveBeenCalledTimes(1);
   });
 });
